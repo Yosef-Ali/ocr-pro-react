@@ -1,0 +1,223 @@
+/**
+ * Text processing utilities for OCR and language processing
+ */
+import { ETHIOPIC_RANGES, AMHARIC_PUNCTUATION, OCR_ERROR_PATTERNS, LANGUAGE_CODES } from './constants';
+
+/**
+ * Extracts a JSON object from a string, which may be wrapped in markdown fences.
+ */
+export function extractJsonFromText(text: string): string {
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fenceMatch && fenceMatch[1]) {
+    return fenceMatch[1].trim();
+  }
+
+  const firstBrace = text.indexOf('{');
+  const lastBrace = text.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    return text.slice(firstBrace, lastBrace + 1).trim();
+  }
+
+  const cleaned = text.replace(/```/g, '').replace(/^json\s*/i, '').trim();
+  if ((cleaned.startsWith('{') && cleaned.endsWith('}')) || (cleaned.startsWith('[') && cleaned.endsWith(']'))) {
+    return cleaned;
+  }
+
+  throw new Error('Failed to extract JSON from model response');
+}
+
+/**
+ * Strips markdown fences from a string, returning the content inside.
+ */
+export function stripFences(text: string): string {
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fenceMatch && fenceMatch[1]) {
+    return fenceMatch[1].trim();
+  }
+  return text.replace(/```/g, '').replace(/^json\s*/i, '').trim();
+}
+
+/**
+ * Removes lines that appear to be standalone page numbers from a string.
+ */
+export function stripPageNumbers(input: string): string {
+  const lines = input.split(/\r?\n/);
+  const cleaned: string[] = [];
+  for (const line of lines) {
+    const l = line.trim();
+    if (!l) { cleaned.push(line); continue; }
+    // Common patterns: "12", "Page 12", "- 12 -", "12/345"
+    if (/^(?:page\s*)?\d{1,4}(?:\s*\/\s*\d{1,4})?$/i.test(l)) continue;
+    if (/^[-–—\s]*\d{1,4}[-–—\s]*$/.test(l)) continue;
+    cleaned.push(line);
+  }
+  return cleaned.join('\n');
+}
+
+/**
+ * Converts common ASCII punctuation and quotes to their Ethiopic equivalents in a string.
+ */
+export function enforceEthiopicPunctuationAndQuotes(input: string): string {
+  if (!input) return input;
+  let s = input;
+  // Replace ASCII colon/comma between Ethiopic letters with ፡ or ፣ respectively
+  s = s.replace(/([\u1200-\u137F])\s*:\s*([\u1200-\u137F])/g, '$1፡$2');
+  s = s.replace(/([\u1200-\u137F])\s*,\s*([\u1200-\u137F])/g, '$1፣$2');
+  // Replace ASCII period at end of Ethiopic sentence with ።
+  s = s.replace(/([\u1200-\u137F])\s*\.(?=\s|$)/g, '$1።');
+  // Preserve guillemets: convert ASCII double quotes around Ethiopic spans to « »
+  s = s.replace(/"\s*([\u1200-\u137F][^"\n]{0,200}?[\u1200-\u137F])\s*"/g, '«$1»');
+  // Normalize duplicated spaces around Ethiopic punctuation
+  s = s.replace(/\s*(፣|፡|።)\s*/g, '$1');
+  return s;
+}
+
+/**
+ * Normalizes a language code or name to a two-letter ISO 639-1 code.
+ */
+export function normalizeLangCode(code: any): string {
+  if (!code || typeof code !== 'string') return 'unknown';
+  const c = code.trim().toLowerCase();
+  // Map common language names to ISO 639-1 when obvious
+  const map: Record<string, string> = {
+    english: 'en', french: 'fr', german: 'de', spanish: 'es', chinese: 'zh', japanese: 'ja', korean: 'ko', arabic: 'ar', portuguese: 'pt', russian: 'ru', italian: 'it', amharic: 'am', somali: 'so', tigrinya: 'ti', hindi: 'hi'
+  };
+  if (map[c]) return map[c];
+  // Trim long codes like en-US -> en
+  if (/^[a-z]{2}(-[a-z]{2})?$/.test(c)) return c.slice(0, 2);
+  // Fallback
+  return c.length === 2 ? c : 'unknown';
+}
+
+/**
+ * Clamps a number between 0 and 1.
+ */
+export function clamp01(n: any): number {
+  const x = typeof n === 'number' ? n : parseFloat(n);
+  if (Number.isNaN(x)) return 0.5;
+  return Math.max(0, Math.min(1, x));
+}
+
+/**
+ * Checks if text contains Ethiopic characters
+ */
+export function containsEthiopic(s: string): boolean {
+  return ETHIOPIC_RANGES.ALL.test(s);
+}
+
+// === Amharic Text Processing Functions ===
+
+/**
+ * Local Amharic text cleaning utilities
+ */
+export function cleanAmharicTextLocally(text: string): { cleaned: string; changes: number } {
+  let cleaned = text;
+  let totalChanges = 0;
+
+  // Character fixes using constants
+  const characterFixes: [RegExp, string][] = [
+    // Fix zero-width characters
+    [/[\u200B-\u200D\uFEFF]/g, ''],
+    // Fix ASCII punctuation between Amharic characters
+    [/([\u1200-\u137F])[#;:\/\\|`~^*_=+]+([\u1200-\u137F])/g, '$1 $2'],
+    // Remove Latin letters embedded in Amharic words
+    [OCR_ERROR_PATTERNS.MIXED_SCRIPTS, '$1$2'],
+    // Fix Amharic punctuation
+    [/([^\s])([።፤፡፣])/g, '$1$2'], // Ensure no space before Amharic punctuation
+    [/([።፤፡፣])([^\s])/g, '$1 $2'], // Ensure space after Amharic punctuation
+    // Fix multiple spaces
+    [/ {2,}/g, ' '],
+    // Fix line-end spaces
+    [/ +$/gm, ''],
+  ];
+
+  for (const [pattern, replacement] of characterFixes) {
+    const matches = cleaned.match(pattern);
+    if (matches) {
+      cleaned = cleaned.replace(pattern, replacement);
+      totalChanges += matches.length;
+    }
+  }
+
+  return { cleaned, changes: totalChanges };
+}
+
+/**
+ * Validate Amharic text structure
+ */
+export function validateAmharicText(text: string): {
+  isValid: boolean;
+  issues: string[];
+} {
+  const issues: string[] = [];
+  
+  // Check for mixed scripts
+  const hasAmharic = ETHIOPIC_RANGES.ALL.test(text);
+  const hasLatin = /[a-zA-Z]/.test(text);
+  
+  if (hasAmharic && hasLatin) {
+    // Check if Latin appears in isolation (OK) or mixed with Amharic (problematic)
+    const mixedScriptPattern = /([\u1200-\u137F]+[a-zA-Z]+[\u1200-\u137F]*)|([a-zA-Z]+[\u1200-\u137F]+)/;
+    if (mixedScriptPattern.test(text)) {
+      issues.push('Mixed scripts detected within words');
+    }
+  }
+
+  // Check for ASCII punctuation noise
+  if (/[#;:\/\\|`~^*_=+]{2,}/.test(text)) {
+    issues.push('Excessive ASCII punctuation detected');
+  }
+
+  // Check for proper Amharic sentence structure
+  if (hasAmharic) {
+    const lines = text.split('\n').filter(line => line.trim());
+    for (const line of lines) {
+      // Check if Amharic sentences end with proper punctuation
+      if (/[\u1200-\u137F]$/.test(line.trim())) {
+        issues.push(`Line may be missing punctuation: "${line.substring(0, 50)}..."`);
+      }
+    }
+  }
+
+  return {
+    isValid: issues.length === 0,
+    issues
+  };
+}
+
+/**
+ * Extract semantic context from Amharic text
+ */
+export function extractAmharicContext(text: string): {
+  sentences: string[];
+  paragraphs: string[];
+  hasPoetry: boolean;
+  hasDialog: boolean;
+} {
+  // Split into sentences using Amharic punctuation
+  const sentences = text
+    .split(/[።፤]/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+
+  // Split into paragraphs
+  const paragraphs = text
+    .split(/\n\n+/)
+    .map(p => p.trim())
+    .filter(p => p.length > 0);
+
+  // Detect poetry (short lines with consistent structure)
+  const lines = text.split('\n').filter(l => l.trim());
+  const avgLineLength = lines.reduce((sum, l) => sum + l.length, 0) / lines.length;
+  const hasPoetry = avgLineLength < 50 && lines.length > 4;
+
+  // Detect dialog (quotes or dialog markers)
+  const hasDialog = /[""]|«»|‹›|፦/.test(text);
+
+  return {
+    sentences,
+    paragraphs,
+    hasPoetry,
+    hasDialog
+  };
+}

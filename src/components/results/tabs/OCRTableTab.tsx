@@ -3,6 +3,7 @@ import { useOCRStore } from '@/store/ocrStore';
 import { useExport } from '@/hooks/useExport';
 import { MoreHorizontal } from 'lucide-react';
 import toast from 'react-hot-toast';
+//
 
 export const OCRTableTab: React.FC = () => {
     const { results, files, deleteResult, setCurrentFileIndex, currentProjectId, assignFilesToProject } = useOCRStore();
@@ -76,17 +77,38 @@ export const OCRTableTab: React.FC = () => {
     const handleExportBookDocxSelection = async () => {
         try {
             if (selectedResults.length === 0) return;
-            const { Document, Packer, Paragraph, HeadingLevel } = await import('docx');
-            const children: any[] = [];
-            children.push(new Paragraph({ text: 'OCR Selection — Book', heading: HeadingLevel.HEADING_1 }));
+            const { Document, Packer, Paragraph, HeadingLevel, TableOfContents } = await import('docx' as any);
+            const sections: any[] = [];
+            const main: any[] = [];
+            const { useOCRStore } = await import('@/store/ocrStore');
+            const { settings } = useOCRStore.getState();
+            if (settings.bookIncludeCover) {
+                sections.push({
+                    children: [
+                        new Paragraph({ text: 'OCR Selection — Book', heading: HeadingLevel.HEADING_1 }),
+                        new Paragraph({ text: `Generated: ${new Date().toLocaleString()}` }),
+                    ]
+                });
+            } else {
+                main.push(new Paragraph({ text: 'OCR Selection — Book', heading: HeadingLevel.HEADING_1 }));
+            }
+            if (settings.pdfIncludeTOC && (settings.pdfTocPosition || 'end') === 'start') {
+                main.push(new Paragraph({ text: 'Table of Contents', heading: HeadingLevel.HEADING_2 }));
+                main.push(new (TableOfContents as any)('Table of Contents', { hyperlink: true, headingStyleRange: '1-5' }));
+            }
             for (let i = 0; i < selectedResults.length; i++) {
                 const r = selectedResults[i];
                 const title = `${i + 1}. ${getFileName(r.fileId)} (${r.documentType || 'Document'})`;
-                children.push(new Paragraph({ text: title, heading: HeadingLevel.HEADING_2 }));
+                main.push(new Paragraph({ text: title, heading: HeadingLevel.HEADING_2 }));
                 const content = (r.layoutPreserved || r.extractedText || '').split('\n');
-                for (const line of content) children.push(new Paragraph(line));
+                for (const line of content) main.push(new Paragraph(line));
             }
-            const doc = new Document({ sections: [{ children }] });
+            if (settings.pdfIncludeTOC && (settings.pdfTocPosition || 'end') === 'end') {
+                main.push(new Paragraph({ text: 'Table of Contents', heading: HeadingLevel.HEADING_2 }));
+                main.push(new (TableOfContents as any)('Table of Contents', { hyperlink: true, headingStyleRange: '1-5' }));
+            }
+            sections.push({ children: main });
+            const doc = new Document({ sections });
             const blob = await Packer.toBlob(doc);
             const { saveAs } = await import('file-saver');
             saveAs(blob, `ocr-selection-book-${Date.now()}.docx`);
@@ -102,14 +124,21 @@ export const OCRTableTab: React.FC = () => {
             if (selectedResults.length === 0) return;
             const [{ jsPDF }] = await Promise.all([import('jspdf')]);
             const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+            doc.setFont('helvetica', 'normal');
+            const { needsEthiopicFont, ensureEthiopicFont } = await import('@/utils/pdfFonts');
             const pageWidth = doc.internal.pageSize.getWidth();
             const margin = 40;
             const maxWidth = pageWidth - margin * 2;
             let y = margin;
             let currentPage = 1;
             const toc: Array<{ title: string; page: number }> = [];
-            const addText = (text: string, size = 12, bold = false) => {
-                doc.setFont('helvetica', bold ? 'bold' : 'normal');
+            const addText = async (text: string, size = 12, bold = false) => {
+                if (needsEthiopicFont(text)) {
+                    await ensureEthiopicFont(doc);
+                    doc.setFont('NotoSansEthiopic', bold ? 'bold' : 'normal');
+                } else {
+                    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+                }
                 doc.setFontSize(size);
                 const lines = doc.splitTextToSize(text, maxWidth) as string[];
                 for (const line of lines) {
@@ -122,23 +151,24 @@ export const OCRTableTab: React.FC = () => {
             const { useOCRStore } = await import('@/store/ocrStore');
             const { settings } = useOCRStore.getState();
             if (settings.bookIncludeCover) {
-                addText('OCR Selection — Book', 22, true); y += 16;
-                addText(`Generated: ${new Date().toLocaleString()}`, 12, false);
+                await addText('OCR Selection — Book', 22, true); y += 16;
+                await addText(`Generated: ${new Date().toLocaleString()}`, 12, false);
                 doc.addPage(); y = margin; currentPage += 1;
             } else {
-                addText('OCR Selection — Book', 18, true); y += 8;
+                await addText('OCR Selection — Book', 18, true); y += 8;
             }
-            selectedResults.forEach((r, i) => {
+            for (let i = 0; i < selectedResults.length; i++) {
+                const r = selectedResults[i];
                 const title = `${i + 1}. ${getFileName(r.fileId)} (${r.documentType || 'Document'})`;
                 toc.push({ title, page: currentPage });
-                addText(title, 14, true);
-                addText((r.layoutPreserved || r.extractedText || ''), 12, false);
+                await addText(title, 14, true);
+                await addText((r.layoutPreserved || r.extractedText || ''), 12, false);
                 y += 6;
-            });
+            }
             if (settings.pdfIncludeTOC) {
                 if (y > doc.internal.pageSize.getHeight() - margin - 40) { doc.addPage(); y = margin; currentPage += 1; }
-                addText('Table of Contents', 16, true);
-                toc.forEach(item => addText(`${item.title} ..... ${item.page}`, 12, false));
+                await addText('Table of Contents', 16, true);
+                for (const item of toc) { await addText(`${item.title} ..... ${item.page}`, 12, false); }
             }
             if (settings.pdfIncludeFooter) {
                 const pageCount = doc.getNumberOfPages();

@@ -1,16 +1,25 @@
 import React from 'react';
 import { OCRResult } from '@/types';
+import { BaseTab, TextContainer, EmptyState } from './base';
 
 interface Props {
   result: OCRResult;
 }
 
 export const ExtractedTextTab: React.FC<Props> = ({ result }) => {
+  if (!result.extractedText?.trim()) {
+    return (
+      <BaseTab result={result}>
+        <EmptyState message="No extracted text available" icon="📝" />
+      </BaseTab>
+    );
+  }
+
   return (
-    <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
-      <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">
+    <BaseTab result={result} showMetadata>
+      <TextContainer>
         {result.extractedText}
-      </pre>
-    </div>
+      </TextContainer>
+    </BaseTab>
   );
 };

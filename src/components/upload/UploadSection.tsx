@@ -15,6 +15,8 @@ const ACCEPTED_TYPES = {
   'image/png': ['.png'],
   'image/gif': ['.gif'],
   'image/webp': ['.webp'],
+  'image/x-tiff': ['.tif', '.tiff'],
+  'image/tiff': ['.tif', '.tiff'],
   'application/pdf': ['.pdf'],
 };
 
@@ -119,7 +121,7 @@ export const UploadSection: React.FC = () => {
                   or <span className="text-blue-600 font-medium">browse files</span>
                 </p>
                 <p className="text-xs text-gray-400">
-                  Supports: PDF, JPG, PNG, GIF, WEBP (Max 10MB)
+                  Supports: PDF, JPG, PNG, GIF, WEBP, TIFF (Max 10MB)
                 </p>
               </div>
             </div>

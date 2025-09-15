@@ -28,7 +28,20 @@ export interface OCRResult {
     wordCount?: number;
     characterCount?: number;
     layoutMarkdown?: string;
+    engine?: 'tesseract' | 'gemini';
+    proofreadingSuggestions?: ProofreadingSuggestion[];
+    llmOcrText?: string;
+    llmOcrLayout?: string;
+    llmOcrProvider?: 'openrouter' | 'gemini';
+    llmOcrModel?: string;
   };
+}
+
+export interface ProofreadingSuggestion {
+  original: string; // exact snippet as in OCR
+  suggestion: string; // proposed corrected or completed text
+  reason?: string; // brief explanation in Amharic if possible
+  confidence?: number; // optional confidence score 0..1
 }
 
 export interface Project {
@@ -72,16 +85,25 @@ export interface BoundingBox {
 
 export interface Settings {
   apiKey: string;
-  model: 'gemini-1.5-flash' | 'gemini-1.5-pro' | 'gemini-pro-vision';
+  model: 'gemini-1.5-flash' | 'gemini-1.5-pro' | 'gemini-2.5-pro' | 'gemini-pro-vision';
   maxTokens: number;
   language: string;
   preserveLayout: boolean;
   detectTables: boolean;
   enhanceImage: boolean;
+  ocrEngine?: 'auto' | 'tesseract' | 'gemini'; // OCR engine selection
+  lowTemperature?: boolean; // reduce creativity to curb hallucinations
+  forceAmharic?: boolean;   // force Ethiopic handling and language
+  strictAmharic?: boolean;  // blacklist ASCII letters during OCR
   pdfIncludeTOC?: boolean;
   pdfIncludeFooter?: boolean;
   pdfTocPosition?: 'start' | 'end';
   bookIncludeCover?: boolean;
+  // OpenRouter fallback / preference
+  openRouterApiKey?: string;
+  openRouterModel?: string; // e.g., 'google/gemini-1.5-flash' or 'openai/gpt-4o-mini'
+  fallbackToOpenRouter?: boolean; // use on Gemini errors
+  preferOpenRouterForProofreading?: boolean; // force OpenRouter for proofreading
 }
 
 export type ProcessingStatus =

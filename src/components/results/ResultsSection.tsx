@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Copy, Download } from 'lucide-react';
+import { FileText, Copy, Download, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOCRStore } from '@/store/ocrStore';
 import { ProcessingStatus } from './ProcessingStatus';
@@ -24,6 +24,14 @@ export const ResultsSection: React.FC = () => {
   } = useOCRStore();
 
   const { exportResult } = useExport();
+
+  // Proofreading AI moved into the editor toolbar (Layout Preserved tab)
+
+  // LLM OCR Compare removed per request
+
+  // Re-run Amharic-only removed per request
+
+  // Local cleanup removed (now part of in-editor tools)
 
   const handleCopy = () => {
     if (currentResult) {
@@ -198,24 +206,49 @@ export const ResultsSection: React.FC = () => {
     if (!activeSummary) return;
     try {
       const projectResults = getActiveProjectResults();
-      const { Document, Packer, Paragraph, HeadingLevel } = await import('docx');
-      const sections: any[] = [];
+      const { Document, Packer, Paragraph, HeadingLevel, TableOfContents } = await import('docx' as any);
+      const sectionsDoc: any[] = [];
+      const mainChildren: any[] = [];
       const title = `Project Book — ${activeSummary.projectId}`;
-      sections.push(new Paragraph({ text: title, heading: HeadingLevel.HEADING_1 }));
+
+      if (settings.bookIncludeCover) {
+        const coverChildren: any[] = [];
+        coverChildren.push(new Paragraph({ text: title, heading: HeadingLevel.HEADING_1 }));
+        coverChildren.push(new Paragraph({ text: `Generated: ${new Date().toLocaleString()}` }));
+        sectionsDoc.push({ children: coverChildren });
+      } else {
+        mainChildren.push(new Paragraph({ text: title, heading: HeadingLevel.HEADING_1 }));
+      }
+
+      if (settings.pdfIncludeTOC) {
+        const placeAtStart = (settings.pdfTocPosition || 'end') === 'start';
+        if (placeAtStart) {
+          mainChildren.push(new Paragraph({ text: 'Table of Contents', heading: HeadingLevel.HEADING_2 }));
+          mainChildren.push(new (TableOfContents as any)('Table of Contents', { hyperlink: true, headingStyleRange: '1-5' }));
+        }
+      }
+
       if (activeSummary.chapters?.length) {
         for (let i = 0; i < activeSummary.chapters.length; i++) {
           const ch = activeSummary.chapters[i];
-          sections.push(new Paragraph({ text: `${i + 1}. ${ch.title}`, heading: HeadingLevel.HEADING_2 }));
-          for (const line of (ch.content || '').split('\n')) sections.push(new Paragraph(line));
+          mainChildren.push(new Paragraph({ text: `${i + 1}. ${ch.title}`, heading: HeadingLevel.HEADING_2 }));
+          for (const line of (ch.content || '').split('\n')) mainChildren.push(new Paragraph(line));
         }
       } else {
         for (let i = 0; i < projectResults.length; i++) {
           const r = projectResults[i];
-          sections.push(new Paragraph({ text: `${i + 1}. ${r.documentType || 'Document'} — ${r.fileId}`, heading: HeadingLevel.HEADING_2 }));
-          for (const line of (r.layoutPreserved || r.extractedText).split('\n')) sections.push(new Paragraph(line));
+          mainChildren.push(new Paragraph({ text: `${i + 1}. ${r.documentType || 'Document'} — ${r.fileId}`, heading: HeadingLevel.HEADING_2 }));
+          for (const line of (r.layoutPreserved || r.extractedText).split('\n')) mainChildren.push(new Paragraph(line));
         }
       }
-      const doc = new Document({ sections: [{ children: sections }] });
+
+      if (settings.pdfIncludeTOC && (settings.pdfTocPosition || 'end') === 'end') {
+        mainChildren.push(new Paragraph({ text: 'Table of Contents', heading: HeadingLevel.HEADING_2 }));
+        mainChildren.push(new (TableOfContents as any)('Table of Contents', { hyperlink: true, headingStyleRange: '1-5' }));
+      }
+
+      sectionsDoc.push({ children: mainChildren });
+      const doc = new Document({ sections: sectionsDoc });
       const blob = await Packer.toBlob(doc);
       const { saveAs } = await import('file-saver');
       saveAs(blob, `project-book-${activeSummary.projectId}-${Date.now()}.docx`);
@@ -232,14 +265,21 @@ export const ResultsSection: React.FC = () => {
       const projectResults = getActiveProjectResults();
       const [{ jsPDF }] = await Promise.all([import('jspdf')]);
       const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      doc.setFont('helvetica', 'normal');
+      const { needsEthiopicFont, ensureEthiopicFont } = await import('@/utils/pdfFonts');
       const pageWidth = doc.internal.pageSize.getWidth();
       const margin = 40;
       const maxWidth = pageWidth - margin * 2;
       let cursorY = margin;
       let currentPage = 1;
       const tocItems: Array<{ title: string; page: number }> = [];
-      const addTextBlock = (text: string, fontSize = 12, bold = false) => {
-        doc.setFont('helvetica', bold ? 'bold' : 'normal');
+      const addTextBlock = async (text: string, fontSize = 12, bold = false) => {
+        if (needsEthiopicFont(text)) {
+          await ensureEthiopicFont(doc);
+          doc.setFont('NotoSansEthiopic', bold ? 'bold' : 'normal');
+        } else {
+          doc.setFont('helvetica', bold ? 'bold' : 'normal');
+        }
         doc.setFontSize(fontSize);
         const lines = doc.splitTextToSize(text, maxWidth) as string[];
         for (const line of lines) {
@@ -253,41 +293,48 @@ export const ResultsSection: React.FC = () => {
         }
       };
       if (settings.bookIncludeCover) {
-        addTextBlock(`Project Book — ${activeSummary.projectId}`, 22, true);
+        await addTextBlock(`Project Book — ${activeSummary.projectId}`, 22, true);
         cursorY += 16;
-        addTextBlock(`Generated: ${new Date().toLocaleString()}`, 12, false);
+        await addTextBlock(`Generated: ${new Date().toLocaleString()}`, 12, false);
         doc.addPage();
         cursorY = margin;
         currentPage += 1;
       } else {
-        addTextBlock(`Project Book — ${activeSummary.projectId}`, 18, true);
+        await addTextBlock(`Project Book — ${activeSummary.projectId}`, 18, true);
         cursorY += 8;
       }
       if (activeSummary.chapters?.length) {
-        activeSummary.chapters.forEach((ch, idx) => {
+        for (let idx = 0; idx < activeSummary.chapters.length; idx++) {
+          const ch = activeSummary.chapters[idx];
           tocItems.push({ title: `${idx + 1}. ${ch.title}`, page: currentPage });
-          addTextBlock(`${idx + 1}. ${ch.title}`, 14, true);
-          addTextBlock(ch.content || '', 12, false);
+          await addTextBlock(`${idx + 1}. ${ch.title}`, 14, true);
+          await addTextBlock(ch.content || '', 12, false);
           cursorY += 6;
-        });
+        }
       } else {
-        projectResults.forEach((r, idx) => {
+        for (let idx = 0; idx < projectResults.length; idx++) {
+          const r = projectResults[idx];
           const title = `${idx + 1}. ${r.documentType || 'Document'} — ${r.fileId}`;
           tocItems.push({ title, page: currentPage });
-          addTextBlock(title, 14, true);
-          addTextBlock((r.layoutPreserved || r.extractedText) || '', 12, false);
+          await addTextBlock(title, 14, true);
+          await addTextBlock((r.layoutPreserved || r.extractedText) || '', 12, false);
           cursorY += 6;
-        });
+        }
       }
       // Optional TOC and footer based on settings
       if (settings.pdfIncludeTOC) {
         const placeAtStart = (settings.pdfTocPosition || 'end') === 'start';
         if (placeAtStart) {
-          // jsPDF cannot easily insert pages; we keep TOC at end as a simple fallback when 'start' is chosen.
+          // Reserve a page for TOC at start: create a blank page after cover
+          // Note: Page reordering is not supported here; TOC will render at end as a fallback.
+          // Workaround: Render TOC at the end, then add a note in title indicating TOC at start is requested.
+          // jsPDF lacks safe page reordering in-browser without plugins; we keep TOC rendered at end.
         }
         if (cursorY > doc.internal.pageSize.getHeight() - margin - 40) { doc.addPage(); cursorY = margin; currentPage += 1; }
-        addTextBlock('Table of Contents', 16, true);
-        tocItems.forEach((item) => addTextBlock(`${item.title} ..... ${item.page}`, 12, false));
+        await addTextBlock('Table of Contents', 16, true);
+        for (const item of tocItems) {
+          await addTextBlock(`${item.title} ..... ${item.page}`, 12, false);
+        }
       }
 
       if (settings.pdfIncludeFooter) {
@@ -320,6 +367,11 @@ export const ResultsSection: React.FC = () => {
         <h2 className="text-xl font-semibold flex items-center">
           <FileText className="w-5 h-5 mr-2 text-green-600" />
           OCR Results
+          {currentResult?.metadata?.engine && (
+            <span className="ml-3 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border">
+              Engine: {currentResult.metadata.engine === 'tesseract' ? 'Tesseract' : 'Gemini'}
+            </span>
+          )}
         </h2>
 
         <div className="flex items-center space-x-3">
@@ -327,10 +379,16 @@ export const ResultsSection: React.FC = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleSummarizeProject}
-            className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+            title="Summarize Project"
+            aria-label="Summarize Project"
+            className="p-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
           >
-            Summarize Project
+            <BookOpen className="w-4 h-4" />
           </motion.button>
+
+          {/* AI proofreading button removed from header */}
+
+
           {files.length > 1 && (
             <select
               value={currentFileIndex}
@@ -350,7 +408,9 @@ export const ResultsSection: React.FC = () => {
             whileTap={{ scale: 0.95 }}
             onClick={handleCopy}
             disabled={!currentResult}
-            className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Copy extracted text"
+            aria-label="Copy extracted text"
+            className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Copy className="w-4 h-4" />
           </motion.button>
@@ -360,7 +420,9 @@ export const ResultsSection: React.FC = () => {
             whileTap={{ scale: 0.95 }}
             onClick={handleDownload}
             disabled={!currentResult}
-            className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Download as .txt"
+            aria-label="Download as .txt"
+            className="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="w-4 h-4" />
           </motion.button>

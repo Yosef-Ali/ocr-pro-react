@@ -93,12 +93,15 @@ ${row.join(',')}
           try {
             const { default: jsPDF } = await import('jspdf');
             const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+            doc.setFont('helvetica', 'normal');
+            const { needsEthiopicFont, ensureEthiopicFont } = await import('@/utils/pdfFonts');
             let y = 40;
             const left = 40;
-            doc.setFont('helvetica', 'bold');
+            if (needsEthiopicFont(result.extractedText)) { await ensureEthiopicFont(doc); }
+            doc.setFont(needsEthiopicFont(result.extractedText) ? 'NotoSansEthiopic' : 'helvetica', 'bold');
             doc.setFontSize(12);
             doc.text('OCR Result', left, y); y += 18;
-            doc.setFont('helvetica', 'normal');
+            doc.setFont(needsEthiopicFont(result.extractedText) ? 'NotoSansEthiopic' : 'helvetica', 'normal');
             doc.setFontSize(10);
             if (options.includeMetadata) {
               const meta = [
@@ -191,9 +194,13 @@ ${row.join(',')}
         for (let i = 0; i < results.length; i++) {
           const r = results[i];
           const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+          doc.setFont('helvetica', 'normal');
+          const { needsEthiopicFont, ensureEthiopicFont } = await import('@/utils/pdfFonts');
+          const useE = needsEthiopicFont(r.extractedText);
+          if (useE) await ensureEthiopicFont(doc);
           let y = 40; const left = 40;
-          doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('OCR Result', left, y); y += 18;
-          doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+          doc.setFont(useE ? 'NotoSansEthiopic' : 'helvetica', 'bold'); doc.setFontSize(12); doc.text('OCR Result', left, y); y += 18;
+          doc.setFont(useE ? 'NotoSansEthiopic' : 'helvetica', 'normal'); doc.setFontSize(10);
           const meta = `Language: ${r.detectedLanguage}  |  Confidence: ${(r.confidence * 100).toFixed(1)}%  |  Type: ${r.documentType}`;
           doc.text(meta, left, y); y += 18;
           const lines = doc.splitTextToSize(r.extractedText, 515);

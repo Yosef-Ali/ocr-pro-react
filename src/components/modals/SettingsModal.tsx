@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Key, Cpu, Hash } from 'lucide-react';
+import { X, Key, Cpu, Hash, Zap, ChevronDown, ChevronRight, ShieldQuestion } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOCRStore } from '@/store/ocrStore';
 import toast from 'react-hot-toast';
@@ -17,8 +17,12 @@ export const SettingsModal: React.FC = () => {
   const models = [
     { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (Fast)' },
     { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (Balanced)' },
+    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (Advanced)' },
     { value: 'gemini-pro-vision', label: 'Gemini Pro Vision (Legacy)' },
   ];
+
+  const hasOpenRouterConfigured = Boolean((localSettings as any).openRouterApiKey || (localSettings as any).openRouterModel || (localSettings as any).fallbackToOpenRouter || (localSettings as any).preferOpenRouterForProofreading);
+  const geminiMissing = !localSettings.apiKey;
 
   return (
     <AnimatePresence>
@@ -34,147 +38,231 @@ export const SettingsModal: React.FC = () => {
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
-          className="bg-white rounded-xl p-6 w-full max-w-md mx-4"
+          className="bg-white rounded-xl w-full max-w-lg mx-4 shadow-xl"
         >
-          <div className="flex justify-between items-center mb-6">
+          {/* Header */}
+          <div className="flex justify-between items-center px-6 pt-6 pb-3">
             <h2 className="text-2xl font-bold text-gray-800">Settings</h2>
             <button
               onClick={toggleSettings}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Close settings"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="space-y-6">
-            {/* API Key */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Key className="w-4 h-4 inline mr-1" />
-                Gemini API Key
-              </label>
-              <input
-                type="password"
-                value={localSettings.apiKey}
-                onChange={(e) => setLocalSettings({ ...localSettings, apiKey: e.target.value })}
-                placeholder="Enter your Gemini API key"
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Get your API key from{' '}
-                <a
-                  href="https://makersuite.google.com/app/apikey"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
+          {/* Scrollable body with sticky footer */}
+          <div className="max-h-[70vh] overflow-y-auto">
+            <div className="px-6 pb-4 space-y-3">
+              <Collapsible title={<span className="inline-flex items-center gap-2"><Zap className="w-4 h-4" /> OCR Engine</span>} defaultOpen>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Engine</label>
+                <select
+                  value={localSettings.ocrEngine || 'auto'}
+                  onChange={(e) => setLocalSettings({ ...localSettings, ocrEngine: e.target.value as any })}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
-                  Google AI Studio
-                </a>
-              </p>
-            </div>
+                  <option value="auto">Auto (Gemini with Tesseract fallback)</option>
+                  <option value="tesseract">Tesseract Only (Local, Free)</option>
+                  <option value="gemini">Gemini Only (Requires API Key)</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Choose which OCR engine to use. Tesseract works offline and is great for Amharic text.</p>
+              </Collapsible>
 
-            {/* Model Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Cpu className="w-4 h-4 inline mr-1" />
-                Model
-              </label>
-              <select
-                value={localSettings.model}
-                onChange={(e) => setLocalSettings({ ...localSettings, model: e.target.value as any })}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              >
-                {models.map(({ value, label }) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Max Tokens */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Hash className="w-4 h-4 inline mr-1" />
-                Max Tokens
-              </label>
-              <input
-                type="number"
-                value={localSettings.maxTokens}
-                onChange={(e) => setLocalSettings({ ...localSettings, maxTokens: parseInt(e.target.value) })}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                min="256"
-                max="8192"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Higher values allow longer outputs but cost more
-              </p>
-            </div>
-
-            {/* PDF Export Options */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">PDF Export</label>
-              <div className="flex items-center gap-4 text-sm">
-                <label className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={!!localSettings.pdfIncludeTOC}
-                    onChange={(e) => setLocalSettings({ ...localSettings, pdfIncludeTOC: e.target.checked })}
-                  />
-                  Include TOC
-                </label>
-                <label className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={!!localSettings.pdfIncludeFooter}
-                    onChange={(e) => setLocalSettings({ ...localSettings, pdfIncludeFooter: e.target.checked })}
-                  />
-                  Include page footer
-                </label>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">TOC position</label>
-                  <select
-                    value={localSettings.pdfTocPosition || 'end'}
-                    onChange={(e) => setLocalSettings({ ...localSettings, pdfTocPosition: e.target.value as any })}
-                    className="w-full p-2 border border-gray-300 rounded"
-                  >
-                    <option value="start">Start (before content)</option>
-                    <option value="end">End (after content)</option>
-                  </select>
+              <Collapsible title={<span className="inline-flex items-center gap-2"><Key className="w-4 h-4" /> Gemini</span>} defaultOpen={geminiMissing}>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Gemini API Key</label>
+                <input
+                  type="password"
+                  value={localSettings.apiKey}
+                  onChange={(e) => setLocalSettings({ ...localSettings, apiKey: e.target.value })}
+                  placeholder="Enter your Gemini API key"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Get your API key from <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Google AI Studio</a></p>
+                <div className="mt-4 grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2"><Cpu className="w-4 h-4 inline mr-1" /> Model</label>
+                    <select
+                      value={localSettings.model}
+                      onChange={(e) => setLocalSettings({ ...localSettings, model: e.target.value as any })}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                      {models.map(({ value, label }) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2"><Hash className="w-4 h-4 inline mr-1" /> Max Tokens</label>
+                    <input
+                      type="number"
+                      value={localSettings.maxTokens}
+                      onChange={(e) => setLocalSettings({ ...localSettings, maxTokens: parseInt(e.target.value) })}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      min="256"
+                      max="8192"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Higher values allow longer outputs but cost more</p>
+                  </div>
                 </div>
-                <div className="flex items-end">
+              </Collapsible>
+
+              <Collapsible title={<span className="inline-flex items-center gap-2"><ShieldQuestion className="w-4 h-4" /> OpenRouter (Optional)</span>} defaultOpen={hasOpenRouterConfigured}>
+                <p className="text-xs text-gray-500 mb-3">Provide OpenRouter API key and model to use as a fallback (or preferred) provider for proofreading when Gemini is rate-limited or unavailable.</p>
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">OpenRouter API Key</label>
+                    <input
+                      type="password"
+                      value={(localSettings as any).openRouterApiKey || ''}
+                      onChange={(e) => setLocalSettings({ ...localSettings, openRouterApiKey: e.target.value } as any)}
+                      placeholder="Enter your OpenRouter API key"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">OpenRouter Model</label>
+                    <input
+                      type="text"
+                      value={(localSettings as any).openRouterModel || ''}
+                      onChange={(e) => setLocalSettings({ ...localSettings, openRouterModel: e.target.value } as any)}
+                      placeholder="e.g., google/gemini-1.5-flash, openai/gpt-4o-mini"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div className="flex items-center gap-4 text-sm">
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={!!(localSettings as any).fallbackToOpenRouter}
+                        onChange={(e) => setLocalSettings({ ...localSettings, fallbackToOpenRouter: e.target.checked } as any)}
+                      />
+                      Use as fallback when Gemini fails/429
+                    </label>
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={!!(localSettings as any).preferOpenRouterForProofreading}
+                        onChange={(e) => setLocalSettings({ ...localSettings, preferOpenRouterForProofreading: e.target.checked } as any)}
+                      />
+                      Prefer OpenRouter for proofreading
+                    </label>
+                  </div>
+                </div>
+              </Collapsible>
+
+              <Collapsible title={<span className="inline-flex items-center gap-2">Model Behavior</span>} defaultOpen={false}>
+                <div className="flex items-center gap-4 text-sm">
                   <label className="inline-flex items-center gap-2">
                     <input
                       type="checkbox"
-                      checked={!!localSettings.bookIncludeCover}
-                      onChange={(e) => setLocalSettings({ ...localSettings, bookIncludeCover: e.target.checked })}
+                      checked={!!localSettings.lowTemperature}
+                      onChange={(e) => setLocalSettings({ ...localSettings, lowTemperature: e.target.checked })}
                     />
-                    Include cover page
+                    Low temperature (reduce hallucinations)
+                  </label>
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={!!localSettings.forceAmharic}
+                      onChange={(e) => setLocalSettings({ ...localSettings, forceAmharic: e.target.checked })}
+                    />
+                    Force Amharic (አማርኛ)
+                  </label>
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={!!(localSettings as any).strictAmharic}
+                      onChange={(e) => setLocalSettings({ ...localSettings, strictAmharic: e.target.checked } as any)}
+                    />
+                    Strict Amharic mode (ASCII blacklist)
                   </label>
                 </div>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">Controls TOC placement, cover page, and page numbers for generated PDFs.</p>
-            </div>
-          </div>
+                <p className="text-xs text-gray-500 mt-1">Low temperature uses deterministic decoding; Force Amharic enforces Ethiopic script; Strict Amharic mode blacklists ASCII letters during OCR to reduce spurious English words.</p>
+              </Collapsible>
 
-          <div className="flex justify-end space-x-3 mt-6">
-            <button
-              onClick={toggleSettings}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Save Settings
-            </button>
+              <Collapsible title={<span className="inline-flex items-center gap-2">PDF Export</span>} defaultOpen={false}>
+                <div className="flex items-center gap-4 text-sm">
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={!!localSettings.pdfIncludeTOC}
+                      onChange={(e) => setLocalSettings({ ...localSettings, pdfIncludeTOC: e.target.checked })}
+                    />
+                    Include TOC
+                  </label>
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={!!localSettings.pdfIncludeFooter}
+                      onChange={(e) => setLocalSettings({ ...localSettings, pdfIncludeFooter: e.target.checked })}
+                    />
+                    Include page footer
+                  </label>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">TOC position</label>
+                    <select
+                      value={localSettings.pdfTocPosition || 'end'}
+                      onChange={(e) => setLocalSettings({ ...localSettings, pdfTocPosition: e.target.value as any })}
+                      className="w-full p-2 border border-gray-300 rounded"
+                    >
+                      <option value="start">Start (before content)</option>
+                      <option value="end">End (after content)</option>
+                    </select>
+                  </div>
+                  <div className="flex items-end">
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={!!localSettings.bookIncludeCover}
+                        onChange={(e) => setLocalSettings({ ...localSettings, bookIncludeCover: e.target.checked })}
+                      />
+                      Include cover page
+                    </label>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Controls TOC placement, cover page, and page numbers for generated PDFs.</p>
+              </Collapsible>
+            </div>
+
+            {/* Sticky footer inside scroll container */}
+            <div className="sticky bottom-0 bg-white px-6 py-4 border-t flex justify-end gap-3">
+              <button
+                onClick={toggleSettings}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Save Settings
+              </button>
+            </div>
           </div>
         </motion.div>
       </motion.div>
     </AnimatePresence>
+  );
+};
+
+// Simple collapsible wrapper for modal sections
+const Collapsible: React.FC<{ title: React.ReactNode; defaultOpen?: boolean; children: React.ReactNode }> = ({ title, defaultOpen = false, children }) => {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border rounded-lg">
+      <button type="button" className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-50" onClick={() => setOpen(o => !o)}>
+        <div className="text-sm font-medium text-gray-800">{title}</div>
+        {open ? <ChevronDown className="w-4 h-4 text-gray-500" /> : <ChevronRight className="w-4 h-4 text-gray-500" />}
+      </button>
+      {open && (
+        <div className="px-3 pb-3 pt-1 bg-white">
+          {children}
+        </div>
+      )}
+    </div>
   );
 };

@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 import { useOCRStore } from '@/store/ocrStore';
-import { mockProcessing } from '@/services/mockService';
 import toast from 'react-hot-toast';
 
 export const useOCRProcessing = () => {
@@ -33,13 +32,35 @@ export const useOCRProcessing = () => {
 
       let results;
 
-      if (settings.apiKey) {
-        // Use real Gemini API (dynamically import to avoid loading SDK on initial render)
+      // Choose OCR engine based on settings
+      const ocrEngine = settings.ocrEngine || 'auto';
+      
+      if (ocrEngine === 'tesseract') {
+        // Force Tesseract only
+        const { processWithTesseract } = await import('@/services/tesseractService');
+        results = await processWithTesseract(files, settings);
+      } else if (ocrEngine === 'gemini') {
+        // Force Gemini only (requires API key)
+        if (!settings.apiKey) {
+          throw new Error('Gemini API key is required when Gemini engine is selected');
+        }
         const { processWithGemini } = await import('@/services/geminiService');
         results = await processWithGemini(files, settings);
       } else {
-        // Use mock service
-        results = await mockProcessing(files, settings);
+        // Auto mode: Use Gemini if API key exists, otherwise Tesseract
+        if (settings.apiKey) {
+          try {
+            const { processWithGemini } = await import('@/services/geminiService');
+            results = await processWithGemini(files, settings);
+          } catch (e) {
+            console.error('Gemini failed; falling back to Tesseract', e);
+            const { processWithTesseract } = await import('@/services/tesseractService');
+            results = await processWithTesseract(files, settings);
+          }
+        } else {
+          const { processWithTesseract } = await import('@/services/tesseractService');
+          results = await processWithTesseract(files, settings);
+        }
       }
 
       completeProcessing(results);

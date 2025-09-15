@@ -80,6 +80,13 @@ export const useOCRStore = create<OCRState>()(
           preserveLayout: true,
           detectTables: true,
           enhanceImage: false,
+          lowTemperature: true,
+          forceAmharic: false,
+          strictAmharic: false,
+          openRouterApiKey: '',
+          openRouterModel: '',
+          fallbackToOpenRouter: false,
+          preferOpenRouterForProofreading: false,
           pdfIncludeTOC: true,
           pdfIncludeFooter: true,
           pdfTocPosition: 'end',
@@ -88,19 +95,32 @@ export const useOCRStore = create<OCRState>()(
 
         // File actions
         addFiles: (newFiles) => {
-          set((state) => {
-            const ocrFiles: OCRFile[] = newFiles.map((file, index) => ({
-              id: `${Date.now()}-${index}`,
-              file,
-              name: file.name,
-              size: file.size,
-              type: file.type,
-              status: 'pending',
-              preview: null,
-              projectId: state.currentProjectId ?? undefined,
-            }));
-            return { files: [...state.files, ...ocrFiles] };
-          });
+          // Create data URLs so we can persist and re-run OCR after reloads
+          (async () => {
+            const toDataUrl = (f: File) => new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.readAsDataURL(f);
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+            });
+            const enriched: OCRFile[] = [];
+            for (let index = 0; index < newFiles.length; index++) {
+              const file = newFiles[index];
+              let dataUrl = '';
+              try { dataUrl = await toDataUrl(file); } catch { }
+              enriched.push({
+                id: `${Date.now()}-${index}`,
+                file,
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                status: 'pending',
+                preview: dataUrl || null,
+                projectId: useOCRStore.getState().currentProjectId ?? undefined,
+              });
+            }
+            set((state) => ({ files: [...state.files, ...enriched] }));
+          })();
         },
 
         removeFile: (index) => {
@@ -226,6 +246,19 @@ export const useOCRStore = create<OCRState>()(
           currentProjectId: state.currentProjectId,
           projectSummaries: state.projectSummaries,
           settings: state.settings,
+          // Persist files without the non-serializable File object
+          files: state.files.map(f => ({
+            id: f.id,
+            file: undefined as any, // stripped on purpose
+            name: f.name,
+            size: f.size,
+            type: f.type,
+            status: f.status,
+            preview: f.preview || null,
+            projectId: f.projectId,
+          })),
+          results: state.results,
+          currentFileIndex: state.currentFileIndex,
         }),
       }
     )
