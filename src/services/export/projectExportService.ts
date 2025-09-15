@@ -2,6 +2,7 @@
  * Export services for project summaries and books
  */
 import { ProjectSummary, Settings, OCRResult } from '@/types';
+import { downloadBlob } from '@/utils/validationUtils';
 
 export async function exportSummaryTXT(summary: ProjectSummary): Promise<void> {
     const lines: string[] = [];
@@ -34,14 +35,7 @@ export async function exportSummaryTXT(summary: ProjectSummary): Promise<void> {
         summary.proofreadingNotes.forEach(n => lines.push(`- ${n}`));
     }
     const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `project-summary-${summary.projectId}-${summary.generatedAt}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `project-summary-${summary.projectId}-${summary.generatedAt}.txt`);
 }
 
 export async function exportSummaryDOCX(summary: ProjectSummary): Promise<void> {
@@ -99,14 +93,7 @@ export async function exportSummaryDOCX(summary: ProjectSummary): Promise<void> 
 
 export async function exportSummaryJSON(summary: ProjectSummary): Promise<void> {
     const blob = new Blob([JSON.stringify(summary, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `project-summary-${summary.projectId}-${summary.generatedAt}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `project-summary-${summary.projectId}-${summary.generatedAt}.json`);
 }
 
 export async function copyTocMarkdown(summary: ProjectSummary): Promise<void> {

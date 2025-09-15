@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { OCRResult, ExportOptions } from '@/types';
-import toast from 'react-hot-toast';
+import { downloadBlob } from '@/utils/validationUtils';
+import { notifications } from '@/utils/notifications';
 // Heavy libs are dynamically imported where used to keep initial bundle small
 
 export const useExport = () => {
@@ -82,10 +83,10 @@ ${row.join(',')}
             const blob = await Packer.toBlob(doc);
             const { saveAs } = await import('file-saver');
             saveAs(blob, `ocr-result-${Date.now()}.docx`);
-            toast.success('Exported as DOCX');
+            notifications.exportSuccess('DOCX');
           } catch (err) {
             console.error('DOCX export error:', err);
-            toast.error('Failed to export DOCX');
+            notifications.exportError('DOCX');
           }
           return;
         }
@@ -116,33 +117,26 @@ ${row.join(',')}
             const lines = doc.splitTextToSize(text, 515);
             doc.text(lines, left, y);
             doc.save(`ocr-result-${Date.now()}.pdf`);
-            toast.success('Exported as PDF');
+            notifications.exportSuccess('PDF');
           } catch (err) {
             console.error('PDF export error:', err);
-            toast.error('Failed to export PDF');
+            notifications.exportError('PDF');
           }
           return;
 
         default:
-          toast.error('Export format not yet supported');
+          notifications.error('Export format not yet supported');
           return;
       }
 
       // Create and download file
       const blob = new Blob([content], { type: mimeType });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      downloadBlob(blob, filename);
 
-      toast.success(`Exported as ${filename}`);
+      notifications.exportSuccess(filename);
     } catch (error) {
       console.error('Export error:', error);
-      toast.error('Failed to export results');
+      notifications.error('Failed to export results');
     }
   }, []);
 
@@ -161,15 +155,8 @@ ${row.join(',')}
           ].join(','));
         }
         const blob = new Blob([lines.join('\n') + '\n'], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `ocr-results-${Date.now()}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        toast.success('Exported CSV');
+        downloadBlob(blob, `ocr-results-${Date.now()}.csv`);
+        notifications.success('Exported CSV');
         return;
       }
 
@@ -184,7 +171,7 @@ ${row.join(',')}
         const blob = await zip.generateAsync({ type: 'blob' });
         const { saveAs } = await import('file-saver');
         saveAs(blob, `ocr-results-${Date.now()}.zip`);
-        toast.success('TXT files exported as ZIP');
+        notifications.success('TXT files exported as ZIP');
         return;
       }
 
@@ -213,7 +200,7 @@ ${row.join(',')}
         const blob = await zip.generateAsync({ type: 'blob' });
         const { saveAs } = await import('file-saver');
         saveAs(blob, `ocr-results-${Date.now()}.zip`);
-        toast.success('PDF files exported as ZIP');
+        notifications.success('PDF files exported as ZIP');
         return;
       }
 
@@ -242,14 +229,14 @@ ${row.join(',')}
         const blob = await zip.generateAsync({ type: 'blob' });
         const { saveAs } = await import('file-saver');
         saveAs(blob, `ocr-results-${Date.now()}.zip`);
-        toast.success('DOCX files exported as ZIP');
+        notifications.success('DOCX files exported as ZIP');
         return;
       }
 
-      toast.error('Bulk export format not supported');
+      notifications.error('Bulk export format not supported');
     } catch (err) {
       console.error('Bulk export error:', err);
-      toast.error('Failed to bulk export results');
+      notifications.error('Failed to bulk export results');
     }
   }, []);
 

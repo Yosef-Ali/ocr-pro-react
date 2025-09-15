@@ -11,11 +11,7 @@ export async function processWithGemini(
   files: OCRFile[],
   settings: Settings
 ): Promise<OCRResult[]> {
-  console.log('API Key present:', !!settings.apiKey);
-  console.log('Model:', settings.model);
-  console.log('Force Amharic:', !!settings.forceAmharic);
-
-  // Validate API key presence and format
+  // Validate API key presence (don't log the actual key)
   if (!settings.apiKey || !settings.apiKey.trim()) {
     console.error('API key is missing or empty');
     throw new Error('Please set your Gemini API key in Settings. Get one from https://makersuite.google.com/app/apikey');
@@ -23,7 +19,7 @@ export async function processWithGemini(
 
   if (!validateGeminiApiKey(settings.apiKey)) {
     console.error('Invalid API key format');
-    throw new Error('Invalid Gemini API key format. Please check your API key in Settings.');
+    throw new Error('Invalid Gemini API key format. Please check your API key.');
   }
 
   const genAI = new GoogleGenerativeAI(settings.apiKey as string);
@@ -113,7 +109,7 @@ async function runTesseract(file: OCRFile, base64: string, settings: Settings, f
   const imgBlob = await (await fetch(base64)).blob();
   const { data } = await worker.recognize(imgBlob);
   await worker.terminate();
-  console.log('Tesseract result:', data?.text);
+  console.log('Tesseract result received (length:', data?.text?.length || 0 + ')');
 
   if (data && typeof data.text === 'string' && data.text.trim()) {
     console.log('Using Tesseract as primary OCR');
@@ -216,7 +212,7 @@ async function processWithGeminiAPI(
       throw e;
     }
   }
-  console.log('Gemini API response:', text);
+  console.log('Gemini API response received (length:', text.length + ')');
 
   if (!text || text.trim() === '') {
     throw new Error('Empty response from Gemini API');
@@ -337,7 +333,7 @@ Schema fields: extractedText (string), layoutPreserved (string), detectedLanguag
         throw e;
       }
     }
-    console.log('Retry response:', retryText);
+    console.log('Retry response received (length:', retryText.length + ')');
     if (!retryText || retryText.trim() === '') {
       console.warn('Retry returned empty response');
       return null;
@@ -373,7 +369,7 @@ async function retryWithEthiopicFocus(
         throw e;
       }
     }
-    console.log('Strict retry response:', strictText);
+    console.log('Strict retry response received (length:', strictText.length + ')');
     if (!strictText || strictText.trim() === '') {
       console.warn('Strict retry returned empty response');
       return null;

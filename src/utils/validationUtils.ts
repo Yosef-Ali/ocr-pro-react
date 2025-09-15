@@ -1,9 +1,27 @@
 /**
- * Validation utilities for OCR results and API responses
+ * Validation utilities for OCR results, API responses, and user inputs
  */
 
 /**
+ * Downloads a blob as a file with the specified filename
+ * @param blob - The blob to download
+ * @param filename - The filename for the download
+ */
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
  * Validates if an object conforms to the basic structure of an OCRResult.
+ * @param obj - The object to validate
+ * @returns True if the object has the required OCR result structure
  */
 export function validateOCRPayload(obj: any): boolean {
   if (!obj || typeof obj !== 'object') return false;
@@ -27,6 +45,8 @@ export function validateOCRPayload(obj: any): boolean {
 
 /**
  * Validates if an object conforms to the basic structure of a ProjectSummary.
+ * @param obj - The object to validate
+ * @returns True if the object has the required project summary structure
  */
 export function validateSummaryPayload(obj: any): boolean {
   if (!obj || typeof obj !== 'object') return false;
@@ -38,7 +58,10 @@ export function validateSummaryPayload(obj: any): boolean {
 }
 
 /**
- * Validates Google Gemini API key format
+ * Validates Google Gemini API key format and basic requirements.
+ * Checks for proper length, character set, and common prefixes.
+ * @param apiKey - The API key string to validate
+ * @returns True if the API key appears to be valid
  */
 export function validateGeminiApiKey(apiKey: string): boolean {
   if (!apiKey || typeof apiKey !== 'string') return false;
@@ -61,7 +84,9 @@ export function validateGeminiApiKey(apiKey: string): boolean {
 }
 
 /**
- * Sanitizes user input to prevent XSS attacks
+ * Sanitizes user input to prevent XSS attacks by escaping HTML characters.
+ * @param input - The input string to sanitize
+ * @returns The sanitized string safe for HTML display
  */
 export function sanitizeInput(input: string): string {
   if (!input || typeof input !== 'string') return '';
@@ -75,7 +100,10 @@ export function sanitizeInput(input: string): string {
 }
 
 /**
- * Validates file upload to prevent malicious files
+ * Validates file upload to prevent malicious files and ensure compatibility.
+ * Checks file size, type, and extension consistency.
+ * @param file - The File object to validate
+ * @returns Object with validation result and error message if invalid
  */
 export function validateFileUpload(file: File): { valid: boolean; error?: string } {
   // Check file size (max 10MB)

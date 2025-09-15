@@ -1,10 +1,12 @@
 import React from 'react';
-import { FileText, Settings, HelpCircle, Cpu, Brain, Zap } from 'lucide-react';
+import { FileText, Settings, HelpCircle, Cpu, Brain, Zap, Globe } from 'lucide-react';
 import { useOCRStore } from '@/store/ocrStore';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 
 export const Header: React.FC = () => {
   const { toggleSettings, toggleHelp, projects, currentProjectId, selectProject, createProject, settings, updateSettings } = useOCRStore();
+  const { i18n } = useTranslation();
 
   React.useEffect(() => {
     if (projects.length === 0) return;
@@ -64,6 +66,17 @@ export const Header: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-4">
+            {/* Language Switcher */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => i18n.changeLanguage(i18n.language === 'en' ? 'am' : 'en')}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 backdrop-blur hover:bg-white/20 transition-all text-white"
+              title={`Switch to ${i18n.language === 'en' ? 'Amharic' : 'English'}`}
+            >
+              <Globe className="w-4 h-4" />
+              <span className="text-sm font-medium">{i18n.language === 'en' ? 'አማ' : 'EN'}</span>
+            </motion.button>
             {/* OCR Engine Toggle */}
             <motion.button
               whileHover={{ scale: 1.05 }}

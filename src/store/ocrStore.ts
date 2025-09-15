@@ -245,7 +245,12 @@ export const useOCRStore = create<OCRState>()(
           projects: state.projects,
           currentProjectId: state.currentProjectId,
           projectSummaries: state.projectSummaries,
-          settings: state.settings,
+          // Exclude API keys from persistence for security
+          settings: {
+            ...state.settings,
+            apiKey: '', // Don't persist API key
+            openRouterApiKey: '', // Don't persist OpenRouter API key
+          },
           // Persist files without the non-serializable File object
           files: state.files.map(f => ({
             id: f.id,
