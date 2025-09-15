@@ -36,8 +36,8 @@ export const ProcessButton: React.FC = () => {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-center text-xs text-gray-500">
-        <EngineIcon className="w-3 h-3 mr-1" />
+      <div className="flex items-center justify-center text-xs text-gray-500" aria-live="polite">
+        <EngineIcon className="w-3 h-3 mr-1" aria-hidden="true" />
         Using {engineInfo.name}
       </div>
       <motion.button
@@ -45,27 +45,33 @@ export const ProcessButton: React.FC = () => {
         whileTap={{ scale: files.length > 0 ? 0.98 : 1 }}
         onClick={handleClick}
         disabled={files.length === 0 || isProcessing}
+        aria-label={isProcessing ? `Processing ${files.length} files with ${engineInfo.name}` : `Start OCR processing of ${files.length} files with ${engineInfo.name}`}
+        aria-describedby="process-status"
         className={`
           w-full py-3 px-4 rounded-lg font-medium
           transition-all duration-300 flex items-center justify-center
+          focus:outline-none focus:ring-2 focus:ring-offset-2
           ${files.length === 0 || isProcessing
-            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            : `bg-gradient-to-r ${engineInfo.color} text-white hover:opacity-90`
+            ? 'bg-gray-300 text-gray-500 cursor-not-allowed focus:ring-gray-400'
+            : `bg-gradient-to-r ${engineInfo.color} text-white hover:opacity-90 focus:ring-blue-500`
           }
         `}
       >
         {isProcessing ? (
           <>
-            <Loader className="w-4 h-4 mr-2 animate-spin" />
+            <Loader className="w-4 h-4 mr-2 animate-spin" aria-hidden="true" />
             Processing with {engineInfo.name}...
           </>
         ) : (
           <>
             Start OCR Processing
-            <Play className="w-4 h-4 ml-2" />
+            <Play className="w-4 h-4 ml-2" aria-hidden="true" />
           </>
         )}
       </motion.button>
+      <div id="process-status" className="sr-only">
+        {files.length === 0 ? 'No files uploaded' : `${files.length} file${files.length > 1 ? 's' : ''} ready for processing`}
+      </div>
     </div>
   );
 };

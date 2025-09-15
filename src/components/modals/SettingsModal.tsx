@@ -3,13 +3,30 @@ import { X, Key, Cpu, Hash, Zap, ChevronDown, ChevronRight, ShieldQuestion } fro
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOCRStore } from '@/store/ocrStore';
 import toast from 'react-hot-toast';
+import { validateGeminiApiKey, sanitizeInput } from '@/utils/validationUtils';
 
 export const SettingsModal: React.FC = () => {
   const { settings, updateSettings, toggleSettings } = useOCRStore();
   const [localSettings, setLocalSettings] = useState(settings);
 
   const handleSave = () => {
-    updateSettings(localSettings);
+    // Validate API key if provided
+    if (localSettings.apiKey && localSettings.apiKey.trim()) {
+      if (!validateGeminiApiKey(localSettings.apiKey.trim())) {
+        toast.error('Invalid Gemini API key format. Please check your API key.');
+        return;
+      }
+    }
+
+    // Sanitize inputs
+    const sanitizedSettings = {
+      ...localSettings,
+      apiKey: localSettings.apiKey ? sanitizeInput(localSettings.apiKey.trim()) : '',
+      openRouterApiKey: (localSettings as any).openRouterApiKey ? sanitizeInput((localSettings as any).openRouterApiKey.trim()) : '',
+      openRouterModel: (localSettings as any).openRouterModel ? sanitizeInput((localSettings as any).openRouterModel.trim()) : '',
+    };
+
+    updateSettings(sanitizedSettings);
     toast.success('Settings saved successfully');
     toggleSettings();
   };

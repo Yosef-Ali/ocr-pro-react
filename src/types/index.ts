@@ -126,7 +126,25 @@ export interface ProcessingStep {
 export interface APIError {
   code: string;
   message: string;
-  details?: any;
+  details?: Record<string, unknown> | string | number | null;
+}
+
+export class OCRError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public details?: Record<string, unknown>
+  ) {
+    super(message);
+    this.name = 'OCRError';
+  }
+}
+
+export class ValidationError extends Error {
+  constructor(message: string, public field?: string) {
+    super(message);
+    this.name = 'ValidationError';
+  }
 }
 
 export interface UploadProgress {

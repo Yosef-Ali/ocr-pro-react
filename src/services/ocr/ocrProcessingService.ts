@@ -5,7 +5,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { OCRFile, OCRResult, Settings } from '@/types';
 import { fileToBase64, toInlineImagePartFromDataUrl, ensureNonTiffImage } from '@/utils/imageUtils';
 import { extractJsonFromText, stripFences, enforceEthiopicPunctuationAndQuotes, normalizeLangCode, clamp01, containsEthiopic } from '@/utils/textUtils';
-import { validateOCRPayload } from '@/utils/validationUtils';
+import { validateOCRPayload, validateGeminiApiKey } from '@/utils/validationUtils';
 
 export async function processWithGemini(
   files: OCRFile[],
@@ -15,10 +15,15 @@ export async function processWithGemini(
   console.log('Model:', settings.model);
   console.log('Force Amharic:', !!settings.forceAmharic);
 
-  // Validate API key presence
+  // Validate API key presence and format
   if (!settings.apiKey || !settings.apiKey.trim()) {
     console.error('API key is missing or empty');
     throw new Error('Please set your Gemini API key in Settings. Get one from https://makersuite.google.com/app/apikey');
+  }
+
+  if (!validateGeminiApiKey(settings.apiKey)) {
+    console.error('Invalid API key format');
+    throw new Error('Invalid Gemini API key format. Please check your API key in Settings.');
   }
 
   const genAI = new GoogleGenerativeAI(settings.apiKey as string);
