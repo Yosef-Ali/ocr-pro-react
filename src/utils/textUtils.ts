@@ -1,7 +1,7 @@
 /**
  * Text processing utilities for OCR and language processing
  */
-import { ETHIOPIC_RANGES, AMHARIC_PUNCTUATION, OCR_ERROR_PATTERNS, LANGUAGE_CODES } from './constants';
+import { ETHIOPIC_RANGES, OCR_ERROR_PATTERNS } from './constants';
 
 /**
  * Extracts a JSON object from a string, which may be wrapped in markdown fences.

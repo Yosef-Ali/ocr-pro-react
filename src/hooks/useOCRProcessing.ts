@@ -37,7 +37,7 @@ export const useOCRProcessing = () => {
       
       if (ocrEngine === 'tesseract') {
         // Force Tesseract only
-        const { processWithTesseract } = await import('@/services/tesseractService');
+        const { processWithTesseract } = await import('@/services/ocr/tesseractService');
         results = await processWithTesseract(files, settings);
       } else if (ocrEngine === 'gemini') {
         // Force Gemini only (requires API key)
@@ -54,11 +54,11 @@ export const useOCRProcessing = () => {
             results = await processWithGemini(files, settings);
           } catch (e) {
             console.error('Gemini failed; falling back to Tesseract', e);
-            const { processWithTesseract } = await import('@/services/tesseractService');
+            const { processWithTesseract } = await import('@/services/ocr/tesseractService');
             results = await processWithTesseract(files, settings);
           }
         } else {
-          const { processWithTesseract } = await import('@/services/tesseractService');
+          const { processWithTesseract } = await import('@/services/ocr/tesseractService');
           results = await processWithTesseract(files, settings);
         }
       }
