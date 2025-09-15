@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
-import { X, Key, Cpu, Hash, Zap, ChevronDown, ChevronRight, ShieldQuestion } from 'lucide-react';
+import { X, Key, Cpu, Hash, Zap, ChevronDown, ChevronRight, ShieldQuestion, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOCRStore } from '@/store/ocrStore';
 import toast from 'react-hot-toast';
 import { validateGeminiApiKey, sanitizeInput } from '@/utils/validationUtils';
+import { useTranslation } from 'react-i18next';
 
 export const SettingsModal: React.FC = () => {
   const { settings, updateSettings, toggleSettings } = useOCRStore();
+  const { t, i18n } = useTranslation();
   const [localSettings, setLocalSettings] = useState(settings);
 
   const handleSave = () => {
     // Validate API key if provided
     if (localSettings.apiKey && localSettings.apiKey.trim()) {
       if (!validateGeminiApiKey(localSettings.apiKey.trim())) {
-        toast.error('Invalid Gemini API key format. Please check your API key.');
+        toast.error(t('error.apiKeyInvalid'));
         return;
       }
     }
@@ -27,7 +29,7 @@ export const SettingsModal: React.FC = () => {
     };
 
     updateSettings(sanitizedSettings);
-    toast.success('Settings saved successfully');
+    toast.success(t('success.settingsSaved'));
     toggleSettings();
   };
 
@@ -59,7 +61,7 @@ export const SettingsModal: React.FC = () => {
         >
           {/* Header */}
           <div className="flex justify-between items-center px-6 pt-6 pb-3">
-            <h2 className="text-2xl font-bold text-gray-800">Settings</h2>
+            <h2 className="text-2xl font-bold text-gray-800">{t('settings.title')}</h2>
             <button
               onClick={toggleSettings}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -72,6 +74,18 @@ export const SettingsModal: React.FC = () => {
           {/* Scrollable body with sticky footer */}
           <div className="max-h-[70vh] overflow-y-auto">
             <div className="px-6 pb-4 space-y-3">
+              <Collapsible title={<span className="inline-flex items-center gap-2"><Globe className="w-4 h-4" /> Language</span>} defaultOpen>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Interface Language</label>
+                <select
+                  value={i18n.language}
+                  onChange={(e) => i18n.changeLanguage(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="en">English</option>
+                  <option value="am">አማርኛ (Amharic)</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Choose your preferred language for the interface.</p>
+              </Collapsible>
               <Collapsible title={<span className="inline-flex items-center gap-2"><Zap className="w-4 h-4" /> OCR Engine</span>} defaultOpen>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Engine</label>
                 <select
@@ -250,13 +264,13 @@ export const SettingsModal: React.FC = () => {
                 onClick={toggleSettings}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
               >
-                Cancel
+                {t('settings.cancel')}
               </button>
               <button
                 onClick={handleSave}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                Save Settings
+                {t('settings.save')}
               </button>
             </div>
           </div>

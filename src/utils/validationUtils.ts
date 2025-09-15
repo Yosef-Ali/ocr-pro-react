@@ -42,21 +42,21 @@ export function validateSummaryPayload(obj: any): boolean {
  */
 export function validateGeminiApiKey(apiKey: string): boolean {
   if (!apiKey || typeof apiKey !== 'string') return false;
-  
+
   // Gemini API keys start with specific prefixes
   const validPrefixes = ['AIza', 'AIzaSy'];
   const trimmed = apiKey.trim();
-  
+
   // Check length (should be around 39 characters for newer keys)
   if (trimmed.length < 20 || trimmed.length > 50) return false;
-  
+
   // Check for valid prefix
   if (!validPrefixes.some(prefix => trimmed.startsWith(prefix))) return false;
-  
+
   // Check for valid characters (alphanumeric, hyphens, underscores)
   const validChars = /^[A-Za-z0-9_-]+$/;
   if (!validChars.test(trimmed)) return false;
-  
+
   return true;
 }
 
@@ -65,7 +65,7 @@ export function validateGeminiApiKey(apiKey: string): boolean {
  */
 export function sanitizeInput(input: string): string {
   if (!input || typeof input !== 'string') return '';
-  
+
   return input
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -83,11 +83,11 @@ export function validateFileUpload(file: File): { valid: boolean; error?: string
   if (file.size > maxSize) {
     return { valid: false, error: 'File size exceeds 10MB limit' };
   }
-  
+
   // Check file type
   const allowedTypes = [
     'image/jpeg',
-    'image/jpg', 
+    'image/jpg',
     'image/png',
     'image/gif',
     'image/bmp',
@@ -95,23 +95,23 @@ export function validateFileUpload(file: File): { valid: boolean; error?: string
     'image/webp',
     'application/pdf'
   ];
-  
+
   if (!allowedTypes.includes(file.type.toLowerCase())) {
     return { valid: false, error: 'Unsupported file type. Only images and PDFs are allowed.' };
   }
-  
+
   // Check file extension matches type
   const extension = file.name.toLowerCase().split('.').pop();
   const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'tif', 'webp'];
   const pdfExtensions = ['pdf'];
-  
+
   if (file.type.startsWith('image/') && !imageExtensions.includes(extension || '')) {
     return { valid: false, error: 'File extension does not match file type' };
   }
-  
+
   if (file.type === 'application/pdf' && !pdfExtensions.includes(extension || '')) {
     return { valid: false, error: 'File extension does not match file type' };
   }
-  
+
   return { valid: true };
 }

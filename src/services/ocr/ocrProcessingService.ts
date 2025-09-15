@@ -114,7 +114,7 @@ async function runTesseract(file: OCRFile, base64: string, settings: Settings, f
   const { data } = await worker.recognize(imgBlob);
   await worker.terminate();
   console.log('Tesseract result:', data?.text);
-  
+
   if (data && typeof data.text === 'string' && data.text.trim()) {
     console.log('Using Tesseract as primary OCR');
     return {
@@ -146,10 +146,10 @@ async function runTesseract(file: OCRFile, base64: string, settings: Settings, f
 }
 
 async function processWithGeminiAPI(
-  file: OCRFile, 
-  base64: string, 
-  settings: Settings, 
-  getModel: (m: string) => any, 
+  file: OCRFile,
+  base64: string,
+  settings: Settings,
+  getModel: (m: string) => any,
   forceAm: boolean
 ): Promise<OCRResult | null> {
   // Build main prompt
@@ -226,11 +226,11 @@ async function processWithGeminiAPI(
 }
 
 async function parseGeminiResponse(
-  text: string, 
-  file: OCRFile, 
-  settings: Settings, 
-  getModel: (m: string) => any, 
-  getImagePart: () => Promise<any>, 
+  text: string,
+  file: OCRFile,
+  settings: Settings,
+  getModel: (m: string) => any,
+  getImagePart: () => Promise<any>,
   forceAm: boolean
 ): Promise<OCRResult> {
   let parsedResult: any | null = null;
@@ -315,8 +315,8 @@ async function parseGeminiResponse(
 }
 
 async function retryWithStricterInstructions(
-  settings: Settings, 
-  getModel: (m: string) => any, 
+  settings: Settings,
+  getModel: (m: string) => any,
   getImagePart: () => Promise<any>
 ): Promise<any | null> {
   try {
@@ -352,8 +352,8 @@ Schema fields: extractedText (string), layoutPreserved (string), detectedLanguag
 }
 
 async function retryWithEthiopicFocus(
-  settings: Settings, 
-  getModel: (m: string) => any, 
+  settings: Settings,
+  getModel: (m: string) => any,
   getImagePart: () => Promise<any>
 ): Promise<any | null> {
   try {

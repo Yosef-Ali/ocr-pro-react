@@ -9,6 +9,7 @@ import { OCROptions } from './OCROptions';
 import { ProcessButton } from './ProcessButton';
 import toast from 'react-hot-toast';
 import { validateFileUpload } from '@/utils/validationUtils';
+import { useTranslation } from 'react-i18next';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ACCEPTED_TYPES = {
@@ -25,6 +26,7 @@ export const UploadSection: React.FC = () => {
   const { files, addFiles, removeFile, setCurrentFileIndex } = useOCRStore();
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const { t } = useTranslation();
 
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
     // Additional custom validation for accepted files
@@ -79,7 +81,7 @@ export const UploadSection: React.FC = () => {
     if (files.length > 0) setCurrentFileIndex(startIndex);
     setIsUploading(false);
     setUploadProgress(0);
-    toast.success(`Uploaded ${files.length} file(s) successfully`);
+    toast.success(t('success.filesUploaded', { count: files.length }));
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -98,7 +100,7 @@ export const UploadSection: React.FC = () => {
       >
         <h2 className="text-xl font-semibold mb-4 flex items-center">
           <Upload className="w-5 h-5 mr-2 text-blue-600" />
-          Upload Document
+          {t('upload.title')}
         </h2>
 
         {/* Dropzone */}
@@ -153,7 +155,7 @@ export const UploadSection: React.FC = () => {
         {/* File List */}
         {files.length > 0 && (
           <div className="mt-6 space-y-3">
-            <h3 className="text-sm font-medium text-gray-700">Uploaded Files ({files.length})</h3>
+            <h3 className="text-sm font-medium text-gray-700">{t('upload.uploadedFiles')} ({files.length})</h3>
             <ul role="list" aria-label="Uploaded files">
               <AnimatePresence>
                 {files.map((file, index) => (
