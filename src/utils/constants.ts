@@ -61,7 +61,7 @@ export const LANGUAGE_CODES = {
 // Common Amharic OCR error patterns
 export const OCR_ERROR_PATTERNS = {
   MIXED_SCRIPTS: /([\u1200-\u137F]+)[a-zA-Z]+([\u1200-\u137F]*)/g,
-  ASCII_NOISE: /([#;:\/\\|`~^*_=+])/g,
+  ASCII_NOISE: /([#;:/\\|`~^*_=+])/g,
   NUMBERS_IN_AMHARIC: /([አ-ፚ]+)[0-9]+([አ-ፚ]*)/g,
   REPEATED_CHARS: /(.)\\1{3,}/g
 } as const;

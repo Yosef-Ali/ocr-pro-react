@@ -22,7 +22,7 @@ export const useExport = () => {
           filename += '.txt';
           break;
 
-        case 'json':
+        case 'json': {
           const jsonData: any = {
             text: result.extractedText,
             language: result.detectedLanguage,
@@ -42,6 +42,7 @@ export const useExport = () => {
           filename += '.json';
           mimeType = 'application/json';
           break;
+        }
 
         case 'csv': {
           const header = ['language', 'confidence', 'documentType', 'wordCount', 'characterCount'];

@@ -119,7 +119,7 @@ export function cleanAmharicTextLocally(text: string): { cleaned: string; change
     // Fix zero-width characters
     [/[\u200B-\u200D\uFEFF]/g, ''],
     // Fix ASCII punctuation between Amharic characters
-    [/([\u1200-\u137F])[#;:\/\\|`~^*_=+]+([\u1200-\u137F])/g, '$1 $2'],
+    [/([\u1200-\u137F])[#;:/\\|`~^*_=+]+([\u1200-\u137F])/g, '$1 $2'],
     // Remove Latin letters embedded in Amharic words
     [OCR_ERROR_PATTERNS.MIXED_SCRIPTS, '$1$2'],
     // Fix Amharic punctuation
@@ -164,7 +164,7 @@ export function validateAmharicText(text: string): {
   }
 
   // Check for ASCII punctuation noise
-  if (/[#;:\/\\|`~^*_=+]{2,}/.test(text)) {
+  if (/[#;:/\\|`~^*_=+]{2,}/.test(text)) {
     issues.push('Excessive ASCII punctuation detected');
   }
 
