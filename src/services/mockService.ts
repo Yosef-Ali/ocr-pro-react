@@ -45,7 +45,7 @@ export async function mockProcessing(
         tables: Math.floor(Math.random() * 3),
         images: Math.floor(Math.random() * 2),
         columns: Math.floor(Math.random() * 3) + 1,
-        complexity: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)] as any,
+        complexity: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)] as 'low' | 'medium' | 'high',
         structure: [],
       },
       metadata: {

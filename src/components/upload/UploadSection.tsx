@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { useDropzone, FileRejection } from 'react-dropzone';
 import { Upload, FilePlus, X, FileText, Image } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOCRStore } from '@/store/ocrStore';
@@ -23,21 +23,7 @@ export const UploadSection: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
 
-  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
-    if (rejectedFiles.length > 0) {
-      const errors = rejectedFiles.map(({ file, errors }) => {
-        const errorMessages = errors.map((e: any) => e.message).join(', ');
-        return `${file.name}: ${errorMessages}`;
-      });
-      toast.error(`Failed to upload: ${errors.join('; ')}`);
-    }
-
-    if (acceptedFiles.length > 0) {
-      simulateUpload(acceptedFiles);
-    }
-  }, []);
-
-  const simulateUpload = async (files: File[]) => {
+  const simulateUpload = useCallback(async (files: File[]) => {
     setIsUploading(true);
     setUploadProgress(0);
 
@@ -60,7 +46,21 @@ export const UploadSection: React.FC = () => {
     setIsUploading(false);
     setUploadProgress(0);
     toast.success(`Uploaded ${files.length} file(s) successfully`);
-  };
+  }, [addFiles, setCurrentFileIndex]);
+
+  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
+    if (rejectedFiles.length > 0) {
+      const errors = rejectedFiles.map(({ file, errors }) => {
+        const errorMessages = errors.map((e) => e.message).join(', ');
+        return `${file.name}: ${errorMessages}`;
+      });
+      toast.error(`Failed to upload: ${errors.join('; ')}`);
+    }
+
+    if (acceptedFiles.length > 0) {
+      simulateUpload(acceptedFiles);
+    }
+  }, [simulateUpload]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

@@ -199,6 +199,7 @@ export const ResultsSection: React.FC = () => {
     try {
       const projectResults = getActiveProjectResults();
       const { Document, Packer, Paragraph, HeadingLevel } = await import('docx');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sections: any[] = [];
       const title = `Project Book — ${activeSummary.projectId}`;
       sections.push(new Paragraph({ text: title, heading: HeadingLevel.HEADING_1 }));
@@ -297,7 +298,7 @@ export const ResultsSection: React.FC = () => {
           const pageHeight = doc.internal.pageSize.getHeight();
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(10);
-          doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - margin / 2, { align: 'center' } as any);
+          doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - margin / 2, { align: 'center' });
         }
       }
       const blob = doc.output('blob');

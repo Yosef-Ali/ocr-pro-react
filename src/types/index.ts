@@ -104,7 +104,7 @@ export interface ProcessingStep {
 export interface APIError {
   code: string;
   message: string;
-  details?: any;
+  details?: unknown;
 }
 
 export interface UploadProgress {

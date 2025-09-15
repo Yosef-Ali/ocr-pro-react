@@ -11,6 +11,7 @@ export const OCRTableTab: React.FC = () => {
     const filteredResults = useMemo(() => currentProjectId ? results.filter(r => r.projectId === currentProjectId) : results, [results, currentProjectId]);
     const allSelected = useMemo(() => filteredResults.length > 0 && filteredResults.every(r => selected[r.fileId]), [filteredResults, selected]);
     const countSelected = useMemo(() => filteredResults.filter(r => selected[r.fileId]).length, [filteredResults, selected]);
+    const selectedResults = useMemo(() => filteredResults.filter(r => selected[r.fileId]), [filteredResults, selected]);
 
     const getFileName = (fileId: string) => files.find(f => f.id === fileId)?.name || 'Unknown';
 
@@ -18,12 +19,10 @@ export const OCRTableTab: React.FC = () => {
         return <p className="text-sm text-gray-500">No OCR results yet.</p>;
     }
 
-    const selectedResults = useMemo(() => filteredResults.filter(r => selected[r.fileId]), [filteredResults, selected]);
-
     const handleExportXlsx = async () => {
         try {
             const [{ utils, writeFile }, { saveAs }] = await Promise.all([
-                import('xlsx').then((m: any) => ({ utils: m.utils, writeFile: m.writeFile || m.writeFileXLSX })),
+                import('xlsx').then((m) => ({ utils: m.utils, writeFile: m.writeFile || m.writeFileXLSX })),
                 import('file-saver')
             ]);
             const header = ['File', 'Language', 'Type', 'Confidence (%)', 'Words'];
@@ -43,7 +42,7 @@ export const OCRTableTab: React.FC = () => {
                 await writeFile(wb, `ocr-results-${Date.now()}.xlsx`);
             } else {
                 const xlsx = await import('xlsx');
-                const wbout = xlsx.write(wb as any, { bookType: 'xlsx', type: 'array' } as any);
+                const wbout = xlsx.write(wb, { bookType: 'xlsx', type: 'array' });
                 const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
                 saveAs(blob, `ocr-results-${Date.now()}.xlsx`);
             }
@@ -77,6 +76,7 @@ export const OCRTableTab: React.FC = () => {
         try {
             if (selectedResults.length === 0) return;
             const { Document, Packer, Paragraph, HeadingLevel } = await import('docx');
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const children: any[] = [];
             children.push(new Paragraph({ text: 'OCR Selection — Book', heading: HeadingLevel.HEADING_1 }));
             for (let i = 0; i < selectedResults.length; i++) {
@@ -147,7 +147,7 @@ export const OCRTableTab: React.FC = () => {
                     const pageHeight = doc.internal.pageSize.getHeight();
                     doc.setFont('helvetica', 'normal');
                     doc.setFontSize(10);
-                    doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - margin / 2, { align: 'center' } as any);
+                    doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - margin / 2, { align: 'center' });
                 }
             }
             const blob = doc.output('blob');
@@ -187,9 +187,9 @@ export const OCRTableTab: React.FC = () => {
                 <BulkActions
                     disabled={countSelected === 0}
                     onTxt={() => exportMany(filteredResults.filter(r => selected[r.fileId]), { format: 'txt', includeMetadata: true, includeAnalysis: false, preserveFormatting: true })}
-                    onPdf={() => exportMany(filteredResults.filter(r => selected[r.fileId]), { format: 'pdf' as any, includeMetadata: true, includeAnalysis: false, preserveFormatting: true })}
-                    onCsv={() => exportMany(filteredResults.filter(r => selected[r.fileId]), { format: 'csv' as any, includeMetadata: true, includeAnalysis: false, preserveFormatting: true })}
-                    onDocx={() => exportMany(filteredResults.filter(r => selected[r.fileId]), { format: 'docx' as any, includeMetadata: true, includeAnalysis: false, preserveFormatting: true })}
+                    onPdf={() => exportMany(filteredResults.filter(r => selected[r.fileId]), { format: 'pdf', includeMetadata: true, includeAnalysis: false, preserveFormatting: true })}
+                    onCsv={() => exportMany(filteredResults.filter(r => selected[r.fileId]), { format: 'csv', includeMetadata: true, includeAnalysis: false, preserveFormatting: true })}
+                    onDocx={() => exportMany(filteredResults.filter(r => selected[r.fileId]), { format: 'docx', includeMetadata: true, includeAnalysis: false, preserveFormatting: true })}
                     onCopyCsv={() => {
                         const header = ['language', 'confidence', 'documentType', 'wordCount', 'characterCount'];
                         const lines = [header.join(',')];
@@ -266,7 +266,7 @@ export const OCRTableTab: React.FC = () => {
                                 <div className="relative inline-block text-left">
                                     <MenuButton
                                         onExportTxt={() => exportResult(r, { format: 'txt', includeMetadata: true, includeAnalysis: false, preserveFormatting: true })}
-                                        onExportPdf={() => exportResult(r, { format: 'pdf' as any, includeMetadata: true, includeAnalysis: false, preserveFormatting: true })}
+                                        onExportPdf={() => exportResult(r, { format: 'pdf', includeMetadata: true, includeAnalysis: false, preserveFormatting: true })}
                                         onAssignCurrent={() => {
                                             if (!currentProjectId) {
                                                 toast.error('Select a project in the header first');

@@ -25,7 +25,7 @@ interface OCRState {
   // UI State
   isSettingsOpen: boolean;
   isHelpOpen: boolean;
-  activeTab: 'extracted' | 'layout' | 'analysis';
+  activeTab: 'extracted' | 'layout' | 'analysis' | 'table';
 
   // Settings
   settings: Settings;
@@ -42,7 +42,7 @@ interface OCRState {
   updateResult: (fileId: string, patch: Partial<OCRResult>) => void;
   deleteResult: (fileId: string) => void;
 
-  setActiveTab: (tab: 'extracted' | 'layout' | 'analysis') => void;
+  setActiveTab: (tab: 'extracted' | 'layout' | 'analysis' | 'table') => void;
   toggleSettings: () => void;
   toggleHelp: () => void;
   updateSettings: (settings: Partial<Settings>) => void;

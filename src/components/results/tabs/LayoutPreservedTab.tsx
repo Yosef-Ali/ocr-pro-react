@@ -20,10 +20,10 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
     // When switching to a different file/result, reset editor
     const next = result.metadata?.layoutMarkdown ?? result.layoutPreserved;
     setDraft(next);
-  }, [result.fileId]);
+  }, [result.fileId, result.layoutPreserved, result.metadata?.layoutMarkdown]);
   const handleSave = () => {
     setSaving(true);
-    updateResult(result.fileId, { metadata: { layoutMarkdown: draft } as any });
+    updateResult(result.fileId, { metadata: { ...result.metadata, layoutMarkdown: draft } });
     setTimeout(() => setSaving(false), 600);
   };
 
@@ -32,7 +32,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
     // Debounce autosave by 1s after edits
     debounceRef.current = window.setTimeout(() => {
       if (draft !== initial) {
-        updateResult(result.fileId, { metadata: { layoutMarkdown: draft } as any });
+        updateResult(result.fileId, { metadata: { ...result.metadata, layoutMarkdown: draft } });
         setAutoSaved(true);
         window.setTimeout(() => setAutoSaved(false), 1000);
       }
@@ -40,7 +40,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
     };
-  }, [draft, result.fileId, updateResult]);
+  }, [draft, result.fileId, updateResult, initial, result.metadata]);
 
   return (
     <div className="space-y-4">
@@ -85,8 +85,8 @@ const SafeMarkdown: React.FC<{ content: string }> = ({ content }) => {
   }
   try {
     return <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>;
-  } catch (e: any) {
-    setError(e?.message || 'Failed to render markdown');
+  } catch (e: unknown) {
+    setError((e as Error)?.message || 'Failed to render markdown');
     return null;
   }
 };

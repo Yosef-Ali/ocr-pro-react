@@ -81,7 +81,7 @@ export const SettingsModal: React.FC = () => {
               </label>
               <select
                 value={localSettings.model}
-                onChange={(e) => setLocalSettings({ ...localSettings, model: e.target.value as any })}
+                onChange={(e) => setLocalSettings({ ...localSettings, model: e.target.value as 'gemini-1.5-flash' | 'gemini-1.5-pro' | 'gemini-pro-vision' })}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
                 {models.map(({ value, label }) => (
@@ -137,7 +137,7 @@ export const SettingsModal: React.FC = () => {
                   <label className="block text-xs text-gray-600 mb-1">TOC position</label>
                   <select
                     value={localSettings.pdfTocPosition || 'end'}
-                    onChange={(e) => setLocalSettings({ ...localSettings, pdfTocPosition: e.target.value as any })}
+                    onChange={(e) => setLocalSettings({ ...localSettings, pdfTocPosition: e.target.value as 'start' | 'end' })}
                     className="w-full p-2 border border-gray-300 rounded"
                   >
                     <option value="start">Start (before content)</option>

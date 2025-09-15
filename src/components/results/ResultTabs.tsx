@@ -15,7 +15,7 @@ const tabs = [
   { id: 'extracted', label: 'Extracted Text', component: ExtractedTextTab },
   { id: 'layout', label: 'Layout Preserved', component: LayoutPreservedTab },
   { id: 'analysis', label: 'Document Analysis', component: AnalysisTab },
-  { id: 'table', label: 'All OCR (Table)', component: OCRTableTab as any },
+  { id: 'table', label: 'All OCR (Table)', component: OCRTableTab },
 ] as const;
 
 export const ResultTabs: React.FC<Props> = ({ result }) => {
@@ -33,7 +33,7 @@ export const ResultTabs: React.FC<Props> = ({ result }) => {
           {tabs.map(({ id, label }) => (
             <button
               key={id}
-              onClick={() => setActiveTab(id as any)}
+              onClick={() => setActiveTab(id)}
               className={`
                 py-2 px-1 border-b-2 font-medium transition-all
                 ${activeTab === id
