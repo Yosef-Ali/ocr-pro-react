@@ -52,6 +52,11 @@ interface OCRState {
   selectProject: (projectId: string | null) => void;
   assignFilesToProject: (fileIds: string[], projectId: string | null) => void;
   setProjectSummary: (summary: ProjectSummary) => void;
+  clearProjectSummary: (projectId: string) => void;
+  clearAllSummaries: () => void;
+  resetAllData: () => void;
+  syncAllResults: () => void;
+  ensureOriginalSnapshots: () => void;
 }
 
 export const useOCRStore = create<OCRState>()(
@@ -77,14 +82,15 @@ export const useOCRStore = create<OCRState>()(
           model: 'gemini-1.5-flash',
           maxTokens: 2048,
           language: 'auto',
+          ocrEngine: 'auto', // Default to auto mode (Tesseract if no API key, Gemini if API key exists)
           preserveLayout: true,
           detectTables: true,
           enhanceImage: false,
           lowTemperature: true,
           forceAmharic: false,
           strictAmharic: false,
-          openRouterApiKey: '',
-          openRouterModel: '',
+          openRouterApiKey: typeof window !== 'undefined' ? localStorage.getItem('openRouterApiKey') || '' : '',
+          openRouterModel: typeof window !== 'undefined' ? localStorage.getItem('openRouterModel') || '' : '',
           fallbackToOpenRouter: false,
           preferOpenRouterForProofreading: false,
           pdfIncludeTOC: true,
@@ -157,7 +163,14 @@ export const useOCRStore = create<OCRState>()(
         completeProcessing: (results) => {
           set((state) => {
             const currentFile = state.files[state.currentFileIndex];
-            const enriched = results.map(r => ({ ...r, projectId: state.currentProjectId ?? undefined }));
+            const enriched = results.map(r => ({
+              ...r,
+              projectId: state.currentProjectId ?? undefined,
+              metadata: {
+                ...((r as any).metadata || {}),
+                originalOCRText: ((r as any).metadata?.originalOCRText) || r.layoutPreserved || r.extractedText || ''
+              }
+            }));
             const currentResult = currentFile
               ? enriched.find(r => r.fileId === currentFile.id) || enriched[0] || null
               : enriched[0] || null;
@@ -209,8 +222,32 @@ export const useOCRStore = create<OCRState>()(
         },
 
         updateSettings: (newSettings) => {
+          set((state) => {
+            const updatedSettings = { ...state.settings, ...newSettings };
+
+            // Persist OpenRouter API key to localStorage
+            if (newSettings.openRouterApiKey !== undefined) {
+              localStorage.setItem('openRouterApiKey', newSettings.openRouterApiKey);
+            }
+            if (newSettings.openRouterModel !== undefined) {
+              localStorage.setItem('openRouterModel', newSettings.openRouterModel);
+            }
+
+            return {
+              settings: updatedSettings,
+            };
+          });
+        },
+
+        clearOpenRouterSettings: () => {
+          localStorage.removeItem('openRouterApiKey');
+          localStorage.removeItem('openRouterModel');
           set((state) => ({
-            settings: { ...state.settings, ...newSettings },
+            settings: {
+              ...state.settings,
+              openRouterApiKey: '',
+              openRouterModel: '',
+            },
           }));
         },
 
@@ -238,13 +275,83 @@ export const useOCRStore = create<OCRState>()(
             projectSummaries: { ...state.projectSummaries, [summary.projectId]: summary },
           }));
         },
+
+        clearProjectSummary: (projectId) => {
+          set((state) => {
+            const next = { ...state.projectSummaries };
+            next[projectId] = undefined;
+            return { projectSummaries: next };
+          });
+        },
+
+        clearAllSummaries: () => {
+          set({ projectSummaries: {} });
+        },
+
+        resetAllData: () => {
+          set({
+            projects: [],
+            currentProjectId: null,
+            projectSummaries: {},
+            files: [],
+            currentFileIndex: 0,
+            isProcessing: false,
+            processingStatus: 'idle',
+            progress: 0,
+            results: [],
+            currentResult: null,
+            isSettingsOpen: false,
+            isHelpOpen: false,
+            activeTab: 'extracted',
+          });
+        },
+
+        syncAllResults: () => {
+          set((state) => {
+            const results = state.results.map(r => {
+              const md = (r as any).metadata?.layoutMarkdown;
+              if (md && typeof md === 'string' && md.trim()) {
+                return { ...r, extractedText: md, layoutPreserved: md };
+              }
+              return r;
+            });
+            let currentResult = state.currentResult;
+            if (currentResult) {
+              currentResult = results.find(r => r.fileId === currentResult!.fileId) || currentResult;
+            }
+            return { results, currentResult };
+          });
+        },
+
+        ensureOriginalSnapshots: () => {
+          set((state) => {
+            const results = state.results.map(r => {
+              const meta: any = r.metadata || {};
+              if (!meta.originalOCRText) {
+                meta.originalOCRText = r.layoutPreserved || r.extractedText || '';
+              }
+              return { ...r, metadata: meta };
+            });
+            let currentResult = state.currentResult;
+            if (currentResult) currentResult = results.find(r => r.fileId === currentResult!.fileId) || currentResult;
+            return { results, currentResult };
+          });
+        },
       }),
       {
         name: 'ocr-storage',
+        version: 2,
+        migrate: (persistedState: any, version) => {
+          if (version < 2 && persistedState) {
+            if (persistedState.projectSummaries) {
+              delete persistedState.projectSummaries;
+            }
+          }
+          return persistedState;
+        },
         partialize: (state) => ({
           projects: state.projects,
           currentProjectId: state.currentProjectId,
-          projectSummaries: state.projectSummaries,
           // Exclude API keys from persistence for security
           settings: {
             ...state.settings,

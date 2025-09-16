@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AlertCircle, CheckCircle, HelpCircle } from 'lucide-react';
+import { analyzeAmharicTextForHighlighting } from '@/utils/textUtils';
+import { containsEthiopic } from '@/utils/textUtils';
 
 interface WordAnalysis {
   word: string;
@@ -34,6 +36,50 @@ export const IntelligentTextHighlighter: React.FC<Props> = ({
   const [hoveredWord, setHoveredWord] = useState<WordAnalysis | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
+  // Enhanced analysis combining existing analysis with Amharic-specific validation
+  const enhancedWordAnalysis = useMemo(() => {
+    const hasAmharic = containsEthiopic(text);
+    
+    if (!hasAmharic) {
+      // For non-Amharic text, use the original analysis
+      return wordAnalysis;
+    }
+
+    // Get Amharic-specific analysis
+    const amharicAnalysis = analyzeAmharicTextForHighlighting(text);
+    
+    // Create a map for quick lookup of Amharic analysis by word and position
+    const amharicMap = new Map<string, typeof amharicAnalysis[0]>();
+    amharicAnalysis.forEach(analysis => {
+      const key = `${analysis.word}-${analysis.position.start}-${analysis.position.end}`;
+      amharicMap.set(key, analysis);
+    });
+
+    // Enhance existing analysis with Amharic-specific data
+    return wordAnalysis.map(existingAnalysis => {
+      const key = `${existingAnalysis.word}-${existingAnalysis.position.start}-${existingAnalysis.position.end}`;
+      const amharicData = amharicMap.get(key);
+      
+      if (amharicData) {
+        // Use Amharic analysis confidence and issues
+        return {
+          ...existingAnalysis,
+          confidence: amharicData.confidence,
+          issues: [
+            ...(existingAnalysis.issues || []),
+            ...(amharicData.issues || [])
+          ].filter((issue, index, arr) => arr.indexOf(issue) === index), // Remove duplicates
+          suggestions: [
+            ...(existingAnalysis.suggestions || []),
+            ...(amharicData.suggestions || [])
+          ].filter((suggestion, index, arr) => arr.indexOf(suggestion) === index) // Remove duplicates
+        };
+      }
+      
+      return existingAnalysis;
+    });
+  }, [text, wordAnalysis]);
+
   const handleMouseMove = (e: React.MouseEvent) => {
     setMousePosition({ x: e.clientX, y: e.clientY });
   };
@@ -61,7 +107,7 @@ export const IntelligentTextHighlighter: React.FC<Props> = ({
 
   // Split text into segments with highlighting
   const renderHighlightedText = () => {
-    if (!wordAnalysis.length) {
+    if (!enhancedWordAnalysis.length) {
       return <span className="whitespace-pre-wrap">{text}</span>;
     }
 
@@ -69,7 +115,7 @@ export const IntelligentTextHighlighter: React.FC<Props> = ({
     let lastIndex = 0;
 
     // Sort word analysis by position
-    const sortedAnalysis = [...wordAnalysis].sort((a, b) => a.position.start - b.position.start);
+    const sortedAnalysis = [...enhancedWordAnalysis].sort((a, b) => a.position.start - b.position.start);
 
     sortedAnalysis.forEach((analysis, index) => {
       const { position, confidence, word, issues } = analysis;
@@ -149,10 +195,18 @@ export const IntelligentTextHighlighter: React.FC<Props> = ({
 
             {hoveredWord.issues && hoveredWord.issues.length > 0 && (
               <div className="mb-2">
-                <div className="text-xs font-semibold text-gray-700 mb-1">Issues:</div>
+                <div className="text-xs font-semibold text-gray-700 mb-1">
+                  Issues: {containsEthiopic(hoveredWord.word) && <span className="text-blue-600">(Amharic Analysis)</span>}
+                </div>
                 <ul className="text-xs text-gray-600 list-disc list-inside">
                   {hoveredWord.issues.map((issue, idx) => (
-                    <li key={idx}>{issue}</li>
+                    <li key={idx} className={
+                      issue.includes('Mixed') || issue.includes('ASCII') || issue.includes('character') 
+                        ? 'text-red-600 font-medium' 
+                        : ''
+                    }>
+                      {issue}
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -212,6 +266,12 @@ export const IntelligentTextHighlighter: React.FC<Props> = ({
           <span>Low confidence (&lt;60%)</span>
         </div>
         <span>Hover over highlighted words for suggestions</span>
+        {containsEthiopic(text) && (
+          <div className="flex items-center gap-1 border-l border-gray-300 pl-4 ml-2">
+            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+            <span className="text-blue-600 font-medium">Amharic-enhanced analysis active</span>
+          </div>
+        )}
       </div>
     </div>
   );

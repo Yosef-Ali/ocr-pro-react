@@ -14,42 +14,30 @@ interface BaseTabProps {
   showConfidenceWarning?: boolean;
 }
 
-export const BaseTab: React.FC<BaseTabProps> = ({ 
-  result, 
-  children, 
+/**
+ * Get a human-readable label for confidence levels
+ */
+const getConfidenceLabel = (confidence: number): string => {
+  if (confidence >= CONFIDENCE_THRESHOLDS.EXCELLENT) return 'Excellent';
+  if (confidence >= CONFIDENCE_THRESHOLDS.HIGH) return 'Very Good';
+  if (confidence >= CONFIDENCE_THRESHOLDS.MEDIUM) return 'Good';
+  if (confidence >= CONFIDENCE_THRESHOLDS.FAIR) return 'Fair';
+  if (confidence >= CONFIDENCE_THRESHOLDS.LOW) return 'Poor';
+  return 'Very Poor';
+};
+
+export const BaseTab: React.FC<BaseTabProps> = ({
+  result,
+  children,
   className = '',
   showMetadata = false,
-  showConfidenceWarning = true
 }) => {
   const isEthiopic = result.detectedLanguage === LANGUAGE_CODES.AMHARIC || containsEthiopic(result.extractedText);
-  const isLowConfidence = result.confidence < CONFIDENCE_THRESHOLDS.LOW;
-  const isVeryLowConfidence = result.confidence < CONFIDENCE_THRESHOLDS.VERY_LOW;
 
   return (
     <div className={`bg-gray-50 rounded-lg ${className}`}>
       {/* Confidence Warning */}
-      {showConfidenceWarning && isLowConfidence && (
-        <div className={`mb-4 p-3 rounded-lg border-l-4 ${
-          isVeryLowConfidence 
-            ? 'bg-red-50 border-red-400 text-red-800' 
-            : 'bg-yellow-50 border-yellow-400 text-yellow-800'
-        }`}>
-          <div className="flex items-center">
-            <span className="font-medium">
-              {isVeryLowConfidence ? '⚠️ Very Low Confidence' : '⚠️ Low Confidence'}
-            </span>
-            <span className="ml-2 text-sm">
-              ({Math.round(result.confidence * 100)}%)
-            </span>
-          </div>
-          <p className="text-sm mt-1">
-            {isEthiopic 
-              ? 'This Amharic text may contain OCR errors. Consider using proofreading features.'
-              : 'This text may contain OCR errors. Please review carefully.'
-            }
-          </p>
-        </div>
-      )}
+      {/* Confidence banner intentionally removed per product feedback */}
 
       {/* Language Indicator */}
       {isEthiopic && (
@@ -71,7 +59,15 @@ export const BaseTab: React.FC<BaseTabProps> = ({
               <span className="font-medium">Engine:</span> {result.metadata?.engine || 'Unknown'}
             </div>
             <div>
-              <span className="font-medium">Confidence:</span> {Math.round(result.confidence * 100)}%
+              <span className="font-medium">Confidence:</span>
+              <span className={`ml-1 px-2 py-1 text-xs rounded-full ${result.confidence >= CONFIDENCE_THRESHOLDS.HIGH ? 'bg-green-100 text-green-800' :
+                result.confidence >= CONFIDENCE_THRESHOLDS.MEDIUM ? 'bg-blue-100 text-blue-800' :
+                  result.confidence >= CONFIDENCE_THRESHOLDS.FAIR ? 'bg-yellow-100 text-yellow-800' :
+                    result.confidence >= CONFIDENCE_THRESHOLDS.LOW ? 'bg-orange-100 text-orange-800' :
+                      'bg-red-100 text-red-800'
+                }`}>
+                {Math.round(result.confidence * 100)}% ({getConfidenceLabel(result.confidence)})
+              </span>
             </div>
             <div>
               <span className="font-medium">Words:</span> {result.metadata?.wordCount || 0}
@@ -111,8 +107,8 @@ interface TextContainerProps {
   className?: string;
 }
 
-export const TextContainer: React.FC<TextContainerProps> = ({ 
-  children, 
+export const TextContainer: React.FC<TextContainerProps> = ({
+  children,
   maxHeight = 'max-h-96',
   className = ''
 }) => {
@@ -132,8 +128,8 @@ interface LoadingStateProps {
   message?: string;
 }
 
-export const LoadingState: React.FC<LoadingStateProps> = ({ 
-  message = 'Processing...' 
+export const LoadingState: React.FC<LoadingStateProps> = ({
+  message = 'Processing...'
 }) => {
   return (
     <div className="flex items-center justify-center py-8">
@@ -153,7 +149,7 @@ interface EmptyStateProps {
   icon?: string;
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({ 
+export const EmptyState: React.FC<EmptyStateProps> = ({
   message = 'No content available',
   icon = '📄'
 }) => {

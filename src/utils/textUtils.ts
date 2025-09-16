@@ -221,3 +221,246 @@ export function extractAmharicContext(text: string): {
     hasDialog
   };
 }
+
+// === Enhanced Amharic Word Validation Functions ===
+
+/**
+ * Validates individual Amharic words for proper character sequences
+ */
+export function validateAmharicWord(word: string): {
+  isValid: boolean;
+  confidence: number;
+  issues: string[];
+} {
+  const issues: string[] = [];
+  let confidence = 1.0;
+
+  if (!word || word.trim().length === 0) {
+    return { isValid: false, confidence: 0, issues: ['Empty word'] };
+  }
+
+  const cleanWord = word.trim();
+
+  // Check if word contains any Amharic characters
+  const hasAmharic = ETHIOPIC_RANGES.ALL.test(cleanWord);
+  if (!hasAmharic) {
+    return { isValid: true, confidence: 0.9, issues: [] }; // Non-Amharic words are valid but lower confidence
+  }
+
+  // Check for mixed scripts within the word
+  const hasLatin = /[a-zA-Z]/.test(cleanWord);
+  const hasNumbers = /[0-9]/.test(cleanWord);
+  
+  if (hasAmharic && hasLatin) {
+    issues.push('Mixed Amharic and Latin scripts');
+    confidence -= 0.4;
+  }
+
+  if (hasAmharic && hasNumbers) {
+    issues.push('Numbers mixed with Amharic text');
+    confidence -= 0.3;
+  }
+
+  // Check for ASCII noise characters
+  if (/[#;:\/\\|`~^*_=+]/.test(cleanWord)) {
+    issues.push('Contains ASCII noise characters');
+    confidence -= 0.5;
+  }
+
+  // Check for invalid character sequences (too many repeated characters)
+  if (/(.)\1{4,}/.test(cleanWord)) {
+    issues.push('Excessive character repetition');
+    confidence -= 0.4;
+  }
+
+  // Check for common OCR scrambling patterns
+  if (hasAmharic) {
+    // Words that are too short or too long are suspicious
+    const amharicChars = cleanWord.match(ETHIOPIC_RANGES.ALL) || [];
+    if (amharicChars.length === 1 && cleanWord.length > 3) {
+      issues.push('Single Amharic character with noise');
+      confidence -= 0.3;
+    }
+
+    // Check for invalid Amharic character combinations (simplified heuristic)
+    const invalidCombos = /[ዘዟዠዡዢዣዤዥዦዧ]{3,}|[ጰጱጲጳጴጵጶጷ]{3,}/;
+    if (invalidCombos.test(cleanWord)) {
+      issues.push('Invalid character combinations');
+      confidence -= 0.4;
+    }
+  }
+
+  // Adjust confidence based on word length (very short or very long words are suspicious)
+  if (cleanWord.length < 2) {
+    confidence -= 0.2;
+  } else if (cleanWord.length > 20) {
+    confidence -= 0.3;
+  }
+
+  confidence = Math.max(0, Math.min(1, confidence));
+  const isValid = issues.length === 0 && confidence > 0.6;
+
+  return { isValid, confidence, issues };
+}
+
+/**
+ * Detects heavily corrupted/scrambled Amharic text
+ */
+export function detectCorruptedAmharicText(text: string): {
+  isCorrupted: boolean;
+  corruptionLevel: 'low' | 'medium' | 'high';
+  issues: string[];
+  suggestions: string[];
+} {
+  const issues: string[] = [];
+  const suggestions: string[] = [];
+  let corruptionScore = 0;
+
+  if (!text || text.trim().length === 0) {
+    return { isCorrupted: false, corruptionLevel: 'low', issues: [], suggestions: [] };
+  }
+
+  const words = text.split(/\s+/).filter(w => w.trim().length > 0);
+  let problematicWords = 0;
+
+  for (const word of words) {
+    const validation = validateAmharicWord(word);
+    if (!validation.isValid || validation.confidence < 0.6) {
+      problematicWords++;
+      if (validation.issues.length > 0) {
+        issues.push(`"${word}": ${validation.issues.join(', ')}`);
+      }
+    }
+  }
+
+  // Calculate corruption score
+  const corruptionRatio = words.length > 0 ? problematicWords / words.length : 0;
+  corruptionScore = corruptionRatio;
+
+  // Check for additional corruption indicators
+  if (/[#;:\/\\|`~^*_=+]{2,}/.test(text)) {
+    corruptionScore += 0.3;
+    issues.push('Multiple ASCII noise characters detected');
+    suggestions.push('Remove noise characters (#, ;, :, /, \\, |, etc.)');
+  }
+
+  if (/([A-Z0-9]{2,})|([0-9]{3,})/.test(text)) {
+    corruptionScore += 0.2;
+    issues.push('Suspicious uppercase letters or number sequences');
+    suggestions.push('Verify if letter/number sequences belong in text');
+  }
+
+  if (OCR_ERROR_PATTERNS.MIXED_SCRIPTS.test(text)) {
+    corruptionScore += 0.3;
+    issues.push('Mixed scripts within words');
+    suggestions.push('Separate Amharic and Latin text properly');
+  }
+
+  // Determine corruption level
+  let corruptionLevel: 'low' | 'medium' | 'high';
+  if (corruptionScore < 0.3) {
+    corruptionLevel = 'low';
+  } else if (corruptionScore < 0.6) {
+    corruptionLevel = 'medium';
+  } else {
+    corruptionLevel = 'high';
+  }
+
+  // Add suggestions based on corruption level
+  if (corruptionLevel === 'high') {
+    suggestions.push('Consider re-scanning the document with higher quality settings');
+    suggestions.push('Try using a different OCR engine');
+  } else if (corruptionLevel === 'medium') {
+    suggestions.push('Manual review and correction recommended');
+  }
+
+  return {
+    isCorrupted: corruptionScore > 0.3,
+    corruptionLevel,
+    issues,
+    suggestions
+  };
+}
+
+/**
+ * Analyzes text and provides word-level analysis for highlighting
+ */
+export function analyzeAmharicTextForHighlighting(text: string): Array<{
+  word: string;
+  position: { start: number; end: number };
+  confidence: number;
+  issues?: string[];
+  suggestions?: string[];
+}> {
+  const analysis: Array<{
+    word: string;
+    position: { start: number; end: number };
+    confidence: number;
+    issues?: string[];
+    suggestions?: string[];
+  }> = [];
+
+  if (!text || text.trim().length === 0) {
+    return analysis;
+  }
+
+  // Split text while preserving positions
+  const words = text.split(/(\s+)/);
+  let currentPosition = 0;
+
+  for (const segment of words) {
+    const startPos = currentPosition;
+    const endPos = currentPosition + segment.length;
+
+    // Only analyze non-whitespace segments
+    if (segment.trim().length > 0) {
+      const validation = validateAmharicWord(segment);
+      const wordAnalysis = {
+        word: segment,
+        position: { start: startPos, end: endPos },
+        confidence: validation.confidence,
+        issues: validation.issues.length > 0 ? validation.issues : undefined,
+        suggestions: generateSuggestionsForWord(segment, validation)
+      };
+
+      analysis.push(wordAnalysis);
+    }
+
+    currentPosition = endPos;
+  }
+
+  return analysis;
+}
+
+/**
+ * Generates correction suggestions for problematic words
+ */
+function generateSuggestionsForWord(word: string, validation: { isValid: boolean; confidence: number; issues: string[] }): string[] | undefined {
+  const suggestions: string[] = [];
+
+  if (validation.issues.includes('Mixed Amharic and Latin scripts')) {
+    // Try to extract just the Amharic part
+    const amharicPart = word.match(/[\u1200-\u137F\u1380-\u139F\u2D80-\u2DDF]+/g)?.[0];
+    if (amharicPart && amharicPart !== word) {
+      suggestions.push(amharicPart);
+    }
+  }
+
+  if (validation.issues.includes('Contains ASCII noise characters')) {
+    // Remove ASCII noise
+    const cleaned = word.replace(/[#;:\/\\|`~^*_=+]/g, '');
+    if (cleaned !== word && cleaned.length > 0) {
+      suggestions.push(cleaned);
+    }
+  }
+
+  if (validation.issues.includes('Numbers mixed with Amharic text')) {
+    // Remove numbers
+    const cleaned = word.replace(/[0-9]/g, '');
+    if (cleaned !== word && cleaned.length > 0) {
+      suggestions.push(cleaned);
+    }
+  }
+
+  return suggestions.length > 0 ? suggestions : undefined;
+}

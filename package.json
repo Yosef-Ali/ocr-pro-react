@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "kill:dev": "bash ./scripts/kill-dev.sh",
+    "pretest": "bash ./scripts/kill-dev.sh",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directors --max-warnings 0",
     "preview": "vite preview",
     "test": "vitest run",
@@ -30,6 +32,7 @@
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "tesseract.js": "^4.1.1",
+    "tesseract.js-core": "^4.0.2",
     "utif": "^3.1.0",
     "xlsx": "^0.18.5",
     "zustand": "^4.4.0"

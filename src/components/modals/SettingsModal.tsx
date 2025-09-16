@@ -1,18 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Settings } from '@/types';
 import { Key, Cpu, Hash, Zap, ShieldQuestion, Globe } from 'lucide-react';
 import { useOCRStore } from '@/store/ocrStore';
 import toast from 'react-hot-toast';
-import { validateGeminiApiKey, sanitizeInput } from '@/utils/validationUtils';
+import { validateGeminiApiKey } from '@/utils/validationUtils';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '@/components/ui/Modal';
 import { Collapsible } from '@/components/ui/Collapsible';
 
 export const SettingsModal: React.FC = () => {
-  const { settings, updateSettings, isSettingsOpen, toggleSettings } = useOCRStore();
+  const { settings, updateSettings, isSettingsOpen, toggleSettings, clearAllSummaries, resetAllData } = useOCRStore();
   const { t, i18n } = useTranslation();
-  const [localSettings, setLocalSettings] = useState(settings);
+  function decodeHtmlEntities(val?: string): string | undefined {
+    if (!val) return val;
+    return val
+      .replace(/&#x2F;/g, '/')
+      .replace(/&#47;/g, '/')
+      .replace(/&frasl;/g, '/')
+      .replace(/&amp;/g, '&');
+  }
+
+  const [localSettings, setLocalSettings] = useState<Settings & {
+    openRouterApiKey?: string;
+    openRouterModel?: string;
+    fallbackToOpenRouter?: boolean;
+    preferOpenRouterForProofreading?: boolean;
+  }>({
+    ...(settings as any),
+    openRouterModel: decodeHtmlEntities((settings as any).openRouterModel) || (settings as any).openRouterModel
+  });
+  console.log('⚙️ Initial settings:', settings);
+  console.log('⚙️ Initial localSettings:', localSettings);
 
   const handleSave = () => {
+    console.log('💾 Settings modal saving...');
+    console.log('📝 Local settings before save:', localSettings);
+    console.log('📝 OpenRouter key in local settings:', (localSettings as any).openRouterApiKey);
+
     // Validate API key if provided
     if (localSettings.apiKey && localSettings.apiKey.trim()) {
       if (!validateGeminiApiKey(localSettings.apiKey.trim())) {
@@ -21,18 +45,33 @@ export const SettingsModal: React.FC = () => {
       }
     }
 
-    // Sanitize inputs
+    // Only trim (do not HTML-escape API keys/models; they are not rendered directly)
     const sanitizedSettings = {
       ...localSettings,
-      apiKey: localSettings.apiKey ? sanitizeInput(localSettings.apiKey.trim()) : '',
-      openRouterApiKey: (localSettings as any).openRouterApiKey ? sanitizeInput((localSettings as any).openRouterApiKey.trim()) : '',
-      openRouterModel: (localSettings as any).openRouterModel ? sanitizeInput((localSettings as any).openRouterModel.trim()) : '',
+      apiKey: localSettings.apiKey ? localSettings.apiKey.trim() : '',
+      openRouterApiKey: localSettings.openRouterApiKey ? localSettings.openRouterApiKey.trim() : '',
+      openRouterModel: localSettings.openRouterModel ? decodeHtmlEntities(localSettings.openRouterModel.trim()) : '',
     };
+    console.log('✅ Sanitized settings to save:', sanitizedSettings);
+    console.log('🔑 Final OpenRouter key:', sanitizedSettings.openRouterApiKey);
+    console.log('🤖 Final OpenRouter model:', sanitizedSettings.openRouterModel);
 
     updateSettings(sanitizedSettings);
     toast.success(t('success.settingsSaved'));
     toggleSettings();
   };
+
+  // One-time migration: if current settings contain encoded slashes, decode and persist silently
+  useEffect(() => {
+    const current = (localSettings as any).openRouterModel;
+    if (current && /&#x2F;|&#47;|&frasl;/.test(current)) {
+      const decoded = decodeHtmlEntities(current);
+      setLocalSettings(ls => ({ ...ls, openRouterModel: decoded }));
+      updateSettings({ ...settings, openRouterModel: decoded });
+      console.log('🔄 Migrated encoded OpenRouter model to decoded form:', decoded);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const models = [
     { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (Fast)' },
@@ -67,6 +106,23 @@ export const SettingsModal: React.FC = () => {
       }
     >
       <div className="space-y-3">
+        <Collapsible title={<span className="inline-flex items-center gap-2">Data & Reset</span>} defaultOpen={false}>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => { clearAllSummaries(); toast.success('All project summaries cleared'); }}
+              className="px-3 py-2 text-sm bg-white border rounded hover:bg-gray-50"
+            >
+              Clear All Summaries
+            </button>
+            <button
+              onClick={() => { resetAllData(); toast.success('All app data reset'); }}
+              className="px-3 py-2 text-sm bg-white border rounded hover:bg-gray-50"
+            >
+              Reset All Data
+            </button>
+            <p className="text-xs text-gray-500">Reset clears projects, files, results, and summaries. API keys are not persisted and already cleared on reload.</p>
+          </div>
+        </Collapsible>
         <Collapsible title={<span className="inline-flex items-center gap-2"><Globe className="w-4 h-4" /> Language</span>} defaultOpen>
           <label className="block text-sm font-medium text-gray-700 mb-2">Interface Language</label>
           <select
@@ -145,8 +201,8 @@ export const SettingsModal: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">OpenRouter API Key</label>
               <input
                 type="password"
-                value={(localSettings as any).openRouterApiKey || ''}
-                onChange={(e) => setLocalSettings({ ...localSettings, openRouterApiKey: e.target.value } as any)}
+                value={localSettings.openRouterApiKey || ''}
+                onChange={(e) => setLocalSettings({ ...localSettings, openRouterApiKey: e.target.value })}
                 placeholder="Enter your OpenRouter API key"
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
@@ -155,9 +211,9 @@ export const SettingsModal: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">OpenRouter Model</label>
               <input
                 type="text"
-                value={(localSettings as any).openRouterModel || ''}
-                onChange={(e) => setLocalSettings({ ...localSettings, openRouterModel: e.target.value } as any)}
-                placeholder="e.g., google/gemini-1.5-flash, openai/gpt-4o-mini"
+                value={localSettings.openRouterModel || ''}
+                onChange={(e) => setLocalSettings({ ...localSettings, openRouterModel: e.target.value })}
+                placeholder="e.g., google/gemini-2.0-flash-thinking-exp, openai/gpt-4o-mini"
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -165,16 +221,16 @@ export const SettingsModal: React.FC = () => {
               <label className="inline-flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={!!(localSettings as any).fallbackToOpenRouter}
-                  onChange={(e) => setLocalSettings({ ...localSettings, fallbackToOpenRouter: e.target.checked } as any)}
+                  checked={!!localSettings.fallbackToOpenRouter}
+                  onChange={(e) => setLocalSettings({ ...localSettings, fallbackToOpenRouter: e.target.checked })}
                 />
                 Use as fallback when Gemini fails/429
               </label>
               <label className="inline-flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={!!(localSettings as any).preferOpenRouterForProofreading}
-                  onChange={(e) => setLocalSettings({ ...localSettings, preferOpenRouterForProofreading: e.target.checked } as any)}
+                  checked={!!localSettings.preferOpenRouterForProofreading}
+                  onChange={(e) => setLocalSettings({ ...localSettings, preferOpenRouterForProofreading: e.target.checked })}
                 />
                 Prefer OpenRouter for proofreading
               </label>
@@ -203,8 +259,8 @@ export const SettingsModal: React.FC = () => {
             <label className="inline-flex items-center gap-2">
               <input
                 type="checkbox"
-                checked={!!(localSettings as any).strictAmharic}
-                onChange={(e) => setLocalSettings({ ...localSettings, strictAmharic: e.target.checked } as any)}
+                checked={!!localSettings.strictAmharic}
+                onChange={(e) => setLocalSettings({ ...localSettings, strictAmharic: e.target.checked })}
               />
               Strict Amharic mode (ASCII blacklist)
             </label>

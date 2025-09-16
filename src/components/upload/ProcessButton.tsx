@@ -3,6 +3,7 @@ import { Play, Loader, Zap, Brain, Cpu } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useOCRStore } from '@/store/ocrStore';
 import { useOCRProcessing } from '@/hooks/useOCRProcessing';
+import { checkAvailableApiKeys } from '@/utils/validationUtils';
 
 export const ProcessButton: React.FC = () => {
   const { files, isProcessing, settings } = useOCRStore();
@@ -17,14 +18,18 @@ export const ProcessButton: React.FC = () => {
   // Determine which engine will be used
   const getEngineInfo = () => {
     const engine = settings.ocrEngine || 'auto';
+    const apiStatus = checkAvailableApiKeys(settings);
+    
     if (engine === 'tesseract') {
       return { name: 'Tesseract', icon: Cpu, color: 'from-green-600 to-teal-600' };
     } else if (engine === 'gemini') {
       return { name: 'Gemini', icon: Brain, color: 'from-blue-600 to-purple-600' };
     } else {
-      // Auto mode
-      if (settings.apiKey) {
+      // Auto mode - show what will actually be used
+      if (apiStatus.hasGemini) {
         return { name: 'Auto (Gemini)', icon: Zap, color: 'from-blue-600 to-purple-600' };
+      } else if (apiStatus.hasOpenRouter) {
+        return { name: 'Auto (OpenRouter)', icon: Zap, color: 'from-blue-500 to-cyan-600' };
       } else {
         return { name: 'Auto (Tesseract)', icon: Zap, color: 'from-green-600 to-teal-600' };
       }

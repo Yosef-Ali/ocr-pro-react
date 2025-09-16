@@ -66,21 +66,68 @@ export function validateSummaryPayload(obj: any): boolean {
 export function validateGeminiApiKey(apiKey: string): boolean {
   if (!apiKey || typeof apiKey !== 'string') return false;
 
-  // Gemini API keys start with specific prefixes
-  const validPrefixes = ['AIza', 'AIzaSy'];
   const trimmed = apiKey.trim();
 
-  // Check length (should be around 39 characters for newer keys)
-  if (trimmed.length < 20 || trimmed.length > 50) return false;
+  // Basic length check - Gemini keys are typically 39 characters but can vary
+  if (trimmed.length < 15) return false;
 
-  // Check for valid prefix
-  if (!validPrefixes.some(prefix => trimmed.startsWith(prefix))) return false;
+  // Most Gemini API keys start with 'AIza' but not all
+  // Keep this flexible for different key formats
+  const startsWithAIza = trimmed.startsWith('AIza');
+  const hasValidLength = trimmed.length >= 30;
+  
+  // If it starts with AIza, it's likely valid
+  // Otherwise, check if it's a reasonable length and has valid characters
+  if (startsWithAIza || hasValidLength) {
+    // Check for valid characters (alphanumeric, hyphens, underscores)
+    const validChars = /^[A-Za-z0-9_-]+$/;
+    return validChars.test(trimmed);
+  }
 
-  // Check for valid characters (alphanumeric, hyphens, underscores)
-  const validChars = /^[A-Za-z0-9_-]+$/;
+  return false;
+}
+
+/**
+ * Validates OpenRouter API key format and basic requirements.
+ * @param apiKey - The API key string to validate
+ * @returns True if the API key appears to be valid
+ */
+export function validateOpenRouterApiKey(apiKey: string): boolean {
+  if (!apiKey || typeof apiKey !== 'string') return false;
+
+  const trimmed = apiKey.trim();
+
+  // OpenRouter keys can vary in format, so keep validation minimal
+  // Just check for reasonable length and valid characters
+  if (trimmed.length < 10) return false;
+
+  // Check for valid characters (alphanumeric, hyphens, underscores, dots)
+  const validChars = /^[A-Za-z0-9_.-]+$/;
   if (!validChars.test(trimmed)) return false;
 
   return true;
+}
+
+/**
+ * Checks if any valid API key is available in settings
+ * @param settings - The settings object to check
+ * @returns Object with availability info and which keys are valid
+ */
+export function checkAvailableApiKeys(settings: any): {
+  hasAnyApiKey: boolean;
+  hasGemini: boolean;
+  hasOpenRouter: boolean;
+  primaryProvider: 'gemini' | 'openrouter' | null;
+} {
+  const hasGemini = !!(settings.apiKey && settings.apiKey.trim() && validateGeminiApiKey(settings.apiKey));
+  const hasOpenRouter = !!(settings.openRouterApiKey && settings.openRouterApiKey.trim() && validateOpenRouterApiKey(settings.openRouterApiKey));
+  
+  return {
+    hasAnyApiKey: hasGemini || hasOpenRouter,
+    hasGemini,
+    hasOpenRouter,
+    primaryProvider: hasGemini ? 'gemini' : hasOpenRouter ? 'openrouter' : null
+  };
 }
 
 /**

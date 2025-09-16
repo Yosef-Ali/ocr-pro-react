@@ -1,7 +1,81 @@
 import { OCRFile, OCRResult, Settings } from '@/types';
 import * as UTIF from 'utif';
+import { analyzeAmharicOCRQuality, generateAmharicQualityReport } from '@/utils/amharicHelpers';
+import { containsEthiopic } from '@/utils/textUtils';
 
 const ETH_RE = /[\u1200-\u137F\u1380-\u139F\u2D80-\u2DDF]/;
+
+/**
+ * Post-processes Tesseract OCR results with Amharic-specific validation and analysis
+ */
+function enhanceTesseractResultWithAmharicAnalysis(result: OCRResult, settings: Settings): OCRResult {
+  const text = result.extractedText;
+  
+  // Only apply Amharic analysis if text contains Amharic or forceAmharic is enabled
+  const hasAmharic = containsEthiopic(text);
+  const shouldAnalyze = hasAmharic || settings.forceAmharic;
+  
+  if (!shouldAnalyze) {
+    return result;
+  }
+
+  // Analyze Amharic text quality
+  const qualityAnalysis = analyzeAmharicOCRQuality(text);
+  
+  // Generate quality report for metadata
+  const qualityReport = generateAmharicQualityReport(text);
+  
+  // Adjust confidence based on Amharic analysis
+  let adjustedConfidence = result.confidence;
+  
+  if (qualityAnalysis.overallQuality === 'poor') {
+    adjustedConfidence = Math.min(adjustedConfidence, 0.4);
+  } else if (qualityAnalysis.overallQuality === 'fair') {
+    adjustedConfidence = Math.min(adjustedConfidence, 0.6);
+  } else if (qualityAnalysis.overallQuality === 'good') {
+    adjustedConfidence = Math.max(adjustedConfidence, 0.75);
+  } else if (qualityAnalysis.overallQuality === 'excellent') {
+    adjustedConfidence = Math.max(adjustedConfidence, 0.9);
+  }
+
+  // Apply corruption penalties
+  if (qualityAnalysis.corruptionAnalysis.isCorrupted) {
+    switch (qualityAnalysis.corruptionAnalysis.corruptionLevel) {
+      case 'high':
+        adjustedConfidence = Math.min(adjustedConfidence, 0.3);
+        break;
+      case 'medium':
+        adjustedConfidence = Math.min(adjustedConfidence, 0.5);
+        break;
+      case 'low':
+        adjustedConfidence = Math.min(adjustedConfidence, 0.7);
+        break;
+    }
+  }
+
+  // Enhance metadata with Amharic analysis
+  const enhancedMetadata = {
+    ...result.metadata,
+    amharicAnalysis: {
+      overallQuality: qualityAnalysis.overallQuality,
+      confidence: qualityAnalysis.confidence,
+      religiousContent: qualityAnalysis.religiousContentDetected,
+      corruptionLevel: qualityAnalysis.corruptionAnalysis.corruptionLevel,
+      isCorrupted: qualityAnalysis.corruptionAnalysis.isCorrupted,
+      qualityScore: qualityReport.summary.overallScore,
+      grade: qualityReport.summary.grade,
+      amharicWordCount: qualityReport.summary.amharicWordCount,
+      problematicWordCount: qualityReport.summary.problematicWordCount,
+      recommendations: qualityReport.recommendations
+    }
+  };
+
+  return {
+    ...result,
+    confidence: adjustedConfidence,
+    metadata: enhancedMetadata
+  };
+}
 
 export async function processWithTesseract(files: OCRFile[], settings: Settings): Promise<OCRResult[]> {
     const results: OCRResult[] = [];
@@ -18,14 +92,14 @@ export async function processWithTesseract(files: OCRFile[], settings: Settings)
             const base64 = await getDataUrl(file);
             const normalized = await ensureNonTiffImage(base64);
             const preprocessed = await preprocessImage(normalized);
-            const worker: any = await createWorker();
+            const worker: any = await createWorker('amh+eng', 1, {
+                langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+            });
             try {
-                await worker.load();
                 await worker.loadLanguage(lang);
-                await worker.initialize(lang);
+                await worker.initialize(lang, 1);
                 await worker.setParameters({
                     tessedit_pageseg_mode: String(PSM.SINGLE_COLUMN),
-                    tessedit_ocr_engine_mode: '1',
                     preserve_interword_spaces: '1',
                     user_defined_dpi: '300',
                     ...((settings.forceAmharic || settings.strictAmharic) ? { tessedit_char_blacklist: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' } : {}),
@@ -34,7 +108,7 @@ export async function processWithTesseract(files: OCRFile[], settings: Settings)
                 console.error('Tesseract worker init failed for', file.name, initErr);
                 throw initErr;
             }
-            const imgBlob = await (await fetch(preprocessed)).blob();
+            const imgBlob = await dataUrlToBlob(preprocessed);
             const start = performance.now();
             const { data } = await worker.recognize(imgBlob);
             const end = performance.now();
@@ -46,14 +120,14 @@ export async function processWithTesseract(files: OCRFile[], settings: Settings)
             // If Amharic seems under-recognized but content likely Ethiopic, retry with amh only and a different PSM
             if ((settings.forceAmharic || density.ethChars > 10) && density.ratio < 0.6) {
                 try {
-                    const worker2: any = await createWorker();
+                    const worker2: any = await createWorker('amh', 1, {
+                        langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+                    });
                     try {
-                        await worker2.load();
                         await worker2.loadLanguage('amh');
-                        await worker2.initialize('amh');
+                        await worker2.initialize('amh', 1);
                         await worker2.setParameters({
                             tessedit_pageseg_mode: '6', // SINGLE_BLOCK
-                            tessedit_ocr_engine_mode: '1',
                             preserve_interword_spaces: '1',
                             user_defined_dpi: '300',
                             ...((settings.forceAmharic || settings.strictAmharic) ? { tessedit_char_blacklist: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' } : {}),
@@ -70,7 +144,7 @@ export async function processWithTesseract(files: OCRFile[], settings: Settings)
                 } catch { /* ignore second-pass failures */ }
             }
             const detectedLanguage = settings.forceAmharic ? 'am' : (ETH_RE.test(text) ? 'am' : 'en');
-            const result: OCRResult = {
+            const baseResult: OCRResult = {
                 id: `tess-${Date.now()}-${Math.random()}`,
                 fileId: file.id,
                 extractedText: text,
@@ -94,12 +168,15 @@ export async function processWithTesseract(files: OCRFile[], settings: Settings)
                     engine: 'tesseract',
                 },
             };
-            results.push(result);
+            
+            // Apply Amharic analysis enhancement
+            const enhancedResult = enhanceTesseractResultWithAmharicAnalysis(baseResult, settings);
+            results.push(enhancedResult);
         } catch (e) {
-            const msg = (e instanceof Error) ? e.message : (typeof e === 'string' ? e : 'Unknown error (likely unsupported image format).');
+            const msg = (e instanceof Error) ? e.message : (typeof e === 'string' ? e : 'Unknown error');
             console.error('Tesseract processing failed for', file.name, msg);
             // Push an empty/error-like result to keep UX consistent
-            results.push({
+            const errorResult: OCRResult = {
                 id: `tess-${Date.now()}-${Math.random()}`,
                 fileId: file.id,
                 extractedText: '',
@@ -110,7 +187,11 @@ export async function processWithTesseract(files: OCRFile[], settings: Settings)
                 processingTime: 0,
                 layoutAnalysis: { textBlocks: 0, tables: 0, images: 0, columns: 1, complexity: 'low', structure: [] },
                 metadata: { wordCount: 0, characterCount: 0, pageCount: 1, engine: 'tesseract' },
-            });
+            };
+            
+            // Even error results can benefit from Amharic analysis for consistency
+            const enhancedErrorResult = enhanceTesseractResultWithAmharicAnalysis(errorResult, settings);
+            results.push(enhancedErrorResult);
         }
     }
 
@@ -230,6 +311,24 @@ function loadImage(dataUrl: string): Promise<HTMLImageElement> {
         img.onload = () => resolve(img);
         img.onerror = reject;
         img.src = dataUrl;
+    });
+}
+
+function dataUrlToBlob(dataUrl: string): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+        try {
+            const [header, data] = dataUrl.split(',');
+            const mimeMatch = header.match(/data:([^;]+)/);
+            const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+            const binary = atob(data);
+            const array = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                array[i] = binary.charCodeAt(i);
+            }
+            resolve(new Blob([array], { type: mime }));
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 

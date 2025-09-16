@@ -5,27 +5,124 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { OCRFile, OCRResult, Settings } from '@/types';
 import { fileToBase64, toInlineImagePartFromDataUrl, ensureNonTiffImage } from '@/utils/imageUtils';
 import { extractJsonFromText, stripFences, enforceEthiopicPunctuationAndQuotes, normalizeLangCode, clamp01, containsEthiopic } from '@/utils/textUtils';
-import { validateOCRPayload, validateGeminiApiKey } from '@/utils/validationUtils';
+import { validateOCRPayload, checkAvailableApiKeys } from '@/utils/validationUtils';
+import { analyzeAmharicOCRQuality, generateAmharicQualityReport } from '@/utils/amharicHelpers';
+
+function decodeHtmlEntities(model?: string): string | undefined {
+  if (!model) return model;
+  return model
+    .replace(/&#x2F;/g, '/')
+    .replace(/&#47;/g, '/')
+    .replace(/&frasl;/g, '/')
+    .replace(/&amp;/g, '&');
+}
+
+/**
+ * Post-processes OCR results with Amharic-specific validation and analysis
+ */
+function enhanceOCRResultWithAmharicAnalysis(result: OCRResult, settings: Settings): OCRResult {
+  const text = result.extractedText;
+
+  // Only apply Amharic analysis if text contains Amharic or forceAmharic is enabled
+  const hasAmharic = containsEthiopic(text);
+  const shouldAnalyze = hasAmharic || settings.forceAmharic;
+
+  if (!shouldAnalyze) {
+    return result;
+  }
+
+  // Analyze Amharic text quality
+  const qualityAnalysis = analyzeAmharicOCRQuality(text);
+
+  // Generate quality report for metadata
+  const qualityReport = generateAmharicQualityReport(text);
+
+  // Adjust confidence based on Amharic analysis
+  let adjustedConfidence = result.confidence;
+
+  if (qualityAnalysis.overallQuality === 'poor') {
+    adjustedConfidence = Math.min(adjustedConfidence, 0.4);
+  } else if (qualityAnalysis.overallQuality === 'fair') {
+    adjustedConfidence = Math.min(adjustedConfidence, 0.6);
+  } else if (qualityAnalysis.overallQuality === 'good') {
+    adjustedConfidence = Math.max(adjustedConfidence, 0.75);
+  } else if (qualityAnalysis.overallQuality === 'excellent') {
+    adjustedConfidence = Math.max(adjustedConfidence, 0.9);
+  }
+
+  // Apply corruption penalties
+  if (qualityAnalysis.corruptionAnalysis.isCorrupted) {
+    switch (qualityAnalysis.corruptionAnalysis.corruptionLevel) {
+      case 'high':
+        adjustedConfidence = Math.min(adjustedConfidence, 0.3);
+        break;
+      case 'medium':
+        adjustedConfidence = Math.min(adjustedConfidence, 0.5);
+        break;
+      case 'low':
+        adjustedConfidence = Math.min(adjustedConfidence, 0.7);
+        break;
+    }
+  }
+
+  // Enhance metadata with Amharic analysis
+  const enhancedMetadata = {
+    ...result.metadata,
+    amharicAnalysis: {
+      overallQuality: qualityAnalysis.overallQuality,
+      confidence: qualityAnalysis.confidence,
+      religiousContent: qualityAnalysis.religiousContentDetected,
+      corruptionLevel: qualityAnalysis.corruptionAnalysis.corruptionLevel,
+      isCorrupted: qualityAnalysis.corruptionAnalysis.isCorrupted,
+      qualityScore: qualityReport.summary.overallScore,
+      grade: qualityReport.summary.grade,
+      amharicWordCount: qualityReport.summary.amharicWordCount,
+      problematicWordCount: qualityReport.summary.problematicWordCount,
+      recommendations: qualityReport.recommendations
+    }
+  };
+
+  return {
+    ...result,
+    confidence: adjustedConfidence,
+    metadata: enhancedMetadata
+  };
+}
 
 export async function processWithGemini(
   files: OCRFile[],
   settings: Settings
 ): Promise<OCRResult[]> {
-  // Validate API key presence (don't log the actual key)
-  if (!settings.apiKey || !settings.apiKey.trim()) {
-    console.error('API key is missing or empty');
-    throw new Error('Please set your Gemini API key in Settings. Get one from https://makersuite.google.com/app/apikey');
+  console.log('API Key present:', !!settings.apiKey);
+  console.log('OpenRouter Key present:', !!settings.openRouterApiKey);
+  console.log('Model:', settings.model);
+  console.log('Force Amharic:', !!settings.forceAmharic);
+
+  // Check available API keys
+  const apiStatus = checkAvailableApiKeys(settings);
+
+  if (!apiStatus.hasAnyApiKey) {
+    throw new Error('No valid API key found. Please add either a Gemini API key or OpenRouter API key in Settings.');
   }
 
-  if (!validateGeminiApiKey(settings.apiKey)) {
-    console.error('Invalid API key format');
-    throw new Error('Invalid Gemini API key format. Please check your API key.');
+  // Prefer Gemini if available, otherwise use OpenRouter
+  const useGemini = apiStatus.hasGemini;
+  console.log(`Using ${useGemini ? 'Gemini' : 'OpenRouter'} API for processing`);
+
+  if (!useGemini && !apiStatus.hasOpenRouter) {
+    throw new Error('OpenRouter API key is invalid. Please check your OpenRouter API key in Settings.');
   }
 
-  const genAI = new GoogleGenerativeAI(settings.apiKey as string);
+  // Initialize API client based on available keys
+  let genAI: GoogleGenerativeAI | null = null;
+  if (useGemini) {
+    genAI = new GoogleGenerativeAI(settings.apiKey as string);
+  }
+
   const generationConfig = settings.lowTemperature
     ? { temperature: 0, topP: 0, topK: 1, maxOutputTokens: settings.maxTokens, responseMimeType: 'application/json' }
     : { maxOutputTokens: settings.maxTokens, responseMimeType: 'application/json' } as any;
+
   const systemInstruction = {
     text: `You are an OCR engine for Amharic (Ethiopic) documents.
 Rules:
@@ -39,9 +136,16 @@ Examples:
   «…» stays as «…» (not "…")
 `
   } as any;
-  const getModel = (m: string) => genAI.getGenerativeModel({ model: m, generationConfig, systemInstruction } as any);
+
+  const getModel = (m: string) => {
+    if (useGemini && genAI) {
+      return genAI.getGenerativeModel({ model: m, generationConfig, systemInstruction } as any);
+    }
+    return null; // Will use OpenRouter API calls instead
+  };
 
   const results: OCRResult[] = [];
+  // OpenRouter model selection handled inline within runModel() for the OpenRouter branch.
 
   for (const file of files) {
     try {
@@ -76,10 +180,10 @@ Examples:
         }
       }
 
-      // Process with Gemini
-      const geminiResult = await processWithGeminiAPI(file, base64, settings, getModel, forceAm);
-      if (geminiResult) {
-        results.push(geminiResult);
+      // Process with AI API (Gemini or OpenRouter)
+      const aiResult = await processWithAIAPI(file, base64, settings, getModel, forceAm, useGemini);
+      if (aiResult) {
+        results.push(aiResult);
       }
     } catch (error) {
       console.error(`Error processing file ${file.name}:`, error);
@@ -113,7 +217,7 @@ async function runTesseract(file: OCRFile, base64: string, settings: Settings, f
 
   if (data && typeof data.text === 'string' && data.text.trim()) {
     console.log('Using Tesseract as primary OCR');
-    return {
+    const baseResult: OCRResult = {
       id: `result-${Date.now()}-${Math.random()}`,
       fileId: file.id,
       extractedText: data.text,
@@ -137,16 +241,20 @@ async function runTesseract(file: OCRFile, base64: string, settings: Settings, f
         engine: 'tesseract',
       },
     };
+
+    // Apply Amharic analysis enhancement
+    return enhanceOCRResultWithAmharicAnalysis(baseResult, settings);
   }
   return null;
 }
 
-async function processWithGeminiAPI(
+async function processWithAIAPI(
   file: OCRFile,
   base64: string,
   settings: Settings,
   getModel: (m: string) => any,
-  forceAm: boolean
+  forceAm: boolean,
+  useGemini: boolean
 ): Promise<OCRResult | null> {
   // Build main prompt
   const prompt = forceAm
@@ -169,32 +277,89 @@ async function processWithGeminiAPI(
   };
 
   const runModel = async (modelId: string) => {
-    const part = await getImagePart();
-    const res = await getModel(modelId).generateContent([promptWithHints, part]);
-    return (await res.response).text();
+    if (useGemini) {
+      // Use Gemini API
+      const part = await getImagePart();
+      const model = getModel(modelId);
+      if (!model) throw new Error('Failed to initialize Gemini model');
+      const res = await model.generateContent([promptWithHints, part]);
+      return (await res.response).text();
+    } else {
+      // Use OpenRouter API
+      const prepared = await ensureNonTiffImage(base64);
+
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${settings.openRouterApiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': window.location.origin,
+          'X-Title': 'OCR Pro - Amharic OCR Processing'
+        },
+        body: JSON.stringify({
+          model: (function () {
+            const raw = settings.openRouterModel || 'google/gemini-2.0-flash-thinking-exp';
+            const dec = decodeHtmlEntities(raw) || raw;
+            return /.+\/.+/.test(dec) ? dec : 'google/gemini-1.5-flash';
+          })(), // validated
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: promptWithHints },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: prepared,
+                    detail: 'high'
+                  }
+                }
+              ]
+            }
+          ],
+          temperature: settings.lowTemperature ? 0 : 0.7,
+          max_tokens: settings.maxTokens || 2048
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) {
+        throw new Error('No response content from OpenRouter API');
+      }
+
+      return content;
+    }
   };
 
   // Ensure we can build the image part for Gemini; if this fails (e.g., unsupported TIFF), return a graceful fallback
-  try {
-    await getImagePart();
-  } catch (prepErr: any) {
-    const msg = String(prepErr?.message || prepErr || '');
-    if (/Unsupported TIFF/i.test(msg)) {
-      const cleaned = '';
-      return {
-        id: `result-${Date.now()}-${Math.random()}`,
-        fileId: file.id,
-        extractedText: cleaned,
-        layoutPreserved: cleaned,
-        detectedLanguage: forceAm ? 'am' : 'unknown',
-        confidence: 0.3,
-        documentType: 'Unknown',
-        processingTime: 0,
-        layoutAnalysis: { textBlocks: 0, tables: 0, images: 0, columns: 1, complexity: 'medium', structure: [] },
-        metadata: { wordCount: 0, characterCount: 0, pageCount: 1, engine: 'tesseract', note: 'TIFF could not be converted for Gemini; try re-exporting as PNG/JPEG.' } as any,
-      };
+  if (useGemini) {
+    try {
+      await getImagePart();
+    } catch (prepErr: any) {
+      const msg = String(prepErr?.message || prepErr || '');
+      if (/Unsupported TIFF/i.test(msg)) {
+        const cleaned = '';
+        return {
+          id: `result-${Date.now()}-${Math.random()}`,
+          fileId: file.id,
+          extractedText: cleaned,
+          layoutPreserved: cleaned,
+          detectedLanguage: forceAm ? 'am' : 'unknown',
+          confidence: 0.3,
+          documentType: 'Unknown',
+          processingTime: 0,
+          layoutAnalysis: { textBlocks: 0, tables: 0, images: 0, columns: 1, complexity: 'medium', structure: [] },
+          metadata: { wordCount: 0, characterCount: 0, pageCount: 1, engine: useGemini ? 'gemini' : 'openrouter', note: 'TIFF could not be converted for AI processing; try re-exporting as PNG/JPEG.' } as any,
+        };
+      }
+      throw prepErr;
     }
-    throw prepErr;
   }
 
   let text = '';
@@ -218,7 +383,7 @@ async function processWithGeminiAPI(
     throw new Error('Empty response from Gemini API');
   }
 
-  return await parseGeminiResponse(text, file, settings, getModel, getImagePart, forceAm);
+  return await parseGeminiResponse(text, file, settings, getModel, getImagePart, forceAm, useGemini);
 }
 
 async function parseGeminiResponse(
@@ -227,7 +392,8 @@ async function parseGeminiResponse(
   settings: Settings,
   getModel: (m: string) => any,
   getImagePart: () => Promise<any>,
-  forceAm: boolean
+  forceAm: boolean,
+  useGemini: boolean
 ): Promise<OCRResult> {
   let parsedResult: any | null = null;
   try {
@@ -266,9 +432,9 @@ async function parseGeminiResponse(
       characterCount: parsedResult.metadata?.characterCount ?? extracted.length,
       pageCount: parsedResult.metadata?.pageCount ?? undefined,
     } as any;
-    (safeMetadata as any).engine = 'gemini';
+    (safeMetadata as any).engine = useGemini ? 'gemini' : 'openrouter';
 
-    return {
+    const baseResult: OCRResult = {
       id: `result-${Date.now()}-${Math.random()}`,
       fileId: file.id,
       extractedText: extracted,
@@ -280,10 +446,13 @@ async function parseGeminiResponse(
       layoutAnalysis: safeLayout,
       metadata: safeMetadata,
     };
+
+    // Apply Amharic analysis enhancement
+    return enhanceOCRResultWithAmharicAnalysis(baseResult, settings);
   } else {
     let cleaned = stripFences(text);
     if (forceAm) cleaned = postProcessEthiopic(cleaned);
-    return {
+    const fallbackResult: OCRResult = {
       id: `result-${Date.now()}-${Math.random()}`,
       fileId: file.id,
       extractedText: cleaned,
@@ -304,9 +473,12 @@ async function parseGeminiResponse(
         wordCount: cleaned.split(/\s+/).filter(Boolean).length,
         characterCount: cleaned.length,
         pageCount: 1,
-        engine: 'gemini',
+        engine: useGemini ? 'gemini' : 'openrouter',
       },
     };
+
+    // Apply Amharic analysis enhancement
+    return enhanceOCRResultWithAmharicAnalysis(fallbackResult, settings);
   }
 }
 

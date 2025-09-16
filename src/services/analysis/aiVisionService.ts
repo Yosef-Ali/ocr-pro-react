@@ -5,6 +5,16 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Settings } from '@/types';
 import { extractJsonFromText } from '@/utils/textUtils';
 import { ensureNonTiffImage, toInlineImagePartFromDataUrl } from '@/utils/imageUtils';
+import { checkAvailableApiKeys } from '@/utils/validationUtils';
+
+function decodeHtmlEntities(model?: string): string | undefined {
+  if (!model) return model;
+  return model
+    .replace(/&#x2F;/g, '/')
+    .replace(/&#47;/g, '/')
+    .replace(/&frasl;/g, '/')
+    .replace(/&amp;/g, '&');
+}
 
 export async function correctTextWithAIVision(
   corruptedText: string,
@@ -20,10 +30,18 @@ export async function correctTextWithAIVision(
   }>;
   source: 'gemini-1.5-pro' | 'gemini-1.5-flash' | 'gemini-2.5-pro' | 'openrouter-gemini-2.5-pro';
 }> {
-  if (!settings.apiKey) throw new Error('API key required for AI vision correction');
+  const apiStatus = checkAvailableApiKeys(settings);
+  if (!apiStatus.hasAnyApiKey) {
+    throw new Error('Gemini or OpenRouter API key required for AI vision correction');
+  }
   if (!originalImageBase64) throw new Error('Original image required for AI vision correction');
 
-  const genAI = new GoogleGenerativeAI(settings.apiKey as string);
+  // Prefer Gemini direct if available, otherwise use OpenRouter
+  const useGemini = apiStatus.hasGemini;
+  let genAI: GoogleGenerativeAI | null = null;
+  if (useGemini) {
+    genAI = new GoogleGenerativeAI(settings.apiKey as string);
+  }
   const preferModel = opts?.modelOverride || settings.model || 'gemini-2.5-pro';
 
   const generationConfig = {
@@ -34,7 +52,10 @@ export async function correctTextWithAIVision(
     responseMimeType: 'application/json'
   } as any;
 
-  const getModel = (m: string) => genAI.getGenerativeModel({ model: m, generationConfig } as any);
+  const getModel = (m: string) => {
+    if (!useGemini) return null; // Will use OpenRouter API calls instead
+    return genAI!.getGenerativeModel({ model: m, generationConfig } as any);
+  };
 
   // The prompt you actually wanted - direct image correction!
   const prompt = `You are an expert Amharic OCR correction system with deep knowledge of Ethiopian religious texts and manuscripts.
@@ -79,161 +100,172 @@ READ THE IMAGE CAREFULLY and provide the COMPLETE corrected text!`;
   const runCorrection = async (modelId: string) => {
     try {
       const prepared = await ensureNonTiffImage(originalImageBase64);
-      const imagePart = toInlineImagePartFromDataUrl(prepared);
 
-      const result = await getModel(modelId).generateContent([prompt, imagePart]);
-      const response = await result.response;
-      const responseText = response.text();
+      if (useGemini) {
+        // Use Gemini direct API
+        const imagePart = toInlineImagePartFromDataUrl(prepared);
+        const model = getModel(modelId);
+        if (!model) throw new Error('Failed to initialize Gemini model');
 
-      let parsed: any;
-      try {
-        const jsonText = extractJsonFromText(responseText);
-        parsed = JSON.parse(jsonText);
-      } catch (e1) {
-        const strictPrompt = `Return ONLY valid JSON with exactly these fields and nothing else (no markdown):\n{\n  "correctedText": "string",\n  "corrections": [{"original": "string", "corrected": "string", "reason": "string"}]\n}`;
-        const strictRes = await getModel(modelId).generateContent([strictPrompt, imagePart]);
-        const strictText = (await strictRes.response).text();
-        const strictJson = extractJsonFromText(strictText);
-        parsed = JSON.parse(strictJson);
+        const result = await model.generateContent([prompt, imagePart]);
+        const response = await result.response;
+        const responseText = response.text();
+
+        let parsed: any;
+        try {
+          const jsonText = extractJsonFromText(responseText);
+          parsed = JSON.parse(jsonText);
+        } catch (e1) {
+          const strictPrompt = `Return ONLY valid JSON with exactly these fields and nothing else (no markdown):\n{\n  "correctedText": "string",\n  "corrections": [{"original": "string", "corrected": "string", "reason": "string"}]\n}`;
+          const strictModel = getModel(modelId);
+          if (!strictModel) throw new Error('Failed to initialize Gemini model for retry');
+          const strictRes = await strictModel.generateContent([strictPrompt, imagePart]);
+          const strictText = (await strictRes.response).text();
+          const strictJson = extractJsonFromText(strictText);
+          parsed = JSON.parse(strictJson);
+        }
+
+        // Validate response
+        if (!parsed.correctedText || typeof parsed.correctedText !== 'string') {
+          throw new Error('Invalid response structure - missing corrected text');
+        }
+
+        return {
+          correctedText: parsed.correctedText,
+          corrections: Array.isArray(parsed.corrections) ? parsed.corrections : [],
+          source: modelId as any
+        };
+      } else {
+        // Use OpenRouter API
+        const userModelRaw = settings.openRouterModel || 'google/gemini-2.0-flash-thinking-exp';
+        const userModel = decodeHtmlEntities(userModelRaw) || 'google/gemini-2.0-flash-thinking-exp';
+        // Basic guard: OpenRouter model IDs usually have a slash like provider/model
+        const finalModel = /.+\/.+/.test(userModel) ? userModel : 'google/gemini-1.5-flash';
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${settings.openRouterApiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': window.location.origin,
+            'X-Title': 'Amharic OCR Correction'
+          },
+          body: JSON.stringify({
+            model: finalModel,
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: prompt },
+                  {
+                    type: 'image_url',
+                    image_url: {
+                      url: prepared,
+                      detail: 'high'
+                    }
+                  }
+                ]
+              }
+            ],
+            temperature: 0.1,
+            max_tokens: 4000
+          })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
+        }
+
+        let rawBody: any = null;
+        try {
+          rawBody = await response.text();
+        } catch (e) {
+          throw new Error('Failed reading OpenRouter response body');
+        }
+        let data: any = null;
+        let content: string | undefined;
+        try {
+          data = JSON.parse(rawBody);
+          content = data.choices?.[0]?.message?.content;
+        } catch (e) {
+          console.warn('OpenRouter response not valid JSON root; using raw body as content snippet');
+          content = rawBody;
+        }
+        if (!content || !String(content).trim()) {
+          throw new Error('No response content from OpenRouter API');
+        }
+
+        let parsed: any;
+        try {
+          const jsonText = extractJsonFromText(content);
+          parsed = JSON.parse(jsonText);
+        } catch (parseErr) {
+          console.warn('Failed to parse structured JSON from OpenRouter content, falling back to raw text', parseErr);
+          return {
+            correctedText: content,
+            corrections: [],
+            source: 'openrouter' as any
+          };
+        }
+
+        return {
+          correctedText: parsed.correctedText || content,
+          corrections: Array.isArray(parsed.corrections) ? parsed.corrections : [],
+          source: 'openrouter' as any
+        };
       }
-
-      // Validate response
-      if (!parsed.correctedText || typeof parsed.correctedText !== 'string') {
-        throw new Error('Invalid response structure - missing corrected text');
-      }
-
-      return {
-        correctedText: parsed.correctedText,
-        corrections: Array.isArray(parsed.corrections) ? parsed.corrections : [],
-        source: modelId as any
-      };
     } catch (err: any) {
       throw err;
     }
   };
 
-  // OpenRouter fallback function  
-  const tryOpenRouter = async () => {
-    if (!settings.openRouterApiKey) {
-      throw new Error('OpenRouter API key required for fallback');
-    }
 
-    console.log('Trying OpenRouter with Gemini image model...');
+  // Use the preferred API provider
+  const provider = apiStatus.hasGemini ? 'Gemini' : 'OpenRouter';
+  console.log(`Running AI Vision correction with ${provider}`);
+  console.log(`Input text to correct: ${corruptedText.substring(0, 200)}...`);
+  console.log(`OpenRouter settings:`, {
+    hasOpenRouterKey: !!settings.openRouterApiKey,
+    openRouterModel: settings.openRouterModel,
+    fallbackToOpenRouter: settings.fallbackToOpenRouter,
+    preferOpenRouter: settings.preferOpenRouterForProofreading
+  });
 
-    const openRouterPrompt = `You are an expert Amharic OCR correction system. Fix ALL OCR errors by reading the original image.
-
-CORRUPTED OCR TEXT:
-${corruptedText}
-
-TASK: Look at the image and provide the COMPLETE corrected Amharic text exactly as it appears.
-
-Fix common OCR errors:
-- Numbers mixed with Amharic: "457ፐ" → Read actual text from image
-- Latin letters: "M77", "NC" → Read actual Amharic from image  
-- Special characters: "#", "·" → Correct Amharic punctuation
-- Use proper Ethiopic punctuation: ፡ ፣ ። « »
-
-Return JSON:
-{
-  "correctedText": "Complete corrected Amharic text from image",
-  "corrections": [{"original": "error", "corrected": "fix", "reason": "why"}]
-}`;
-
-    const candidates = ['google/gemini-1.5-flash', 'google/gemini-1.5-flash-8b', 'google/gemini-1.5-pro-latest'];
-    let lastErr: any = null;
-    for (const modelId of candidates) {
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${settings.openRouterApiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': window.location.origin,
-          'X-Title': 'Amharic OCR Correction'
-        },
-        body: JSON.stringify({
-          model: modelId,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: openRouterPrompt },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: originalImageBase64,
-                    detail: 'high'
-                  }
-                }
-              ]
-            }
-          ],
-          temperature: 0.1,
-          max_tokens: 4000
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`OpenRouter error (${modelId}):`, errorText);
-        lastErr = new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
-        continue;
-      }
-
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
-      if (!content) { lastErr = new Error('No response from OpenRouter'); continue; }
-
-      try {
-        const jsonText = extractJsonFromText(content);
-        const parsed = JSON.parse(jsonText);
-        return {
-          correctedText: parsed.correctedText || content,
-          corrections: Array.isArray(parsed.corrections) ? parsed.corrections : [],
-          source: 'openrouter-gemini-2.5-pro' as any
-        };
-      } catch {
-        // If JSON parsing fails, use the raw content as corrected text
-        return {
-          correctedText: content,
-          corrections: [],
-          source: 'openrouter-gemini-2.5-pro' as any
-        };
-      }
-    }
-    if (lastErr) throw lastErr;
-    throw new Error('OpenRouter failed for all candidate models');
-  };
-
-  // Try Gemini direct first
   try {
-    console.log(`Running AI Vision correction with model: ${preferModel}`);
-    console.log(`Input text to correct: ${corruptedText.substring(0, 200)}...`);
-    const result = await runCorrection(preferModel);
-    console.log(`Success! Corrected text with ${preferModel}`);
-    return result;
-  } catch (e) {
-    console.error(`AI Vision correction failed with ${preferModel}:`, e);
-
-    // Try Flash next regardless of error type
-    try {
-      console.log('Trying Flash model next...');
-      const result = await runCorrection('gemini-1.5-flash');
-      console.log(`Flash success! Corrected text`);
-      return result;
-    } catch (e2) {
-      console.error('Flash model also failed:', e2);
-    }
-
-    // Then try OpenRouter if configured
-    if (settings.openRouterApiKey) {
+    if (useGemini) {
+      // Try Gemini direct first
       try {
-        const result = await tryOpenRouter();
+        const result = await runCorrection(preferModel);
+        console.log(`Success! Corrected text with ${preferModel}`);
+        return result;
+      } catch (e) {
+        console.error(`AI Vision correction failed with ${preferModel}:`, e);
+
+        // Try Flash fallback
+        try {
+          console.log('Trying Flash model next...');
+          const result = await runCorrection('gemini-1.5-flash');
+          console.log(`Flash success! Corrected text`);
+          return result;
+        } catch (e2) {
+          console.error('Flash model also failed:', e2);
+          throw e2;
+        }
+      }
+    } else {
+      // Use OpenRouter directly
+      try {
+        const userModel = decodeHtmlEntities(settings.openRouterModel) || settings.openRouterModel || 'google/gemini-2.0-flash-thinking-exp';
+        const result = await runCorrection(userModel || 'google/gemini-2.0-flash-thinking-exp');
         console.log('OpenRouter success! Corrected text');
         return result;
-      } catch (e3) {
-        console.error('OpenRouter also failed:', e3);
+      } catch (e) {
+        console.error('OpenRouter AI Vision failed:', e);
+        throw e;
       }
     }
+  } catch (e) {
+    console.error(`${provider} AI Vision correction failed completely:`, e);
 
     // Final fallback: intelligent text-based correction
     return await performIntelligentTextCorrection(corruptedText);

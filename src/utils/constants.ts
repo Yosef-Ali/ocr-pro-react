@@ -14,7 +14,7 @@ export const ETHIOPIC_RANGES = {
 export const AMHARIC_PUNCTUATION = {
   WORD_SEPARATOR: '፡',
   COMMA: '፣',
-  SEMICOLON: '፤', 
+  SEMICOLON: '፤',
   PERIOD: '።',
   COLON: '፦',
   QUESTION: '፧',
@@ -23,16 +23,18 @@ export const AMHARIC_PUNCTUATION = {
 
 // OCR confidence thresholds
 export const CONFIDENCE_THRESHOLDS = {
-  VERY_LOW: 0.3,
-  LOW: 0.6,
-  MEDIUM: 0.8,
-  HIGH: 0.95
+  VERY_LOW: 0.3,    // 30% - Very poor quality
+  LOW: 0.5,         // 50% - Poor quality
+  FAIR: 0.6,        // 60% - Fair quality
+  MEDIUM: 0.75,     // 75% - Good quality
+  HIGH: 0.85,       // 85% - Very good quality
+  EXCELLENT: 0.95   // 95% - Excellent quality
 } as const;
 
 // File type constants
 export const SUPPORTED_IMAGE_TYPES = {
   JPEG: 'image/jpeg',
-  JPG: 'image/jpg', 
+  JPG: 'image/jpg',
   PNG: 'image/png',
   WEBP: 'image/webp',
   GIF: 'image/gif',
@@ -44,7 +46,7 @@ export const SUPPORTED_IMAGE_TYPES = {
 // API model constants
 export const GEMINI_MODELS = {
   FLASH: 'gemini-1.5-flash',
-  PRO: 'gemini-1.5-pro', 
+  PRO: 'gemini-1.5-pro',
   PRO_2_5: 'gemini-2.5-pro'
 } as const;
 
@@ -69,7 +71,7 @@ export const OCR_ERROR_PATTERNS = {
 // Religious text common terms
 export const RELIGIOUS_TERMS = {
   VIRGIN_MARY: 'የመድኃኔዓለም እናት',
-  PRAYER_HOUSE: 'ጸሎት ቤት', 
+  PRAYER_HOUSE: 'ጸሎት ቤት',
   VATICAN: 'ቫቲካን',
   CHAPTER: 'ምዕራፍ',
   SECTION: 'ክፍል',
@@ -80,7 +82,7 @@ export const RELIGIOUS_TERMS = {
 // Export format types
 export const EXPORT_FORMATS = {
   TXT: 'txt',
-  DOCX: 'docx', 
+  DOCX: 'docx',
   PDF: 'pdf',
   JSON: 'json',
   CSV: 'csv',

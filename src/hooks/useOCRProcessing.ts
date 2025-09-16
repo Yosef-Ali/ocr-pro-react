@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useOCRStore } from '@/store/ocrStore';
+import { checkAvailableApiKeys } from '@/utils/validationUtils';
 import toast from 'react-hot-toast';
 
 export const useOCRProcessing = () => {
@@ -30,34 +31,52 @@ export const useOCRProcessing = () => {
         await new Promise(resolve => setTimeout(resolve, step.delay));
       }
 
-      let results;
+      let results: any[] = [];
 
-      // Choose OCR engine based on settings
+      // Check available API keys
+      const apiStatus = checkAvailableApiKeys(settings);
       const ocrEngine = settings.ocrEngine || 'auto';
-      
+
       if (ocrEngine === 'tesseract') {
         // Force Tesseract only
         const { processWithTesseract } = await import('@/services/ocr/tesseractService');
         results = await processWithTesseract(files, settings);
       } else if (ocrEngine === 'gemini') {
-        // Force Gemini only (requires API key)
-        if (!settings.apiKey) {
-          throw new Error('Gemini API key is required when Gemini engine is selected');
+        // Force Gemini only (requires Gemini API key specifically)
+        if (!apiStatus.hasGemini) {
+          toast('Gemini key missing. Using Tesseract instead.', { icon: '⚠️' });
+          const { processWithTesseract } = await import('@/services/ocr/tesseractService');
+          results = await processWithTesseract(files, settings);
+        } else {
+          const { processWithGemini } = await import('@/services/geminiService');
+          results = await processWithGemini(files, settings);
         }
-        const { processWithGemini } = await import('@/services/geminiService');
-        results = await processWithGemini(files, settings);
       } else {
-        // Auto mode: Use Gemini if API key exists, otherwise Tesseract
-        if (settings.apiKey) {
+        // Auto mode: Use any available API (Gemini or OpenRouter), otherwise Tesseract
+        if (apiStatus.hasAnyApiKey) {
           try {
-            const { processWithGemini } = await import('@/services/geminiService');
-            results = await processWithGemini(files, settings);
+            if (apiStatus.hasGemini) {
+              console.log('Using Gemini API for OCR processing');
+              const { processWithGemini } = await import('@/services/geminiService');
+              results = await processWithGemini(files, settings);
+            } else if (apiStatus.hasOpenRouter) {
+              console.log('Using OpenRouter API for OCR processing');
+              // For now, use Gemini service with OpenRouter fallback built-in
+              const { processWithGemini } = await import('@/services/geminiService');
+              results = await processWithGemini(files, settings);
+            } else {
+              // This shouldn't happen since we checked hasAnyApiKey, but just in case
+              throw new Error('No valid API key available');
+            }
           } catch (e) {
-            console.error('Gemini failed; falling back to Tesseract', e);
+            console.error('AI API failed; falling back to Tesseract', e);
+            toast.error(`${apiStatus.primaryProvider === 'gemini' ? 'Gemini' : 'OpenRouter'} API failed. Falling back to Tesseract OCR...`);
             const { processWithTesseract } = await import('@/services/ocr/tesseractService');
             results = await processWithTesseract(files, settings);
           }
         } else {
+          // No API key - use Tesseract
+          console.log('No API keys found. Using Tesseract OCR.');
           const { processWithTesseract } = await import('@/services/ocr/tesseractService');
           results = await processWithTesseract(files, settings);
         }

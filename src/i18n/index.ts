@@ -60,7 +60,7 @@ const resources = {
             'settings.openRouterApiKey': 'OpenRouter API Key',
             'settings.openRouterApiKeyPlaceholder': 'Enter your OpenRouter API key',
             'settings.openRouterModel': 'OpenRouter Model',
-            'settings.openRouterModelPlaceholder': 'e.g., google/gemini-1.5-flash, openai/gpt-4o-mini',
+            'settings.openRouterModelPlaceholder': 'e.g., google/gemini-2.0-flash-thinking-exp, openai/gpt-4o-mini',
             'settings.fallbackToOpenRouter': 'Use as fallback when Gemini fails/429',
             'settings.preferOpenRouterProofreading': 'Prefer OpenRouter for proofreading',
 
@@ -165,7 +165,7 @@ const resources = {
             'settings.openRouterApiKey': 'የ OpenRouter API ቁልፍ',
             'settings.openRouterApiKeyPlaceholder': 'የ OpenRouter API ቁልፍ አስገባ',
             'settings.openRouterModel': 'የ OpenRouter ሞዴል',
-            'settings.openRouterModelPlaceholder': 'ለምሳሌ፣ google/gemini-1.5-flash, openai/gpt-4o-mini',
+            'settings.openRouterModelPlaceholder': 'ለምሳሌ፣ google/gemini-2.0-flash-thinking-exp, openai/gpt-4o-mini',
             'settings.fallbackToOpenRouter': 'በ Gemini ላይ ችግር ሲኖር fallback ተጠቀም',
             'settings.preferOpenRouterProofreading': 'ለ proofreading OpenRouter ምረጥ',
 

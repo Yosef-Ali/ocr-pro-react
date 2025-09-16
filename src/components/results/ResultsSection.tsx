@@ -77,6 +77,7 @@ export const ResultsSection: React.FC = () => {
   };
 
   const activeSummary = currentProjectId ? projectSummaries[currentProjectId] : projectSummaries['all'];
+  const activeResults = currentProjectId ? results.filter(r => r.projectId === currentProjectId) : results;
 
   const getActiveProjectResults = () => (currentProjectId ? results.filter(r => r.projectId === currentProjectId) : results);
 
@@ -200,7 +201,7 @@ export const ResultsSection: React.FC = () => {
         </div>
       </div>
 
-      {activeSummary && (
+      {activeSummary && activeResults.length > 0 && (
         <div className="mb-5 border rounded-lg p-4 bg-purple-50/40">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold text-purple-800">Project Summary</h3>
@@ -212,6 +213,17 @@ export const ResultsSection: React.FC = () => {
               <div className="w-px h-4 bg-gray-200 mx-1" aria-hidden="true" />
               <button onClick={exportBookDOCX} aria-label="Export project as DOCX book" className="px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">Book DOCX</button>
               <button onClick={exportBookPDF} aria-label="Export project as PDF book" className="px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">Book PDF</button>
+              <button
+                onClick={() => {
+                  const pid = currentProjectId || 'all';
+                  useOCRStore.getState().clearProjectSummary(pid);
+                  toast.success('Project summary cleared');
+                }}
+                aria-label="Clear project summary"
+                className="ml-2 px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-500"
+              >
+                Clear Summary
+              </button>
             </div>
           </div>
           {activeSummary.toc?.length ? (

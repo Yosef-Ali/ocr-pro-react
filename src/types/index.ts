@@ -28,7 +28,7 @@ export interface OCRResult {
     wordCount?: number;
     characterCount?: number;
     layoutMarkdown?: string;
-    engine?: 'tesseract' | 'gemini';
+    engine?: 'tesseract' | 'gemini' | 'openrouter';
     proofreadingSuggestions?: ProofreadingSuggestion[];
     llmOcrText?: string;
     llmOcrLayout?: string;

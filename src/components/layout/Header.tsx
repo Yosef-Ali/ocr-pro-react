@@ -1,12 +1,10 @@
 import React from 'react';
-import { FileText, Settings, HelpCircle, Cpu, Brain, Zap, Globe } from 'lucide-react';
+import { FileText, Settings, HelpCircle } from 'lucide-react';
 import { useOCRStore } from '@/store/ocrStore';
 import { motion } from 'framer-motion';
-import { useTranslation } from 'react-i18next';
 
 export const Header: React.FC = () => {
-  const { toggleSettings, toggleHelp, projects, currentProjectId, selectProject, createProject, settings, updateSettings } = useOCRStore();
-  const { i18n } = useTranslation();
+  const { toggleSettings, toggleHelp, projects, currentProjectId, selectProject, createProject } = useOCRStore();
 
   React.useEffect(() => {
     if (projects.length === 0) return;
@@ -23,25 +21,6 @@ export const Header: React.FC = () => {
     }
   }, [projects, currentProjectId, selectProject]);
 
-  const cycleOCREngine = () => {
-    const current = settings.ocrEngine || 'auto';
-    const next = current === 'auto' ? 'tesseract' : current === 'tesseract' ? 'gemini' : 'auto';
-    updateSettings({ ocrEngine: next });
-  };
-
-  const getEngineInfo = () => {
-    const engine = settings.ocrEngine || 'auto';
-    if (engine === 'tesseract') {
-      return { icon: Cpu, name: 'Tesseract', color: 'text-green-300' };
-    } else if (engine === 'gemini') {
-      return { icon: Brain, name: 'Gemini', color: 'text-purple-300' };
-    } else {
-      return { icon: Zap, name: 'Auto', color: 'text-yellow-300' };
-    }
-  };
-
-  const engineInfo = getEngineInfo();
-  const EngineIcon = engineInfo.icon;
 
   return (
     <motion.header
@@ -61,34 +40,11 @@ export const Header: React.FC = () => {
             </motion.div>
             <div>
               <h1 className="text-2xl font-bold">OCR Pro</h1>
-              <p className="text-blue-100 text-sm">Powered by Gemini AI & Tesseract</p>
+              <p className="text-blue-100 text-sm">Powered by OCR engines</p>
             </div>
           </div>
 
           <div className="flex items-center space-x-4">
-            {/* Language Switcher */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => i18n.changeLanguage(i18n.language === 'en' ? 'am' : 'en')}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 backdrop-blur hover:bg-white/20 transition-all text-white"
-              title={`Switch to ${i18n.language === 'en' ? 'Amharic' : 'English'}`}
-            >
-              <Globe className="w-4 h-4" />
-              <span className="text-sm font-medium">{i18n.language === 'en' ? 'አማ' : 'EN'}</span>
-            </motion.button>
-            {/* OCR Engine Toggle */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={cycleOCREngine}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 backdrop-blur hover:bg-white/20 transition-all ${engineInfo.color}`}
-              title={`OCR Engine: ${engineInfo.name} (click to change)`}
-            >
-              <EngineIcon className="w-5 h-5" />
-              <span className="text-sm font-medium">{engineInfo.name}</span>
-            </motion.button>
-
             <div className="flex items-center gap-2 bg-white/10 rounded-lg px-2 py-1">
               <select
                 value={currentProjectId ?? ''}
@@ -96,8 +52,10 @@ export const Header: React.FC = () => {
                 className="bg-transparent text-white text-sm outline-none"
               >
                 <option value="" className="text-black">All Projects</option>
-                {projects.map(p => (
-                  <option key={p.id} value={p.id} className="text-black">{p.name}</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id} className="text-black">
+                    {p.name}
+                  </option>
                 ))}
               </select>
               <button
