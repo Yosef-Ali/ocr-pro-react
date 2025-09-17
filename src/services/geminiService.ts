@@ -8,25 +8,26 @@ export { summarizeProject } from './export/projectSummaryService';
 export { proofreadAmharic, proofreadAmharicWithMeta } from './analysis/proofreadingService';
 export { analyzeWordsWithConfidence } from './analysis/wordAnalysisService';
 export { correctTextWithAIVision } from './analysis/aiVisionService';
+export { getQuickTips } from './analysis/quickTipsService';
 
 // Re-export utilities for backward compatibility
-export { 
-  extractJsonFromText, 
-  stripFences, 
-  stripPageNumbers, 
-  enforceEthiopicPunctuationAndQuotes, 
-  normalizeLangCode, 
-  clamp01, 
-  containsEthiopic 
+export {
+  extractJsonFromText,
+  stripFences,
+  stripPageNumbers,
+  enforceEthiopicPunctuationAndQuotes,
+  normalizeLangCode,
+  clamp01,
+  containsEthiopic
 } from '../utils/textUtils';
 
-export { 
-  fileToBase64, 
-  toInlineImagePartFromDataUrl, 
-  ensureNonTiffImage 
+export {
+  fileToBase64,
+  toInlineImagePartFromDataUrl,
+  ensureNonTiffImage
 } from '../utils/imageUtils';
 
-export { 
-  validateOCRPayload, 
-  validateSummaryPayload 
+export {
+  validateOCRPayload,
+  validateSummaryPayload
 } from '../utils/validationUtils';

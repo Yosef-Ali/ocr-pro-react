@@ -8,6 +8,7 @@ import { useExport } from '@/hooks/useExport';
 import toast from 'react-hot-toast';
 import { exportSummaryTXT as exportSummaryTXTService, exportSummaryDOCX as exportSummaryDOCXService, exportSummaryJSON as exportSummaryJSONService, copyTocMarkdown as copyTocMarkdownService, exportBookDOCX as exportBookDOCXService, exportBookPDF as exportBookPDFService } from '@/services/export/projectExportService';
 import { lazy, Suspense } from 'react';
+import { processWithTesseractOnly } from '@/services/ocr/ocrProcessingService';
 
 const ResultTabs = lazy(() => import('./ResultTabs').then(module => ({ default: module.ResultTabs })));
 
@@ -124,11 +125,44 @@ export const ResultsSection: React.FC = () => {
     }
   };
 
+  const rerunAllLayoutOnly = async () => {
+    const { files, results, settings, startProcessing, updateProgress, completeProcessing } = useOCRStore.getState();
+    const activeIds = currentProjectId ? new Set(results.filter(r => r.projectId === currentProjectId).map(r => r.fileId)) : null;
+    const targetFiles = activeIds ? files.filter(f => activeIds.has(f.id)) : files;
+    if (targetFiles.length === 0) { toast('No files to re-run'); return; }
+    startProcessing();
+    try {
+      const out = await processWithTesseractOnly(targetFiles, settings, {
+        onProgress: (info) => {
+          const p = Math.round(((info.index + info.progress) / (info.total || 1)) * 100);
+          // Map stages to existing ProcessingStatus values
+          const status: 'preparing' | 'analyzing' | 'extracting' | 'formatting' | 'completed' | 'error' =
+            info.stage === 'preparing' ? 'preparing' : 'analyzing';
+          updateProgress(p, status);
+        }
+      });
+      // Merge new results back by fileId, preserving projectId and original snapshot
+      const merged = results.map(r => {
+        const replacement = out.find(o => o.fileId === r.fileId);
+        return replacement ? { ...replacement, projectId: r.projectId, metadata: { ...(replacement.metadata as any), originalOCRText: (r as any).metadata?.originalOCRText || replacement.layoutPreserved || '' } } : r;
+      });
+      // Include any new results for files that previously had none
+      for (const o of out) {
+        if (!merged.find(m => m.fileId === o.fileId)) merged.push(o);
+      }
+      completeProcessing(merged);
+      toast.success('Re-ran all with Tesseract (layout only)');
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to re-run all (layout only)');
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
-      className="bg-white rounded-xl shadow-lg p-6"
+      className="bg-white rounded-xl shadow-lg p-6 relative overflow-visible"
     >
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold flex items-center">
@@ -142,6 +176,23 @@ export const ResultsSection: React.FC = () => {
         </h2>
 
         <div className="flex items-center space-x-3">
+          {settings.endUserMode && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={async () => {
+                try {
+                  await rerunAllLayoutOnly();
+                } catch { }
+              }}
+              title="Re-run all (layout only)"
+              aria-label="Re-run all with Tesseract only"
+              className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+            >
+              <Download className="w-4 h-4 rotate-180" />
+            </motion.button>
+          )}
+
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -201,11 +252,11 @@ export const ResultsSection: React.FC = () => {
         </div>
       </div>
 
-      {activeSummary && activeResults.length > 0 && (
+      {!settings.endUserMode && activeSummary && activeResults.length > 0 && (
         <div className="mb-5 border rounded-lg p-4 bg-purple-50/40">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold text-purple-800">Project Summary</h3>
-            <div className="flex items-center gap-2" role="group" aria-label="Export options">
+            <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Export options">
               <button onClick={exportSummaryTXT} aria-label="Export project summary as TXT file" className="px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">Export TXT</button>
               <button onClick={exportSummaryDOCX} aria-label="Export project summary as DOCX file" className="px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">Export DOCX</button>
               <button onClick={exportSummaryJSON} aria-label="Export project summary as JSON file" className="px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">Export JSON</button>
@@ -213,6 +264,8 @@ export const ResultsSection: React.FC = () => {
               <div className="w-px h-4 bg-gray-200 mx-1" aria-hidden="true" />
               <button onClick={exportBookDOCX} aria-label="Export project as DOCX book" className="px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">Book DOCX</button>
               <button onClick={exportBookPDF} aria-label="Export project as PDF book" className="px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">Book PDF</button>
+              <div className="w-px h-4 bg-gray-200 mx-1" aria-hidden="true" />
+              <button onClick={rerunAllLayoutOnly} aria-label="Re-run all with Tesseract only (preserve layout)" className="px-2 py-1 text-xs bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500">Re-run All (Layout only)</button>
               <button
                 onClick={() => {
                   const pid = currentProjectId || 'all';

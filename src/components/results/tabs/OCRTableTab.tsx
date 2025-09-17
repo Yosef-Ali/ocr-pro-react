@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useOCRStore } from '@/store/ocrStore';
 import { useExport } from '@/hooks/useExport';
 import { MoreHorizontal } from 'lucide-react';
@@ -209,7 +210,7 @@ export const OCRTableTab: React.FC = () => {
     };
 
     return (
-        <div className="overflow-auto">
+        <div className="overflow-x-auto overflow-y-visible">
             <div className="flex items-center justify-between mb-3">
                 <div className="text-sm text-gray-600">
                     {countSelected > 0 ? `${countSelected} selected` : `${results.length} items`}
@@ -388,6 +389,44 @@ const MenuButton: React.FC<{ onExportTxt: () => void; onExportPdf: () => void; o
         }
     };
 
+    const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    // Position the menu relative to the trigger using fixed coordinates
+    const computePosition = (menuWidth = 192, menuHeight?: number) => {
+        const trigger = triggerRef.current;
+        if (!trigger) return;
+        const rect = trigger.getBoundingClientRect();
+        const scrollX = window.scrollX || window.pageXOffset;
+        const scrollY = window.scrollY || window.pageYOffset;
+        let left = rect.right + scrollX - menuWidth; // right aligned
+        left = Math.max(8, Math.min(left, (window.innerWidth - menuWidth - 8)));
+        let top = rect.bottom + scrollY + 6; // below trigger
+        if (menuHeight && top + menuHeight > scrollY + window.innerHeight - 8) {
+            top = rect.top + scrollY - (menuHeight + 6); // flip above if not enough space
+        }
+        setPos({ top, left });
+    };
+
+    useEffect(() => {
+        if (!open) return;
+        // initial guess with known width (w-48 => 192px)
+        computePosition(192);
+        const handle = () => {
+            const h = menuRef.current?.offsetHeight;
+            computePosition(192, h);
+        };
+        // adjust after render and on resize/scroll
+        const raf = requestAnimationFrame(handle);
+        window.addEventListener('resize', handle);
+        window.addEventListener('scroll', handle, true);
+        return () => {
+            cancelAnimationFrame(raf);
+            window.removeEventListener('resize', handle);
+            window.removeEventListener('scroll', handle, true);
+        };
+    }, [open]);
+
     return (
         <div className="relative" ref={ref}>
             <button
@@ -399,9 +438,11 @@ const MenuButton: React.FC<{ onExportTxt: () => void; onExportPdf: () => void; o
             >
                 <MoreHorizontal className="w-4 h-4" />
             </button>
-            {open && (
+            {open && pos && createPortal(
                 <div
-                    className="absolute right-0 mt-1 w-48 bg-white border rounded shadow-md z-10"
+                    ref={menuRef}
+                    className="fixed w-48 bg-white border rounded shadow-xl z-[9999]"
+                    style={{ top: pos.top, left: pos.left }}
                     role="menu"
                     onKeyDown={onMenuKeyDown}
                 >
@@ -412,8 +453,8 @@ const MenuButton: React.FC<{ onExportTxt: () => void; onExportPdf: () => void; o
                     <button ref={(el) => (itemsRef.current[3] = el)} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" onClick={() => { setOpen(false); onClearProject(); }}>Clear Project</button>
                     <div className="border-t my-1" />
                     <button ref={(el) => (itemsRef.current[4] = el)} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-red-50 text-sm text-red-600" onClick={() => { setOpen(false); onDelete(); }}>Delete</button>
-                </div>
-            )}
+                </div>, document.body)
+            }
         </div>
     );
 };
@@ -484,11 +525,45 @@ const BulkActions: React.FC<{ disabled: boolean; onTxt: () => void; onPdf: () =>
         }
     };
 
+    const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const computePosition = (menuWidth = 256, menuHeight?: number) => {
+        const trigger = triggerRef.current;
+        if (!trigger) return;
+        const rect = trigger.getBoundingClientRect();
+        const scrollX = window.scrollX || window.pageXOffset;
+        const scrollY = window.scrollY || window.pageYOffset;
+        let left = rect.right + scrollX - menuWidth;
+        left = Math.max(8, Math.min(left, (window.innerWidth - menuWidth - 8)));
+        let top = rect.bottom + scrollY + 6;
+        if (menuHeight && top + menuHeight > scrollY + window.innerHeight - 8) {
+            top = rect.top + scrollY - (menuHeight + 6);
+        }
+        setPos({ top, left });
+    };
+
+    useEffect(() => {
+        if (!open) return;
+        computePosition(256);
+        const handle = () => {
+            const h = menuRef.current?.offsetHeight;
+            computePosition(256, h);
+        };
+        const raf = requestAnimationFrame(handle);
+        window.addEventListener('resize', handle);
+        window.addEventListener('scroll', handle, true);
+        return () => {
+            cancelAnimationFrame(raf);
+            window.removeEventListener('resize', handle);
+            window.removeEventListener('scroll', handle, true);
+        };
+    }, [open]);
+
     return (
         <div className="relative inline-block text-left" ref={ref}>
             <button disabled={disabled} onClick={() => setOpen(o => !o)} className="px-3 py-1.5 rounded bg-gray-100 hover:bg-gray-200 disabled:opacity-50" aria-haspopup="menu" aria-expanded={open} ref={triggerRef}>Bulk Actions</button>
-            {open && (
-                <div className="absolute right-0 mt-1 w-64 bg-white border rounded shadow-md z-10" role="menu" onKeyDown={onMenuKeyDown}>
+            {open && pos && createPortal(
+                <div ref={menuRef} className="fixed w-64 bg-white border rounded shadow-xl z-[9999]" style={{ top: pos.top, left: pos.left }} role="menu" onKeyDown={onMenuKeyDown}>
                     <button ref={(el) => (itemsRef.current[0] = el)} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" onClick={() => { setOpen(false); onTxt(); }}>Export TXT (ZIP)</button>
                     <button ref={(el) => (itemsRef.current[1] = el)} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" onClick={() => { setOpen(false); onPdf(); }}>Export PDF (ZIP)</button>
                     <button ref={(el) => (itemsRef.current[2] = el)} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" onClick={() => { setOpen(false); onDocx(); }}>Export DOCX (ZIP)</button>
@@ -502,8 +577,8 @@ const BulkActions: React.FC<{ disabled: boolean; onTxt: () => void; onPdf: () =>
                     <div className="border-t my-1" />
                     <button ref={(el) => (itemsRef.current[9] = el)} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" onClick={() => { setOpen(false); onAssignCurrent(); }}>Assign to Current Project</button>
                     <button ref={(el) => (itemsRef.current[10] = el)} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-red-50 text-sm text-red-600" onClick={() => { setOpen(false); onClearProject(); }}>Clear Project</button>
-                </div>
-            )}
+                </div>, document.body)
+            }
         </div>
     );
 };
