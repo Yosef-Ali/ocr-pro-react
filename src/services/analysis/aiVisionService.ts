@@ -110,13 +110,44 @@ READ THE IMAGE CAREFULLY and provide the COMPLETE corrected text!`;
         const jsonText = extractJsonFromText(responseText);
         parsed = JSON.parse(jsonText);
       } catch (err) {
+        console.warn('Initial JSON parsing failed, trying strict retry...', err);
+        
+        // Try to extract from raw response first
+        try {
+          const correctedTextMatch = responseText.match(/"correctedText"\s*:\s*"([^"]+)"/);
+          if (correctedTextMatch && correctedTextMatch[1]) {
+            return {
+              correctedText: correctedTextMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"'),
+              corrections: [],
+              source: modelId as any,
+            };
+          }
+        } catch (extractError) {
+          console.warn('Failed to extract from raw response, trying strict retry...');
+        }
+        
+        // Fallback to strict retry
         const strictPrompt = `Return ONLY valid JSON with exactly these fields and nothing else (no markdown):\n{\n  "correctedText": "string",\n  "corrections": [{"original": "string", "corrected": "string", "reason": "string"}]\n}`;
         const strictModel = getModel(modelId);
         if (!strictModel) throw new Error('Failed to initialize Gemini model for retry');
         const strictRes = await strictModel.generateContent([strictPrompt, imagePart]);
         const strictText = (await strictRes.response).text();
-        const strictJson = extractJsonFromText(strictText);
-        parsed = JSON.parse(strictJson);
+        
+        try {
+          const strictJson = extractJsonFromText(strictText);
+          parsed = JSON.parse(strictJson);
+        } catch (strictErr) {
+          // Final fallback: try to extract from strict response
+          const strictMatch = strictText.match(/"correctedText"\s*:\s*"([^"]+)"/);
+          if (strictMatch && strictMatch[1]) {
+            return {
+              correctedText: strictMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"'),
+              corrections: [],
+              source: modelId as any,
+            };
+          }
+          throw strictErr;
+        }
       }
 
       if (!parsed.correctedText || typeof parsed.correctedText !== 'string') {
@@ -186,15 +217,57 @@ READ THE IMAGE CAREFULLY and provide the COMPLETE corrected text!`;
     try {
       const jsonText = extractJsonFromText(content);
       const parsed = JSON.parse(jsonText);
+      
+      // Ensure we have valid correctedText
+      if (!parsed.correctedText || typeof parsed.correctedText !== 'string') {
+        throw new Error('Invalid response structure - missing or invalid correctedText field');
+      }
+      
       return {
-        correctedText: parsed.correctedText || content,
+        correctedText: parsed.correctedText,
         corrections: Array.isArray(parsed.corrections) ? parsed.corrections : [],
         source: 'openrouter' as any,
       };
     } catch (parseError) {
-      console.warn('Failed to parse structured JSON from OpenRouter content, falling back to raw text', parseError);
+      console.warn('Failed to parse structured JSON from OpenRouter content', parseError);
+      
+      // Try to extract correctedText from the raw content if it looks like JSON
+      let fallbackText = content;
+      try {
+        // Look for "correctedText": "..." pattern in the raw content (handle multiline)
+        const correctedTextMatch = content.match(/"correctedText"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
+        if (correctedTextMatch && correctedTextMatch[1]) {
+          fallbackText = correctedTextMatch[1]
+            .replace(/\\n/g, '\n')
+            .replace(/\\"/g, '"')
+            .replace(/\\t/g, '\t')
+            .replace(/\\r/g, '\r');
+        } else {
+          // If no correctedText field found, just clean up the content
+          fallbackText = content
+            .replace(/^\s*\{[\s\S]*?"correctedText"\s*:\s*"/i, '') // Remove JSON prefix
+            .replace(/",?\s*[\s\S]*\}\s*$/i, '') // Remove JSON suffix
+            .replace(/\\n/g, '\n') // Unescape newlines
+            .replace(/\\"/g, '"') // Unescape quotes
+            .replace(/\\t/g, '\t') // Unescape tabs
+            .replace(/\\r/g, '\r') // Unescape carriage returns
+            .trim();
+            
+          // If we still have JSON-like structure, try to extract just the text content
+          if (fallbackText.includes('"correctedText"') || fallbackText.startsWith('{')) {
+            // This might be malformed JSON, try to get just the Amharic text
+            const amharicMatch = fallbackText.match(/[\u1200-\u137F][\u1200-\u137F\s\u1361-\u1368\u1369-\u137C]*/g);
+            if (amharicMatch && amharicMatch.length > 0) {
+              fallbackText = amharicMatch.join(' ').trim();
+            }
+          }
+        }
+      } catch (extractError) {
+        console.warn('Failed to extract correctedText from raw content, using original content');
+      }
+      
       return {
-        correctedText: content,
+        correctedText: fallbackText,
         corrections: [],
         source: 'openrouter' as any,
       };
@@ -302,7 +375,7 @@ async function performIntelligentTextCorrection(text: string) {
     // Remove numbers mixed with Amharic
     { pattern: /([አ-ፚ]+)[0-9]+([አ-ፚ]*)/g, replace: '$1$2', reason: 'ቁጥሮች ከአማርኛ ቃላት ተወግደዋል' },
     // Remove special characters
-    { pattern: /([አ-ፚ]+)[#;:\/\\|`~^*_=+]+([አ-ፚ]*)/g, replace: '$1 $2', reason: 'ልዩ ምልክቶች ተወግደዋል' },
+    { pattern: /([አ-ፚ]+)[#;:/\\|`~^*_=+]+([አ-ፚ]*)/g, replace: '$1 $2', reason: 'ልዩ ምልክቶች ተወግደዋል' },
     // Fix punctuation
     { pattern: /([አ-ፚ]+):/g, replace: '$1፡', reason: 'የኢትዮጵያዊ ሥርዓተ ነጥብ ተስተካክሏል' },
     { pattern: /([አ-ፚ]+),/g, replace: '$1፣', reason: 'የኢትዮጵያዊ ሥርዓተ ነጥብ ተስተካክሏል' }
