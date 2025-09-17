@@ -203,16 +203,18 @@ export const ResultsSection: React.FC = () => {
             </motion.button>
           )}
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleSummarizeProject}
-            title="Summarize Project"
-            aria-label="Summarize Project"
-            className="p-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
-          >
-            <BookOpen className="w-4 h-4" />
-          </motion.button>
+          {!settings.endUserMode && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleSummarizeProject}
+              title="Summarize Project"
+              aria-label="Summarize Project"
+              className="p-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+            >
+              <BookOpen className="w-4 h-4" />
+            </motion.button>
+          )}
 
           {/* AI proofreading button removed from header */}
 

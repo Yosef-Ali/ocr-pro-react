@@ -4,38 +4,9 @@ import toast from 'react-hot-toast';
 
 import { useOCRStore } from '@/store/ocrStore';
 import { ProjectSummary, OCRResult } from '@/types';
-import { createBookPdfBlob } from '@/services/export/projectExportService';
+import { buildFallbackSummary, createBookPdfBlob } from '@/services/export/projectExportService';
 
 const MIN_RESULTS_FOR_BOOK = 1;
-
-const deriveResultTitle = (result: OCRResult, index: number) => {
-  const metadataTitle = (result as any).metadata?.title as string | undefined;
-  if (metadataTitle && metadataTitle.trim()) return metadataTitle.trim();
-  if (result.documentType && result.documentType !== 'Unknown') return result.documentType;
-  if ((result as any).name) return String((result as any).name);
-  return `Document ${index + 1}`;
-};
-
-const buildFallbackSummary = (projectId: string, results: OCRResult[]): ProjectSummary => {
-  const generatedAt = Date.now();
-  const toc = results.map((res, idx) => ({
-    title: deriveResultTitle(res, idx),
-    level: 1,
-    page: idx + 1,
-  }));
-  const chapters = results.map((res, idx) => ({
-    title: toc[idx].title,
-    content: (res.layoutPreserved || res.extractedText || '').trim(),
-  }));
-  return {
-    projectId,
-    generatedAt,
-    toc,
-    summary: '',
-    chapters,
-    proofreadingNotes: [],
-  };
-};
 
 interface BookPreviewProps {
   result: OCRResult;

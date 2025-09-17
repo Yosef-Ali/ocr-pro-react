@@ -4,6 +4,38 @@
 import { ProjectSummary, Settings, OCRResult } from '@/types';
 import { downloadBlob } from '@/utils/validationUtils';
 
+export const DEFAULT_PROJECT_ID = 'all';
+
+export function buildFallbackSummary(projectId: string, results: OCRResult[]): ProjectSummary {
+    const generatedAt = Date.now();
+    const toc = results.map((res, idx) => ({
+        title: deriveResultTitle(res, idx),
+        level: 1,
+        page: idx + 1,
+    }));
+    const chapters = results.map((res, idx) => ({
+        title: toc[idx].title,
+        content: (res.layoutPreserved || res.extractedText || '').trim(),
+    }));
+    return {
+        projectId,
+        generatedAt,
+        toc,
+        summary: '',
+        chapters,
+        proofreadingNotes: [],
+    };
+}
+
+function deriveResultTitle(result: OCRResult, index: number): string {
+    const meta = (result as any).metadata || {};
+    const metaTitle = typeof meta.title === 'string' ? meta.title.trim() : '';
+    if (metaTitle) return metaTitle;
+    if (result.documentType && result.documentType !== 'Unknown') return result.documentType;
+    if ((result as any).name) return String((result as any).name);
+    return `Document ${index + 1}`;
+}
+
 export async function exportSummaryTXT(summary: ProjectSummary): Promise<void> {
     const lines: string[] = [];
     lines.push('Project Summary');
@@ -106,11 +138,18 @@ export async function copyTocMarkdown(summary: ProjectSummary): Promise<void> {
     await navigator.clipboard.writeText(lines.join('\n'));
 }
 
-export async function exportBookDOCX(summary: ProjectSummary, settings: Settings, projectResults: OCRResult[]): Promise<void> {
+const resolveProjectId = (summary: ProjectSummary | undefined, results: OCRResult[]): string => {
+    if (summary?.projectId) return summary.projectId;
+    const withProject = results.find((r) => !!r.projectId);
+    return withProject?.projectId || DEFAULT_PROJECT_ID;
+};
+
+export async function exportBookDOCX(summary: ProjectSummary | undefined, settings: Settings, projectResults: OCRResult[]): Promise<void> {
     const { Document, Packer, Paragraph, HeadingLevel, TableOfContents } = await import('docx' as any);
+    const effectiveSummary = summary ?? buildFallbackSummary(resolveProjectId(summary, projectResults), projectResults);
     const sectionsDoc: any[] = [];
     const mainChildren: any[] = [];
-    const title = `Project Book — ${summary.projectId}`;
+    const title = `Project Book — ${effectiveSummary.projectId}`;
 
     if (settings.bookIncludeCover) {
         const coverChildren: any[] = [];
@@ -129,9 +168,9 @@ export async function exportBookDOCX(summary: ProjectSummary, settings: Settings
         }
     }
 
-    if (summary.chapters?.length) {
-        for (let i = 0; i < summary.chapters.length; i++) {
-            const ch = summary.chapters[i];
+    if (effectiveSummary.chapters?.length) {
+        for (let i = 0; i < effectiveSummary.chapters.length; i++) {
+            const ch = effectiveSummary.chapters[i];
             mainChildren.push(new Paragraph({ text: `${i + 1}. ${ch.title}`, heading: HeadingLevel.HEADING_2 }));
             for (const line of (ch.content || '').split('\n')) mainChildren.push(new Paragraph(line));
         }
@@ -152,7 +191,7 @@ export async function exportBookDOCX(summary: ProjectSummary, settings: Settings
     const doc = new Document({ sections: sectionsDoc });
     const blob = await Packer.toBlob(doc);
     const { saveAs } = await import('file-saver');
-    saveAs(blob, `project-book-${summary.projectId}-${Date.now()}.docx`);
+    saveAs(blob, `project-book-${effectiveSummary.projectId}-${Date.now()}.docx`);
 }
 
 export async function createBookPdfBlob(summary: ProjectSummary, settings: Settings, projectResults: OCRResult[]): Promise<Blob | null> {
@@ -242,11 +281,12 @@ export async function createBookPdfBlob(summary: ProjectSummary, settings: Setti
     return doc.output('blob');
 }
 
-export async function exportBookPDF(summary: ProjectSummary, settings: Settings, projectResults: OCRResult[]): Promise<void> {
-    const blob = await createBookPdfBlob(summary, settings, projectResults);
+export async function exportBookPDF(summary: ProjectSummary | undefined, settings: Settings, projectResults: OCRResult[]): Promise<void> {
+    const effectiveSummary = summary ?? buildFallbackSummary(resolveProjectId(summary, projectResults), projectResults);
+    const blob = await createBookPdfBlob(effectiveSummary, settings, projectResults);
     if (!blob) return;
     const { saveAs } = await import('file-saver');
-    saveAs(blob, `project-book-${summary.projectId}-${Date.now()}.pdf`);
+    saveAs(blob, `project-book-${effectiveSummary.projectId}-${Date.now()}.pdf`);
 }
 
 export async function exportOriginalsPDF(results: OCRResult[]): Promise<void> {
