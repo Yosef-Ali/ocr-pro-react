@@ -46,6 +46,8 @@ export function toInlineImagePartFromDataUrl(dataUrl: string): { inlineData: { d
   return { inlineData: { data: base64, mimeType: mimeType === 'image/jpg' ? 'image/jpeg' : mimeType } };
 }
 
+const TIFF_PREVIEW_SCALE = 0.25;
+
 /**
  * Converts a TIFF data URL to a PNG data URL if necessary.
  */
@@ -66,7 +68,7 @@ export async function ensureNonTiffImage(dataUrl: string): Promise<string> {
     const rgba = UTIF.toRGBA8(first);
     const { width, height } = first as any;
     if (!rgba || !width || !height) throw new Error('Failed to decode TIFF RGBA');
-    const pngDataUrl = rgbaToPngDataUrl(rgba, width, height);
+    const pngDataUrl = rgbaToPngDataUrl(rgba, width, height, TIFF_PREVIEW_SCALE);
     return pngDataUrl;
   } catch (e) {
     console.error('TIFF conversion failed:', e);
@@ -96,14 +98,31 @@ function base64DataUrlToUint8Array(dataUrl: string): Uint8Array {
 /**
  * Converts RGBA pixel data to a PNG data URL using a canvas.
  */
-function rgbaToPngDataUrl(rgba: Uint8Array, width: number, height: number): string {
+function rgbaToPngDataUrl(rgba: Uint8Array, width: number, height: number, scale = 1): string {
   if (typeof document === 'undefined') throw new Error('Canvas not available in this environment');
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas 2D context unavailable');
+
+  const createCanvas = (w: number, h: number) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    return canvas;
+  };
+
+  const sourceCanvas = createCanvas(width, height);
+  const sourceCtx = sourceCanvas.getContext('2d');
+  if (!sourceCtx) throw new Error('Canvas 2D context unavailable');
   const imgData = new ImageData(new Uint8ClampedArray(rgba), width, height);
-  ctx.putImageData(imgData, 0, 0);
-  return canvas.toDataURL('image/png');
+  sourceCtx.putImageData(imgData, 0, 0);
+
+  if (scale !== 1) {
+    const targetWidth = Math.max(1, Math.round(width * scale));
+    const targetHeight = Math.max(1, Math.round(height * scale));
+    const targetCanvas = createCanvas(targetWidth, targetHeight);
+    const targetCtx = targetCanvas.getContext('2d');
+    if (!targetCtx) throw new Error('Canvas 2D context unavailable');
+    targetCtx.drawImage(sourceCanvas, 0, 0, targetWidth, targetHeight);
+    return targetCanvas.toDataURL('image/png');
+  }
+
+  return sourceCanvas.toDataURL('image/png');
 }
