@@ -25,6 +25,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
   const [loading, setLoading] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   const scopedProjectId = currentProjectId || result.projectId || 'all';
 
@@ -51,7 +52,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
 
     if (!settings.apiKey) {
       toast('Using layout-preserved text to build preview (no Gemini key found).');
-      setProjectSummary(fallback);
+      await setProjectSummary(fallback);
       return fallback;
     }
 
@@ -62,13 +63,13 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
         proofreadPageNumbers: true,
         projectId: scopedProjectId,
       });
-      setProjectSummary(summary);
+      await setProjectSummary(summary);
       toast.success('Summary ready. Generating preview…', { id: 'book-summary' });
       return summary;
     } catch (err) {
       console.error('Failed to summarize project for preview', err);
       toast('Summarization failed — using layout-preserved text instead.');
-      setProjectSummary(fallback);
+      await setProjectSummary(fallback);
       return fallback;
     }
   }, [activeSummary, projectResults, settings, scopedProjectId, setProjectSummary]);
@@ -100,7 +101,8 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
       toast.success('Book preview ready');
     } catch (err) {
       console.error('Failed to generate preview', err);
-      setError('Failed to generate the preview. Try again or check Settings.');
+      const msg = (err as any)?.message || 'Unknown error';
+      setError(`Failed to generate the preview. Try again or check Settings. (${msg})`);
     } finally {
       setLoading(false);
     }
@@ -108,7 +110,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
 
   useEffect(() => {
     if (!pdfUrl && projectResults.length >= MIN_RESULTS_FOR_BOOK && activeSummary && !isProcessing) {
-      generatePreview().catch(() => {});
+      generatePreview().catch(() => { });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSummary, projectResults.length, isProcessing]);
@@ -117,7 +119,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+      <section className="rounded-xl border border-gray-200 bg-gray-50 p-4 sticky top-0 z-10">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-blue-600" />
@@ -142,7 +144,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
               type="button"
               onClick={() => {
                 setPdfUrl(null);
-                generatePreview().catch(() => {});
+                generatePreview().catch(() => { });
               }}
               disabled={loading || !pdfUrl}
               className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
@@ -168,13 +170,46 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
         </p>
       )}
 
+      {loading && !pdfUrl && (
+        <div className="rounded-xl border border-gray-200 p-4">
+          <div className="h-6 w-40 bg-gray-200/80 rounded mb-3 animate-pulse" />
+          <div className="h-[60vh] w-full bg-gray-100 animate-pulse rounded" />
+        </div>
+      )}
+
       {pdfUrl ? (
         <div className="overflow-hidden rounded-xl border border-gray-200">
-          <iframe
-            title="Book Preview"
-            src={pdfUrl}
-            className="h-[70vh] w-full bg-white"
-          />
+          <div className="flex items-center justify-between p-2 border-b bg-gray-50">
+            <div className="text-sm text-gray-600">PDF Preview</div>
+            <div className="flex items-center gap-2">
+              <a
+                href={pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-2 py-1 text-xs rounded border bg-white hover:bg-gray-50"
+              >Open in new tab</a>
+              <button
+                className="px-2 py-1 text-xs rounded border bg-white hover:bg-gray-50 disabled:opacity-50"
+                disabled={downloading}
+                onClick={async () => {
+                  try {
+                    setDownloading(true);
+                    const res = await fetch(pdfUrl);
+                    const blob = await res.blob();
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `project-preview-${scopedProjectId}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                  } finally {
+                    setDownloading(false);
+                  }
+                }}
+              >{downloading ? 'Downloading…' : 'Download'}</button>
+            </div>
+          </div>
+          <iframe title="Book Preview" src={pdfUrl} className="h-[70vh] w-full bg-white" />
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 p-10 text-center text-sm text-gray-500">

@@ -1,0 +1,111 @@
+import { jsonResponse, errorResponse, methodNotAllowed, readJson } from '../../utils/http';
+
+type Env = {
+  DB: D1Database;
+};
+
+type FilePayload = {
+  id: string;
+  project_id?: string | null;
+  name: string;
+  size?: number;
+  mime_type?: string;
+  status?: string;
+  preview?: string | null;
+  original_preview?: string | null;
+};
+
+type BulkFilesPayload = {
+  files: FilePayload[];
+};
+
+export const onRequest: PagesFunction<Env> = async (context) => {
+  const { request, env } = context;
+  const url = new URL(request.url);
+  const projectIdFilter = url.searchParams.get('projectId');
+
+  switch (request.method.toUpperCase()) {
+    case 'GET':
+      return listFiles(env, projectIdFilter);
+    case 'POST':
+      return upsertFiles(env, request);
+    default:
+      return methodNotAllowed();
+  }
+};
+
+async function listFiles(env: Env, projectId?: string | null): Promise<Response> {
+  const stmt = projectId
+    ? env.DB.prepare(
+        `SELECT id, project_id, name, size, mime_type, status, preview, original_preview,
+                created_at, updated_at
+           FROM files WHERE project_id = ?1`
+      ).bind(projectId)
+    : env.DB.prepare(
+        `SELECT id, project_id, name, size, mime_type, status, preview, original_preview,
+                created_at, updated_at
+           FROM files`
+      );
+
+  const files = await stmt.all();
+  return jsonResponse({ files: files.results ?? [] });
+}
+
+async function upsertFiles(env: Env, request: Request): Promise<Response> {
+  let payload: BulkFilesPayload;
+  try {
+    payload = await readJson<BulkFilesPayload>(request);
+  } catch (error: any) {
+    return errorResponse(error?.message ?? 'Invalid JSON payload', 400);
+  }
+
+  if (!Array.isArray(payload.files) || payload.files.length === 0) {
+    return errorResponse('Files array required', 422);
+  }
+
+  const now = Date.now();
+  const statements: D1PreparedStatement[] = [];
+
+  for (const file of payload.files) {
+    if (!file.id || !file.name) {
+      return errorResponse('File id and name are required', 422);
+    }
+
+    statements.push(
+      env.DB.prepare(
+        `INSERT INTO files (
+           id, project_id, name, size, mime_type, status, preview, original_preview, created_at, updated_at
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+         ON CONFLICT(id) DO UPDATE SET
+           project_id = excluded.project_id,
+           name = excluded.name,
+           size = excluded.size,
+           mime_type = excluded.mime_type,
+           status = excluded.status,
+           preview = excluded.preview,
+           original_preview = excluded.original_preview,
+           updated_at = excluded.updated_at`
+      ).bind(
+        file.id,
+        file.project_id ?? null,
+        file.name,
+        file.size ?? null,
+        file.mime_type ?? null,
+        file.status ?? null,
+        file.preview ?? null,
+        file.original_preview ?? null,
+        now,
+        now
+      )
+    );
+  }
+
+  try {
+    await env.DB.batch(statements);
+  } catch (error) {
+    console.error('Failed to upsert files', error);
+    return errorResponse('Failed to write files', 500);
+  }
+
+  return jsonResponse({ success: true });
+}

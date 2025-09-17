@@ -2,7 +2,7 @@
 
 export interface OCRFile {
   id: string;
-  file: File;
+  file?: File;
   name: string;
   size: number;
   type: string;

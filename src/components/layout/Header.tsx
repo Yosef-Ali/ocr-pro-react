@@ -59,10 +59,10 @@ export const Header: React.FC = () => {
                 ))}
               </select>
               <button
-                onClick={() => {
+                onClick={async () => {
                   const name = prompt('Project name');
                   if (name && name.trim()) {
-                    createProject(name.trim());
+                    await createProject(name.trim());
                   }
                 }}
                 className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded"

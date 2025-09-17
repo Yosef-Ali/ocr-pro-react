@@ -2,6 +2,17 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import type { OCRFile, OCRResult, Settings, ProcessingStatus, Project, ProjectSummary } from '@/types';
+import {
+  fetchProjects,
+  createProject as apiCreateProject,
+  fetchProjectSummary,
+  saveProjectSummary as apiSaveProjectSummary,
+  deleteProjectSummary as apiDeleteProjectSummary,
+  deleteProject as apiDeleteProject,
+} from '@/services/api/projects';
+import { fetchFiles, upsertFiles as apiUpsertFiles, deleteFile as apiDeleteFile } from '@/services/api/files';
+import { fetchResults, upsertResults as apiUpsertResults, deleteResult as apiDeleteResult } from '@/services/api/results';
+import { mapRemoteFile, mapRemoteResult, mapRemoteSummary } from '@/services/api/transformers';
 
 interface OCRState {
   // Projects
@@ -22,6 +33,10 @@ interface OCRState {
   results: OCRResult[];
   currentResult: OCRResult | null;
 
+  // Remote state
+  isRemoteHydrated: boolean;
+  hydrateError?: string;
+
   // UI State
   isSettingsOpen: boolean;
   isHelpOpen: boolean;
@@ -31,16 +46,16 @@ interface OCRState {
   settings: Settings;
 
   // Actions
-  addFiles: (files: File[]) => void;
-  removeFile: (index: number) => void;
-  clearFiles: () => void;
+  addFiles: (files: File[]) => Promise<string[]>;
+  removeFile: (index: number) => Promise<void>;
+  clearFiles: () => Promise<void>;
   setCurrentFileIndex: (index: number) => void;
 
   startProcessing: () => void;
   updateProgress: (progress: number, status: ProcessingStatus) => void;
-  completeProcessing: (results: OCRResult[]) => void;
+  completeProcessing: (results: OCRResult[]) => Promise<void>;
   updateResult: (fileId: string, patch: Partial<OCRResult>) => void;
-  deleteResult: (fileId: string) => void;
+  deleteResult: (fileId: string) => Promise<void>;
 
   setActiveTab: (tab: 'extracted' | 'layout' | 'analysis') => void;
   toggleSettings: () => void;
@@ -48,15 +63,17 @@ interface OCRState {
   updateSettings: (settings: Partial<Settings>) => void;
 
   // Project actions
-  createProject: (name: string, description?: string) => string;
+  createProject: (name: string, description?: string) => Promise<string>;
   selectProject: (projectId: string | null) => void;
-  assignFilesToProject: (fileIds: string[], projectId: string | null) => void;
-  setProjectSummary: (summary: ProjectSummary) => void;
-  clearProjectSummary: (projectId: string) => void;
-  clearAllSummaries: () => void;
-  resetAllData: () => void;
+  assignFilesToProject: (fileIds: string[], projectId: string | null) => Promise<void>;
+  setProjectSummary: (summary: ProjectSummary) => Promise<void>;
+  clearProjectSummary: (projectId: string) => Promise<void>;
+  clearAllSummaries: () => Promise<void>;
+  resetAllData: () => Promise<void>;
   syncAllResults: () => void;
   ensureOriginalSnapshots: () => void;
+
+  hydrateFromRemote: () => Promise<void>;
 }
 
 export const useOCRStore = create<OCRState>()(
@@ -74,6 +91,8 @@ export const useOCRStore = create<OCRState>()(
         progress: 0,
         results: [],
         currentResult: null,
+        isRemoteHydrated: false,
+        hydrateError: undefined,
         isSettingsOpen: false,
         isHelpOpen: false,
         activeTab: 'extracted',
@@ -113,59 +132,159 @@ export const useOCRStore = create<OCRState>()(
           bookIncludeCover: true,
         },
 
-        // File actions
-        addFiles: (newFiles) => {
-          // Create data URLs so we can persist and re-run OCR after reloads
-          (async () => {
-            const { ensureNonTiffImage } = await import('@/utils/imageUtils');
+        hydrateFromRemote: async () => {
+          try {
+            const [remoteProjects, remoteFiles, remoteResults] = await Promise.all([
+              fetchProjects(),
+              fetchFiles(),
+              fetchResults(),
+            ]);
 
-            const toDataUrl = (f: File) => new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.readAsDataURL(f);
-              reader.onload = () => resolve(reader.result as string);
-              reader.onerror = reject;
-            });
-            const enriched: OCRFile[] = [];
-            for (let index = 0; index < newFiles.length; index++) {
-              const file = newFiles[index];
-              let dataUrl = '';
-              try { dataUrl = await toDataUrl(file); } catch { }
-              let normalized = dataUrl;
-              try {
-                if (dataUrl && dataUrl.startsWith('data:')) {
-                  const header = dataUrl.slice(0, dataUrl.indexOf(',')).toLowerCase();
-                  if (/image\/(tiff|x-tiff)/.test(header)) {
-                    normalized = await ensureNonTiffImage(dataUrl);
-                  }
+            const summaries = await Promise.all(
+              remoteProjects.map(async (project) => {
+                try {
+                  const summary = await fetchProjectSummary(project.id);
+                  return summary ? mapRemoteSummary(summary) : undefined;
+                } catch (error) {
+                  console.warn('Failed to fetch summary for project', project.id, error);
+                  return undefined;
                 }
-              } catch (err) {
-                console.warn('Failed to normalize image for processing', err);
-                normalized = dataUrl;
+              })
+            );
+
+            try {
+              const globalSummary = await fetchProjectSummary('all');
+              if (globalSummary) {
+                summaries.push(mapRemoteSummary(globalSummary));
               }
-              enriched.push({
-                id: `${Date.now()}-${index}`,
-                file,
-                name: file.name,
-                size: file.size,
-                type: file.type,
-                status: 'pending',
-                preview: normalized || dataUrl || null,
-                originalPreview: dataUrl || null,
-                projectId: useOCRStore.getState().currentProjectId ?? undefined,
-              });
+            } catch (error) {
+              // No global summary stored yet; ignore
             }
+
+            const projectSummaries: Record<string, ProjectSummary | undefined> = {};
+            summaries.forEach((summary) => {
+              if (summary) {
+                projectSummaries[summary.projectId] = summary;
+              }
+            });
+
+            const projects: Project[] = remoteProjects.map((p) => ({
+              id: p.id,
+              name: p.name,
+              description: p.description ?? undefined,
+              createdAt: p.created_at,
+            }));
+
+            const files = remoteFiles.map((f) => mapRemoteFile(f));
+            const results = remoteResults.map((r) => mapRemoteResult(r));
+
+            set((state) => {
+              const currentFile = files[state.currentFileIndex] ?? files[0];
+              const currentResult = currentFile ? results.find((r) => r.fileId === currentFile.id) || null : results[0] || null;
+              return {
+                projects,
+                files,
+                results,
+                projectSummaries,
+                isRemoteHydrated: true,
+                hydrateError: undefined,
+                currentResult,
+                currentFileIndex: currentFile ? files.findIndex((f) => f.id === currentFile.id) : 0,
+              };
+            });
+          } catch (error: any) {
+            console.error('Failed to hydrate remote state', error);
+            set({ isRemoteHydrated: true, hydrateError: error?.message || 'Failed to load remote data' });
+          }
+        },
+
+        // File actions
+        addFiles: async (newFiles) => {
+          const { ensureNonTiffImage } = await import('@/utils/imageUtils');
+
+          const toDataUrl = (f: File) => new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(f);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+          });
+
+          const enriched: OCRFile[] = [];
+          for (let index = 0; index < newFiles.length; index++) {
+            const file = newFiles[index];
+            let dataUrl = '';
+            try {
+              dataUrl = await toDataUrl(file);
+            } catch (err) {
+              console.warn('Failed to read file for preview', err);
+            }
+
+            let normalized = dataUrl;
+            try {
+              if (dataUrl && dataUrl.startsWith('data:')) {
+                const header = dataUrl.slice(0, dataUrl.indexOf(',')).toLowerCase();
+                if (/image\/(tiff|x-tiff)/.test(header)) {
+                  normalized = await ensureNonTiffImage(dataUrl);
+                }
+              }
+            } catch (err) {
+              console.warn('Failed to normalize image for processing', err);
+              normalized = dataUrl;
+            }
+
+            enriched.push({
+              id: `${Date.now()}-${index}`,
+              file,
+              name: file.name,
+              size: file.size,
+              type: file.type,
+              status: 'pending',
+              preview: normalized || dataUrl || null,
+              originalPreview: dataUrl || null,
+              projectId: useOCRStore.getState().currentProjectId ?? undefined,
+            });
+          }
+
+          if (enriched.length > 0) {
             set((state) => ({ files: [...state.files, ...enriched] }));
-          })();
+            try {
+              await apiUpsertFiles(
+                enriched.map((file) => ({
+                  id: file.id,
+                  name: file.name,
+                  project_id: file.projectId ?? null,
+                  size: file.size,
+                  mime_type: file.type,
+                  status: file.status,
+                  preview: file.preview ?? null,
+                  original_preview: file.originalPreview ?? null,
+                }))
+              );
+            } catch (error) {
+              console.error('Failed to sync files to remote', error);
+            }
+          }
+
+          return enriched.map((file) => file.id);
         },
 
-        removeFile: (index) => {
-          set((state) => ({
-            files: state.files.filter((_, i) => i !== index),
-          }));
+        removeFile: async (index) => {
+          let targetFile: OCRFile | undefined;
+          set((state) => {
+            targetFile = state.files[index];
+            return {
+              files: state.files.filter((_, i) => i !== index),
+            };
+          });
+          if (targetFile) {
+            try { await apiDeleteFile(targetFile.id); } catch (error) { console.error('Failed to delete remote file', error); }
+          }
         },
 
-        clearFiles: () => {
-          set({ files: [], results: [], currentResult: null });
+        clearFiles: async () => {
+          const fileIds = useOCRStore.getState().files.map((f) => f.id);
+          set({ files: [], results: [], currentResult: null, currentFileIndex: 0 });
+          await Promise.allSettled(fileIds.map((id) => apiDeleteFile(id)));
         },
 
         setCurrentFileIndex: (index) => {
@@ -189,43 +308,91 @@ export const useOCRStore = create<OCRState>()(
           set({ progress, processingStatus: status });
         },
 
-        completeProcessing: (results) => {
+        completeProcessing: async (incomingResults) => {
+          let enrichedResults: OCRResult[] = [];
           set((state) => {
             const currentFile = state.files[state.currentFileIndex];
-            const enriched = results.map(r => ({
+            enrichedResults = incomingResults.map(r => ({
               ...r,
-              projectId: state.currentProjectId ?? undefined,
+              projectId: r.projectId ?? state.currentProjectId ?? undefined,
               metadata: {
                 ...((r as any).metadata || {}),
                 originalOCRText: ((r as any).metadata?.originalOCRText) || r.layoutPreserved || r.extractedText || ''
               }
             }));
             const currentResult = currentFile
-              ? enriched.find(r => r.fileId === currentFile.id) || enriched[0] || null
-              : enriched[0] || null;
+              ? enrichedResults.find(result => result.fileId === currentFile.id) || enrichedResults[0] || null
+              : enrichedResults[0] || null;
 
             return {
-              results: enriched,
+              results: enrichedResults,
               currentResult,
               isProcessing: false,
               processingStatus: 'completed',
               progress: 100,
             };
           });
+
+          const grouped = new Map<string | null, OCRResult[]>();
+          for (const result of enrichedResults) {
+            const key = result.projectId ?? null;
+            const bucket = grouped.get(key) ?? [];
+            bucket.push(result);
+            grouped.set(key, bucket);
+          }
+
+          await Promise.allSettled(
+            Array.from(grouped.entries()).map(([projectId, group]) =>
+              apiUpsertResults(projectId, group.map((item) => ({
+                id: item.id,
+                file_id: item.fileId,
+                project_id: item.projectId ?? null,
+                extracted_text: item.extractedText,
+                layout_preserved: item.layoutPreserved,
+                detected_language: item.detectedLanguage,
+                confidence: item.confidence,
+                document_type: item.documentType,
+                metadata: item.metadata ? { ...item.metadata, layoutAnalysis: item.layoutAnalysis } : { layoutAnalysis: item.layoutAnalysis },
+              })))
+            )
+          );
         },
 
         updateResult: (fileId, patch) => {
+          let targetResult: OCRResult | undefined;
           set((state) => {
-            const results = state.results.map(r => r.fileId === fileId ? { ...r, ...patch, metadata: { ...r.metadata, ...patch.metadata } } : r);
+            const results = state.results.map(r => {
+              if (r.fileId !== fileId) return r;
+              const next = { ...r, ...patch, metadata: { ...r.metadata, ...patch.metadata } };
+              targetResult = next;
+              return next;
+            });
             const currentResult = state.currentResult && state.currentResult.fileId === fileId
               ? results.find(r => r.fileId === fileId) || null
               : state.currentResult;
             return { results, currentResult };
           });
+
+          if (targetResult) {
+            apiUpsertResults(targetResult.projectId ?? null, [{
+              id: targetResult.id,
+              file_id: targetResult.fileId,
+              project_id: targetResult.projectId ?? null,
+              extracted_text: targetResult.extractedText,
+              layout_preserved: targetResult.layoutPreserved,
+              detected_language: targetResult.detectedLanguage,
+              confidence: targetResult.confidence,
+              document_type: targetResult.documentType,
+              metadata: targetResult.metadata ? { ...targetResult.metadata, layoutAnalysis: targetResult.layoutAnalysis } : { layoutAnalysis: targetResult.layoutAnalysis },
+            }]).catch((error) => console.error('Failed to sync result update', error));
+          }
         },
 
-        deleteResult: (fileId) => {
+        deleteResult: async (fileId) => {
+          let resultId: string | undefined;
           set((state) => {
+            const target = state.results.find((r) => r.fileId === fileId);
+            resultId = target?.id;
             const results = state.results.filter(r => r.fileId !== fileId);
             const files = state.files.filter(f => f.id !== fileId);
             let currentFileIndex = state.currentFileIndex;
@@ -235,6 +402,13 @@ export const useOCRStore = create<OCRState>()(
             const currentResult = currentFile ? results.find(r => r.fileId === currentFile.id) || null : null;
             return { results, files, currentFileIndex, currentResult };
           });
+          if (resultId) {
+            try {
+              await apiDeleteResult(resultId);
+            } catch (error) {
+              console.error('Failed to delete remote result', error);
+            }
+          }
         },
 
         // UI actions
@@ -281,43 +455,103 @@ export const useOCRStore = create<OCRState>()(
         },
 
         // Project actions
-        createProject: (name, description) => {
-          const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-          const project: Project = { id, name, description, createdAt: Date.now() };
-          set((state) => ({ projects: [...state.projects, project], currentProjectId: id }));
-          return id;
+        createProject: async (name, description) => {
+          const remote = await apiCreateProject({ name, description });
+          const project: Project = {
+            id: remote.id,
+            name: remote.name,
+            description: remote.description ?? undefined,
+            createdAt: remote.created_at,
+          };
+          set((state) => ({ projects: [...state.projects, project], currentProjectId: project.id }));
+          return project.id;
         },
 
         selectProject: (projectId) => {
           set({ currentProjectId: projectId });
         },
 
-        assignFilesToProject: (fileIds, projectId) => {
-          set((state) => ({
-            files: state.files.map(f => fileIds.includes(f.id) ? { ...f, projectId: projectId ?? undefined } : f),
-            results: state.results.map(r => fileIds.includes(r.fileId) ? { ...r, projectId: projectId ?? undefined } : r),
-          }));
+        assignFilesToProject: async (fileIds, projectId) => {
+          const nextProjectId = projectId ?? null;
+          let affectedFiles: OCRFile[] = [];
+          let affectedResults: OCRResult[] = [];
+          set((state) => {
+            const files = state.files.map(f => {
+              if (!fileIds.includes(f.id)) return f;
+              const updated = { ...f, projectId: nextProjectId ?? undefined };
+              affectedFiles.push(updated);
+              return updated;
+            });
+            const results = state.results.map(r => {
+              if (!fileIds.includes(r.fileId)) return r;
+              const updated = { ...r, projectId: nextProjectId ?? undefined };
+              affectedResults.push(updated);
+              return updated;
+            });
+            return { files, results };
+          });
+
+          await Promise.allSettled([
+            apiUpsertFiles(
+              affectedFiles.map((file) => ({
+                id: file.id,
+                name: file.name,
+                project_id: file.projectId ?? null,
+                size: file.size,
+                mime_type: file.type,
+                status: file.status,
+                preview: file.preview ?? null,
+                original_preview: file.originalPreview ?? null,
+              }))
+            ),
+            apiUpsertResults(nextProjectId, affectedResults.map((result) => ({
+              id: result.id,
+              file_id: result.fileId,
+              project_id: result.projectId ?? null,
+              extracted_text: result.extractedText,
+              layout_preserved: result.layoutPreserved,
+              detected_language: result.detectedLanguage,
+              confidence: result.confidence,
+              document_type: result.documentType,
+              metadata: result.metadata ? { ...result.metadata, layoutAnalysis: result.layoutAnalysis } : { layoutAnalysis: result.layoutAnalysis },
+            })))
+          ]);
         },
 
-        setProjectSummary: (summary) => {
+        setProjectSummary: async (summary) => {
           set((state) => ({
             projectSummaries: { ...state.projectSummaries, [summary.projectId]: summary },
           }));
+
+          await apiSaveProjectSummary(summary.projectId, {
+            project_id: summary.projectId,
+            generated_at: summary.generatedAt,
+            summary: summary.summary,
+            toc: summary.toc,
+            chapters: summary.chapters,
+            proofreading_notes: summary.proofreadingNotes,
+          });
         },
 
-        clearProjectSummary: (projectId) => {
+        clearProjectSummary: async (projectId) => {
           set((state) => {
             const next = { ...state.projectSummaries };
             next[projectId] = undefined;
             return { projectSummaries: next };
           });
+          if (projectId) {
+            try { await apiDeleteProjectSummary(projectId); } catch (error) { console.error('Failed to delete project summary', error); }
+          }
         },
 
-        clearAllSummaries: () => {
+        clearAllSummaries: async () => {
+          const ids = Object.keys(useOCRStore.getState().projectSummaries);
           set({ projectSummaries: {} });
+          await Promise.allSettled(ids.map((id) => apiDeleteProjectSummary(id)));
         },
 
-        resetAllData: () => {
+        resetAllData: async () => {
+          const state = useOCRStore.getState();
           set({
             projects: [],
             currentProjectId: null,
@@ -333,6 +567,12 @@ export const useOCRStore = create<OCRState>()(
             isHelpOpen: false,
             activeTab: 'extracted',
           });
+
+          await Promise.allSettled([
+            ...state.results.map((result) => apiDeleteResult(result.id)),
+            ...state.files.map((file) => apiDeleteFile(file.id)),
+            ...state.projects.map((project) => apiDeleteProject(project.id)),
+          ]);
         },
 
         syncAllResults: () => {

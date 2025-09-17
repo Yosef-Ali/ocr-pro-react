@@ -298,19 +298,24 @@ export const OCRTableTab: React.FC = () => {
                                     <MenuButton
                                         onExportTxt={() => exportResult(r, { format: 'txt', includeMetadata: true, includeAnalysis: false, preserveFormatting: true })}
                                         onExportPdf={() => exportResult(r, { format: 'pdf' as any, includeMetadata: true, includeAnalysis: false, preserveFormatting: true })}
-                                        onAssignCurrent={() => {
+                                        onAssignCurrent={async () => {
                                             if (!currentProjectId) {
                                                 toast.error('Select a project in the header first');
                                                 return;
                                             }
-                                            assignFilesToProject([r.fileId], currentProjectId);
+                                            await assignFilesToProject([r.fileId], currentProjectId);
                                             toast.success('Assigned to current project');
                                         }}
-                                        onClearProject={() => {
-                                            assignFilesToProject([r.fileId], null);
+                                        onClearProject={async () => {
+                                            await assignFilesToProject([r.fileId], null);
                                             toast.success('Cleared project assignment');
                                         }}
-                                        onDelete={() => { if (confirm('Delete this OCR result?')) deleteResult(r.fileId); }}
+                                        onDelete={async () => {
+                                            if (confirm('Delete this OCR result?')) {
+                                                await deleteResult(r.fileId);
+                                                toast.success('OCR result deleted');
+                                            }
+                                        }}
                                     />
                                 </div>
                             </td>
@@ -322,7 +327,15 @@ export const OCRTableTab: React.FC = () => {
     );
 };
 
-const MenuButton: React.FC<{ onExportTxt: () => void; onExportPdf: () => void; onAssignCurrent: () => void; onClearProject: () => void; onDelete: () => void; }> = ({ onExportTxt, onExportPdf, onAssignCurrent, onClearProject, onDelete }) => {
+type MenuHandlers = {
+    onExportTxt: () => void;
+    onExportPdf: () => void;
+    onAssignCurrent: () => void | Promise<void>;
+    onClearProject: () => void | Promise<void>;
+    onDelete: () => void | Promise<void>;
+};
+
+const MenuButton: React.FC<MenuHandlers> = ({ onExportTxt, onExportPdf, onAssignCurrent, onClearProject, onDelete }) => {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);

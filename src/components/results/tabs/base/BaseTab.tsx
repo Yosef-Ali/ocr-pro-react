@@ -112,9 +112,22 @@ export const TextContainer: React.FC<TextContainerProps> = ({
   maxHeight = 'max-h-96',
   className = ''
 }) => {
+  // Attempt to detect Ethiopic content to apply proper font
+  const contentStr = React.useMemo(() => {
+    if (typeof children === 'string') return children;
+    const parts = React.Children.toArray(children).map((c) =>
+      typeof c === 'string' ? c : (typeof (c as any)?.props?.children === 'string' ? (c as any).props.children : '')
+    );
+    return parts.join('');
+  }, [children]);
+  const hasEthiopic = React.useMemo(() => containsEthiopic(contentStr || ''), [contentStr]);
   return (
     <div className={`${maxHeight} overflow-y-auto ${className}`}>
-      <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono leading-relaxed">
+      <pre
+        className={`whitespace-pre-wrap text-sm text-gray-800 font-mono leading-relaxed ${hasEthiopic ? 'font-ethiopic leading-8 tracking-normal' : ''}`}
+        lang={hasEthiopic ? 'am' : undefined}
+        dir="auto"
+      >
         {children}
       </pre>
     </div>

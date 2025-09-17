@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useOCRStore } from '@/store/ocrStore';
 import { formatFileSize } from '@/utils/format';
 import { LanguageSelector } from './LanguageSelector';
-import { OCROptions } from './OCROptions';
 import { ProcessButton } from './ProcessButton';
 import toast from 'react-hot-toast';
 import { validateFileUpload } from '@/utils/validationUtils';
@@ -59,7 +58,8 @@ export const UploadSection: React.FC = () => {
     }
   }, []);
 
-  const simulateUpload = async (files: File[]) => {
+  const simulateUpload = async (incomingFiles: File[]) => {
+    if (incomingFiles.length === 0) return;
     setIsUploading(true);
     setUploadProgress(0);
 
@@ -70,18 +70,23 @@ export const UploadSection: React.FC = () => {
           clearInterval(interval);
           return 100;
         }
-        return prev + Math.random() * 15;
+        return Math.min(100, prev + Math.random() * 15);
       });
     }, 200);
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    const startIndex = files.length;
-    addFiles(files);
-    if (files.length > 0) setCurrentFileIndex(startIndex);
-    setIsUploading(false);
-    setUploadProgress(0);
-    toast.success(t('success.filesUploaded', { count: files.length }));
+    try {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      const existingCount = useOCRStore.getState().files.length;
+      const newIds = await addFiles(incomingFiles);
+      if (newIds.length > 0) {
+        setCurrentFileIndex(existingCount);
+        toast.success(t('success.filesUploaded', { count: newIds.length }));
+      }
+    } finally {
+      clearInterval(interval);
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -194,8 +199,17 @@ export const UploadSection: React.FC = () => {
           </div>
         )}
 
-        <LanguageSelector />
-        <OCROptions />
+        {/* Options group */}
+        <div className="mt-6 border rounded-lg p-4 bg-gray-50">
+          <h3 className="text-sm font-semibold text-gray-800 mb-3">Target Language & OCR Options</h3>
+          <LanguageSelector />
+          <div className="mt-4 flex items-center text-xs text-gray-500 gap-2">
+            <span className="inline-flex items-center gap-1">
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="inline-block align-text-bottom text-gray-400"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 16 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 8c.14.31.21.65.21 1v.09A1.65 1.65 0 0 0 21 12c0 .35-.07.69-.21 1v.09A1.65 1.65 0 0 0 19.4 15z" /></svg>
+              OCR options moved: See <span className="font-medium text-gray-700">Settings</span>
+            </span>
+          </div>
+        </div>
         <ProcessButton />
       </motion.div>
     </div>

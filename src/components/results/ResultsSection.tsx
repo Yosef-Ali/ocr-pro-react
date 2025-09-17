@@ -25,6 +25,7 @@ export const ResultsSection: React.FC = () => {
     settings,
     setProjectSummary,
     projectSummaries,
+    clearProjectSummary,
   } = useOCRStore();
 
   const { exportResult } = useExport();
@@ -69,7 +70,7 @@ export const ResultsSection: React.FC = () => {
       toast.loading('Summarizing project…', { id: 'sum' });
       const { summarizeProject } = await import('@/services/geminiService');
       const summary = await summarizeProject(projectResults, settings, { proofreadPageNumbers: true, projectId: currentProjectId || 'all' });
-      setProjectSummary(summary);
+      await setProjectSummary(summary);
       toast.success('Project summarized', { id: 'sum' });
     } catch (e) {
       console.error(e);
@@ -292,10 +293,15 @@ export const ResultsSection: React.FC = () => {
               <div className="w-px h-4 bg-gray-200 mx-1" aria-hidden="true" />
               <button onClick={rerunAllLayoutOnly} aria-label="Re-run all with Tesseract only (preserve layout)" className="px-2 py-1 text-xs bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500">Re-run All (Layout only)</button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   const pid = currentProjectId || 'all';
-                  useOCRStore.getState().clearProjectSummary(pid);
-                  toast.success('Project summary cleared');
+                  try {
+                    await clearProjectSummary(pid);
+                    toast.success('Project summary cleared');
+                  } catch (error) {
+                    console.error('Failed to clear project summary', error);
+                    toast.error('Failed to clear project summary');
+                  }
                 }}
                 aria-label="Clear project summary"
                 className="ml-2 px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-500"

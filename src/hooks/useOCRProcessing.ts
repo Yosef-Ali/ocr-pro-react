@@ -110,6 +110,7 @@ export const useOCRProcessing = () => {
     } catch (error) {
       console.error('OCR processing error:', error);
       updateProgress(0, 'error');
+      useOCRStore.setState({ isProcessing: false });
       toast.error('Failed to process documents. Please try again.');
     }
   }, [files, settings, startProcessing, updateProgress, completeProcessing]);

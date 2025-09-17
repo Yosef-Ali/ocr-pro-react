@@ -71,6 +71,51 @@ The app can be configured through the Settings modal:
 
 Settings are persisted in localStorage.
 
+## Cloudflare Deployment & Database
+
+This project now ships with a Cloudflare Pages + D1 backend to persist projects, uploaded file metadata, OCR results, and summaries.
+
+1. **Create the D1 database**
+   ```bash
+   wrangler d1 create ocrpro-db
+   ```
+   Copy the generated `database_id` into `wrangler.toml` (replace `REPLACE_WITH_D1_DATABASE_ID`).
+
+2. **Apply migrations**
+   ```bash
+   wrangler d1 migrations apply ocrpro-db --local  # against local preview
+   wrangler d1 migrations apply ocrpro-db          # against production binding
+   ```
+
+3. **Run locally with API support**
+   ```bash
+   npm install
+   wrangler pages dev
+   ```
+   The Vite bundle and Pages Functions run together under Wrangler so that `/api/*` routes resolve to the D1-backed endpoints.
+
+4. **Configure secrets**
+   ```bash
+   wrangler pages secret put VITE_GEMINI_API_KEY
+   # Optional: override API host if calling a separate Worker
+   wrangler pages secret put VITE_API_BASE_URL
+   ```
+
+5. **Deploy**
+   ```bash
+   npm run build
+   wrangler pages deploy dist
+   ```
+
+### Data model overview
+
+- `projects` – basic project metadata (name, description, timestamps)
+- `files` – uploaded file descriptors, including preview data URLs for quick reloads
+- `results` – OCR output, metadata, and analysis payloads keyed by file
+- `project_summaries` – summarized content, ToC, and proofreading notes
+
+Client-side state is hydrated from these tables on load. Creating projects, assigning files, updating results, and saving summaries now syncs to D1 automatically.
+
 ## Performance Optimizations
 
 - Lazy loading of components

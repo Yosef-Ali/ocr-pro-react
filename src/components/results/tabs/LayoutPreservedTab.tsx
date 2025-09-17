@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Bold, Italic, Heading1, Heading2, List, ListOrdered, Quote, Code, Link as LinkIcon, Type, Wand2, Loader2, RotateCcw } from 'lucide-react';
+import { Bold, Italic, Heading1, Heading2, List, ListOrdered, Quote, Code, Link as LinkIcon, Type, Wand2, Loader2, RotateCcw, CheckCheck, XCircle, MoreVertical } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { OCRResult } from '@/types';
@@ -17,6 +17,7 @@ import {
   replaceRange,
   escapeRegex,
 } from './layout/utils';
+import { extractJsonFromText } from '@/utils/textUtils';
 
 interface Props {
   result: OCRResult;
@@ -57,6 +58,20 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
   const [tipsLoading, setTipsLoading] = useState(false);
   const [previewMode, setPreviewMode] = useState<'text' | 'original'>('text');
   const [applyPulse, setApplyPulse] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const actionsContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!actionsOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (!actionsContainerRef.current) return;
+      if (!actionsContainerRef.current.contains(e.target as Node)) {
+        setActionsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [actionsOpen]);
 
   const debounceRef = useRef<number | null>(null);
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
@@ -88,6 +103,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
     return () => window.clearInterval(timer);
   }, [edgeEnabled]);
 
+  // Update draft and metadata when switching files; restore ignored words and clear pending proposals
   useEffect(() => {
     const next = result.metadata?.layoutMarkdown ?? result.layoutPreserved;
     setDraft(next);
@@ -98,10 +114,12 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
     setComparisonBase(null);
   }, [result.fileId, ensureOriginalSnapshots]);
 
+  // Reset suggestion count when proposal is cleared
   useEffect(() => {
     if (!pendingProposal) setSuggestionCount(0);
   }, [pendingProposal]);
 
+  // On first open for a file without explicit markdown, auto-format the OCR text
   useEffect(() => {
     if (!result.metadata?.layoutMarkdown) {
       const hasHeading = /^\s{0,3}#{1,6}\s/m.test(draft);
@@ -113,6 +131,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result.fileId]);
 
+  // Debounced autosave of markdown to result metadata
   useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => {
@@ -127,6 +146,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
     };
   }, [draft, initial, result.fileId, updateResult]);
 
+  // Animate proofreading/analysis progress bar
   useEffect(() => {
     if (!isProofreading) {
       setPfProgress(0);
@@ -232,8 +252,24 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
             originalFile!.preview || originalFile!.originalPreview || '',
             settings
           );
-          const staged = normalizeMarkdownForReview(correctedText, result.detectedLanguage);
-          setPendingProposalRaw(correctedText);
+          const parseCorrected = (value: string): string => {
+            try {
+              // Some providers occasionally return the entire JSON blob as a string.
+              // If so, extract and use only the correctedText field.
+              if (/^\s*`{3}/.test(value) || /"correctedText"\s*:/.test(value)) {
+                const json = extractJsonFromText(value);
+                const obj = JSON.parse(json);
+                if (obj && typeof obj.correctedText === 'string') return obj.correctedText;
+              }
+            } catch {
+              // fall through and return the raw value below
+            }
+            return value;
+          };
+
+          const cleanedText = parseCorrected(correctedText);
+          const staged = normalizeMarkdownForReview(cleanedText, result.detectedLanguage);
+          setPendingProposalRaw(cleanedText);
           setPendingProposal(staged);
           setAppliedPulse(true);
           setTimeout(() => setAppliedPulse(false), 1500);
@@ -496,7 +532,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
           <div className="sticky top-0 z-20 -mx-4 px-4 py-2 mb-3 bg-white/90 supports-[backdrop-filter]:bg-white/60 backdrop-blur border-b rounded-t-2xl flex items-center justify-between">
             <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide">Preview</label>
             <div className="flex items-center gap-2">
-              <div className="inline-flex bg-gray-100 rounded-lg p-0.5 text-xs" role="tablist" aria-label="Preview mode">
+              <div className="relative inline-flex bg-gray-100 rounded-lg p-0.5 text-xs" role="tablist" aria-label="Preview mode" ref={actionsContainerRef}>
                 <button
                   type="button"
                   role="tab"
@@ -513,6 +549,73 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                   disabled={!currentFile?.preview}
                   title={currentFile?.preview ? 'View original layout' : 'No original preview available'}
                 >Original</button>
+                {pendingProposal && (
+                  <button
+                    type="button"
+                    title="AI Actions"
+                    aria-haspopup="menu"
+                    aria-expanded={actionsOpen}
+                    className={`ml-0.5 px-1.5 py-0.5 rounded-md outline-none focus:ring-2 focus:ring-blue-400 text-gray-700 hover:text-gray-900 ${applyPulse ? 'ring-2 ring-green-300 shadow' : ''}`}
+                    onClick={() => setActionsOpen(v => !v)}
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                )}
+                {actionsOpen && (
+                  <div role="menu" className="absolute right-0 top-full mt-1 z-30 min-w-[200px] rounded-lg border bg-white shadow-lg">
+                    <button
+                      role="menuitem"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50"
+                      onClick={() => {
+                        let proposed = pendingProposalRaw ?? pendingProposal ?? draft;
+                        try {
+                          if (/^\s*`{3}/.test(proposed) || /\"correctedText\"\s*:/.test(proposed)) {
+                            const json = extractJsonFromText(proposed);
+                            const obj = JSON.parse(json);
+                            if (obj && typeof obj.correctedText === 'string') proposed = obj.correctedText;
+                          }
+                        } catch { }
+                        const base = comparisonBase || draft;
+                        if (proposed.trim().length === 0 && base.trim().length > 0) {
+                          if (!window.confirm('The suggestion would clear the content. Apply anyway?')) return;
+                        }
+                        setDraft(proposed);
+                        setPendingProposal(null);
+                        setPendingProposalRaw(null);
+                        setComparisonBase(null);
+                        const snapshot = (result as any).metadata?.originalBeforeAI || base;
+                        updateResult(result.fileId, {
+                          extractedText: proposed,
+                          layoutPreserved: proposed,
+                          metadata: { ...(result as any).metadata, layoutMarkdown: proposed, originalBeforeAI: snapshot },
+                        });
+                        setSuggestionCount(0);
+                        toast.success('Applied AI changes');
+                        setApplyPulse(true);
+                        window.setTimeout(() => setApplyPulse(false), 700);
+                        setActionsOpen(false);
+                      }}
+                    >
+                      <CheckCheck className="w-4 h-4 text-green-600" />
+                      <span>Apply All</span>
+                    </button>
+                    <button
+                      role="menuitem"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50"
+                      onClick={() => {
+                        setPendingProposal(null);
+                        setPendingProposalRaw(null);
+                        setComparisonBase(null);
+                        setSuggestionCount(0);
+                        toast('Discarded AI proposal');
+                        setActionsOpen(false);
+                      }}
+                    >
+                      <XCircle className="w-4 h-4 text-gray-600" />
+                      <span>Discard All</span>
+                    </button>
+                  </div>
+                )}
               </div>
               {(isProofreading || isAnalyzing || isCorrectingWithVision) && (
                 <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${isCorrectingWithVision ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-purple-700 bg-purple-50 border-purple-200'}`}>
@@ -521,51 +624,9 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                 </span>
               )}
               {pendingProposal && (
-                <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-2 md:mt-0 max-[360px]:w-full max-[360px]:justify-end">
-                  <span className="text-[11px] px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold whitespace-nowrap mb-1 md:mb-0">
-                    {suggestionCount} suggestion{suggestionCount === 1 ? '' : 's'}
-                  </span>
-                  <button
-                    type="button"
-                    className={`px-5 py-1.5 text-sm font-semibold rounded-full bg-green-600 text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-400 transition whitespace-nowrap mb-1 md:mb-0 ${applyPulse ? 'ring-2 ring-green-300 shadow' : ''}`}
-                    onClick={() => {
-                      const proposed = pendingProposalRaw ?? pendingProposal ?? draft;
-                      const base = comparisonBase || draft;
-                      if (proposed.trim().length === 0 && base.trim().length > 0) {
-                        if (!window.confirm('The suggestion would clear the content. Apply anyway?')) return;
-                      }
-                      setDraft(proposed);
-                      setPendingProposal(null);
-                      setPendingProposalRaw(null);
-                      setComparisonBase(null);
-                      const snapshot = (result as any).metadata?.originalBeforeAI || base;
-                      updateResult(result.fileId, {
-                        extractedText: proposed,
-                        layoutPreserved: proposed,
-                        metadata: { ...(result as any).metadata, layoutMarkdown: proposed, originalBeforeAI: snapshot },
-                      });
-                      setSuggestionCount(0);
-                      toast.success('Applied AI changes');
-                      setApplyPulse(true);
-                      window.setTimeout(() => setApplyPulse(false), 700);
-                    }}
-                  >
-                    Apply All
-                  </button>
-                  <button
-                    type="button"
-                    className="px-5 py-1.5 text-sm font-semibold rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-400 transition whitespace-nowrap"
-                    onClick={() => {
-                      setPendingProposal(null);
-                      setPendingProposalRaw(null);
-                      setComparisonBase(null);
-                      setSuggestionCount(0);
-                      toast('Discarded AI proposal');
-                    }}
-                  >
-                    Discard All
-                  </button>
-                </div>
+                <span className="text-[11px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold whitespace-nowrap">
+                  {suggestionCount} suggestion{suggestionCount === 1 ? '' : 's'}
+                </span>
               )}
             </div>
           </div>
@@ -579,7 +640,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
             <div className={`prose prose-slate mx-auto max-w-[42rem] text-[15px] leading-7 overflow-auto flex-1 ${isEthiopic ? 'font-ethiopic' : ''}`}>
               <DiffView
                 original={comparisonBase || draft}
-                current={pendingProposal}
+                current={pendingProposal!}
                 isEthiopic={isEthiopic}
                 mode="word"
                 ignoredWords={ignoredWords}

@@ -153,13 +153,19 @@ export const SettingsModal: React.FC = () => {
           <Collapsible title={<span className="inline-flex items-center gap-2">Data & Reset</span>} defaultOpen={false}>
             <div className="flex flex-col gap-2">
               <button
-                onClick={() => { clearAllSummaries(); toast.success('All project summaries cleared'); }}
+                onClick={async () => {
+                  await clearAllSummaries();
+                  toast.success('All project summaries cleared');
+                }}
                 className="px-3 py-2 text-sm bg-white border rounded hover:bg-gray-50"
               >
                 Clear All Summaries
               </button>
               <button
-                onClick={() => { resetAllData(); toast.success('All app data reset'); }}
+                onClick={async () => {
+                  await resetAllData();
+                  toast.success('All app data reset');
+                }}
                 className="px-3 py-2 text-sm bg-white border rounded hover:bg-gray-50"
               >
                 Reset All Data

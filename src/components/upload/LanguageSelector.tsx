@@ -4,6 +4,7 @@ import { useOCRStore } from '@/store/ocrStore';
 
 const languages = [
   { value: 'auto', label: 'Auto-detect' },
+  { value: 'am', label: 'Amharic (አማርኛ)' },
   { value: 'en', label: 'English' },
   { value: 'es', label: 'Spanish' },
   { value: 'fr', label: 'French' },

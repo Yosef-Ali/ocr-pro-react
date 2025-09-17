@@ -3,13 +3,21 @@ import { Header } from '@/components/layout/Header';
 import { UploadSection } from '@/components/upload/UploadSection';
 import { ResultsSection } from '@/components/results/ResultsSection';
 import { useOCRStore } from '@/store/ocrStore';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 
 const SettingsModal = lazy(() => import('@/components/modals/SettingsModal').then(module => ({ default: module.SettingsModal })));
 const HelpModal = lazy(() => import('@/components/modals/HelpModal').then(module => ({ default: module.HelpModal })));
 
 function App() {
-  const { isSettingsOpen, isHelpOpen } = useOCRStore();
+  const { isSettingsOpen, isHelpOpen, hydrateFromRemote, isRemoteHydrated } = useOCRStore();
+
+  useEffect(() => {
+    if (!isRemoteHydrated) {
+      hydrateFromRemote().catch((error) => {
+        console.error('Remote hydration failed', error);
+      });
+    }
+  }, [hydrateFromRemote, isRemoteHydrated]);
 
   return (
     <div className="min-h-screen bg-gray-50">
