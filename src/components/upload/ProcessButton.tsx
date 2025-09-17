@@ -15,19 +15,39 @@ export const ProcessButton: React.FC = () => {
     }
   };
 
+  const formatGeminiModel = (model?: string) => {
+    if (!model) return 'Gemini 2.5 Pro';
+    if (!model.startsWith('gemini')) return model;
+    const parts = model.split('-').slice(1); // drop leading "gemini"
+    const formatted = parts
+      .map((part) => part.replace(/^([a-z])/i, (match) => match.toUpperCase()))
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return `Gemini ${formatted}`.replace('Pro Vision', 'Pro Vision');
+  };
+
+  const describeGeminiStack = () => {
+    const primary = formatGeminiModel(settings.model);
+    const fallback = settings.fallbackModel && settings.fallbackModel !== settings.model
+      ? formatGeminiModel(settings.fallbackModel)
+      : null;
+    return fallback ? `${primary} → ${fallback}` : primary;
+  };
+
   // Determine which engine will be used
   const getEngineInfo = () => {
     const engine = settings.ocrEngine || 'auto';
     const apiStatus = checkAvailableApiKeys(settings);
-    
+
     if (engine === 'tesseract') {
       return { name: 'Tesseract', icon: Cpu, color: 'from-green-600 to-teal-600' };
     } else if (engine === 'gemini') {
-      return { name: 'Gemini', icon: Brain, color: 'from-blue-600 to-purple-600' };
+      return { name: describeGeminiStack(), icon: Brain, color: 'from-blue-600 to-purple-600' };
     } else {
       // Auto mode - show what will actually be used
       if (apiStatus.hasGemini) {
-        return { name: 'Auto (Gemini)', icon: Zap, color: 'from-blue-600 to-purple-600' };
+        return { name: `Auto (${describeGeminiStack()})`, icon: Zap, color: 'from-blue-600 to-purple-600' };
       } else if (apiStatus.hasOpenRouter) {
         return { name: 'Auto (OpenRouter)', icon: Zap, color: 'from-blue-500 to-cyan-600' };
       } else {

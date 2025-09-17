@@ -83,9 +83,18 @@ export interface BoundingBox {
   height: number;
 }
 
+export type GeminiModelId =
+  | 'gemini-1.5-flash'
+  | 'gemini-1.5-pro'
+  | 'gemini-2.5-pro'
+  | 'gemini-pro-vision'
+  | string;
+
 export interface Settings {
   apiKey: string;
-  model: 'gemini-1.5-flash' | 'gemini-1.5-pro' | 'gemini-2.5-pro' | 'gemini-pro-vision';
+  model: GeminiModelId;
+  fallbackModel?: GeminiModelId;
+  visionModel?: GeminiModelId;
   maxTokens: number;
   language: string;
   preserveLayout: boolean;
@@ -95,6 +104,21 @@ export interface Settings {
   lowTemperature?: boolean; // reduce creativity to curb hallucinations
   forceAmharic?: boolean;   // force Ethiopic handling and language
   strictAmharic?: boolean;  // blacklist ASCII letters during OCR
+  stripPageNumbers?: boolean; // remove standalone page numbers
+  // End-user friendly: allow only small LLM guidance (no heavy actions)
+  allowBasicLLMGuidance?: boolean;
+  tipsMaxTokens?: number;
+  endUserMode?: boolean; // hide research features like Project Summary
+  // Routing & hints
+  routingMode?: 'auto' | 'local-only' | 'cloud-only';
+  enableLexiconHints?: boolean;
+  routerStrategy?: 'heuristic' | 'learned';
+  // Edge LLM (on-device)
+  edgeLLMEnabled?: boolean;
+  edgeLLMProvider?: 'webllm' | 'ollama';
+  edgeLLMModel?: string; // e.g., 'gemma-3-1b-q4'
+  edgeLLMBaseUrl?: string; // CDN base for model artifacts (if needed)
+  edgeLLMEndpoint?: string; // For Ollama, e.g., 'http://localhost:11434'
   pdfIncludeTOC?: boolean;
   pdfIncludeFooter?: boolean;
   pdfTocPosition?: 'start' | 'end';
@@ -154,7 +178,7 @@ export interface UploadProgress {
 }
 
 export interface ExportOptions {
-  format: 'txt' | 'json' | 'pdf' | 'docx' | 'csv';
+  format: 'txt' | 'json' | 'pdf' | 'docx' | 'csv' | 'xlsx' | 'html';
   includeMetadata: boolean;
   includeAnalysis: boolean;
   preserveFormatting: boolean;

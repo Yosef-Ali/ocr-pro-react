@@ -1,21 +1,25 @@
 /**
  * Project summarization service using Gemini API
  */
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { OCRResult, Settings, ProjectSummary } from '@/types';
 import { extractJsonFromText, stripFences, stripPageNumbers } from '@/utils/textUtils';
 import { validateSummaryPayload } from '@/utils/validationUtils';
+import {
+  DEFAULT_GEMINI_MODEL,
+  getGeminiModel,
+  resolvePreferredModel,
+} from '@/services/ai/geminiClient';
 
 export async function summarizeProject(
   results: OCRResult[],
   settings: Settings,
   options?: { proofreadPageNumbers?: boolean; projectId?: string }
 ): Promise<ProjectSummary> {
-  const genAI = new GoogleGenerativeAI(settings.apiKey as string);
   const generationConfig = settings.lowTemperature
-    ? { temperature: 0, topP: 0, topK: 1, maxOutputTokens: settings.maxTokens, responseMimeType: 'application/json' }
-    : { maxOutputTokens: settings.maxTokens, responseMimeType: 'application/json' } as any;
-  const model = genAI.getGenerativeModel({ model: settings.model, generationConfig } as any);
+    ? { temperature: 0, topP: 0, topK: 1, maxOutputTokens: settings.maxTokens }
+    : { maxOutputTokens: settings.maxTokens } as any;
+  const preferredModel = resolvePreferredModel(settings.model, DEFAULT_GEMINI_MODEL);
+  const model = getGeminiModel(settings.apiKey as string, { model: preferredModel, generationConfig });
 
   const proofread = options?.proofreadPageNumbers ?? true;
 

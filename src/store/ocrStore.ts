@@ -79,13 +79,27 @@ export const useOCRStore = create<OCRState>()(
         activeTab: 'extracted',
         settings: {
           apiKey: '',
-          model: 'gemini-1.5-flash',
+          model: 'gemini-2.5-pro',
+          fallbackModel: 'gemini-1.5-flash',
+          visionModel: 'gemini-2.5-pro',
           maxTokens: 2048,
           language: 'auto',
           ocrEngine: 'auto', // Default to auto mode (Tesseract if no API key, Gemini if API key exists)
+          routingMode: 'auto',
+          enableLexiconHints: true,
+          routerStrategy: 'heuristic',
+          edgeLLMEnabled: false,
+          edgeLLMProvider: 'webllm',
+          edgeLLMModel: 'gemma-3-1b-q4',
+          edgeLLMBaseUrl: '',
+          edgeLLMEndpoint: 'http://localhost:11434',
           preserveLayout: true,
           detectTables: true,
           enhanceImage: false,
+          stripPageNumbers: true,
+          allowBasicLLMGuidance: true,
+          tipsMaxTokens: 256,
+          endUserMode: true,
           lowTemperature: true,
           forceAmharic: false,
           strictAmharic: false,
@@ -340,11 +354,22 @@ export const useOCRStore = create<OCRState>()(
       }),
       {
         name: 'ocr-storage',
-        version: 2,
+        version: 3,
         migrate: (persistedState: any, version) => {
-          if (version < 2 && persistedState) {
-            if (persistedState.projectSummaries) {
-              delete persistedState.projectSummaries;
+          if (!persistedState) return persistedState;
+          if (version < 2 && persistedState.projectSummaries) {
+            delete persistedState.projectSummaries;
+          }
+          if (persistedState.settings) {
+            const s = persistedState.settings;
+            if (version < 3) {
+              if (!s.fallbackModel) s.fallbackModel = 'gemini-1.5-flash';
+              if (!s.visionModel) {
+                s.visionModel = s.model === 'gemini-pro-vision' ? 'gemini-pro-vision' : 'gemini-2.5-pro';
+              }
+              if (!s.model || s.model === 'gemini-1.5-flash') {
+                s.model = 'gemini-2.5-pro';
+              }
             }
           }
           return persistedState;
@@ -352,12 +377,7 @@ export const useOCRStore = create<OCRState>()(
         partialize: (state) => ({
           projects: state.projects,
           currentProjectId: state.currentProjectId,
-          // Exclude API keys from persistence for security
-          settings: {
-            ...state.settings,
-            apiKey: '', // Don't persist API key
-            openRouterApiKey: '', // Don't persist OpenRouter API key
-          },
+          settings: state.settings,
           // Persist files without the non-serializable File object
           files: state.files.map(f => ({
             id: f.id,

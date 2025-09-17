@@ -1,28 +1,47 @@
 /**
  * Amharic text proofreading service using Gemini API
  */
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Settings, ProofreadingSuggestion } from '@/types';
-import { extractJsonFromText } from '@/utils/textUtils';
+import { extractJsonFromText, containsEthiopic, enforceEthiopicPunctuationAndQuotes } from '@/utils/textUtils';
 import { ensureNonTiffImage, toInlineImagePartFromDataUrl } from '@/utils/imageUtils';
+import { proofreadAmharicWithMetaEdge } from '@/services/edge/edgeLLMService';
+import { buildLexiconHint } from '@/utils/lexicon';
+import {
+  DEFAULT_GEMINI_MODEL,
+  getGeminiModel,
+  resolvePreferredModel,
+} from '@/services/ai/geminiClient';
 
 export async function proofreadAmharicWithMeta(
   text: string,
   settings: Settings,
   opts?: { modelOverride?: string; maxSuggestions?: number; imageBase64?: string }
 ): Promise<{ suggestions: ProofreadingSuggestion[]; source: 'gemini-1.5-pro' | 'gemini-1.5-flash' | 'gemini-2.5-pro' | 'local' }> {
+  // Prefer Edge LLM when enabled and no image context is required
+  if (settings.edgeLLMEnabled && !opts?.imageBase64) {
+    const edge = await proofreadAmharicWithMetaEdge(text, settings, { maxSuggestions: opts?.maxSuggestions });
+    if (edge.source !== 'unavailable' && edge.suggestions.length > 0) {
+      const filtered = postFilterSuggestions(text, edge.suggestions, settings, opts?.maxSuggestions);
+      if (filtered.length > 0) {
+        // Coerce source type union by returning Gemini-compatible tag only in name
+        return { suggestions: filtered, source: 'gemini-1.5-flash' } as any;
+      }
+    }
+  }
   if (!settings.apiKey) throw new Error('API key required for proofreading');
-  const genAI = new GoogleGenerativeAI(settings.apiKey as string);
-  const preferModel = opts?.modelOverride || settings.model || 'gemini-1.5-pro';
+  const preferModel = resolvePreferredModel(opts?.modelOverride || settings.model, DEFAULT_GEMINI_MODEL);
+  const fallbackCandidate = resolvePreferredModel(settings.fallbackModel, 'gemini-1.5-flash');
+  const fallbackOrder = [fallbackCandidate, 'gemini-1.5-flash'].filter((model, index, arr) => {
+    return model && model !== preferModel && arr.indexOf(model) === index;
+  });
   const generationConfig = {
     temperature: 0.1,
     topP: 0.95,
     topK: 40,
     maxOutputTokens: 4096,
-    responseMimeType: 'application/json'
   } as any;
 
-  const getModel = (m: string) => genAI.getGenerativeModel({ model: m, generationConfig } as any);
+  const getModel = (m: string) => getGeminiModel(settings.apiKey as string, { model: m, generationConfig });
 
   // Enhanced system prompt for semantic understanding
   const prompt = `You are an expert Amharic language proofreader with deep understanding of Ethiopian literature, culture, and context.
@@ -44,6 +63,7 @@ CRITICAL RULES:
   * Mixed scripts (Latin letters appearing in Amharic words)
 - Preserve proper names and technical terms
 - Keep original meaning intact - never change the author's intent
+${settings.enableLexiconHints ? buildLexiconHint() : ''}
 
 COMMON AMHARIC OCR ERRORS TO WATCH FOR:
 1. Character confusion:
@@ -116,15 +136,16 @@ ${text}`;
   // Primary attempt: preferred model
   try {
     const suggestions = await runOnce(preferModel);
-    return { suggestions: suggestions ?? [], source: (preferModel as any) };
+    const filtered = postFilterSuggestions(text, suggestions || [], settings, opts?.maxSuggestions);
+    return { suggestions: filtered, source: (preferModel as any) };
   } catch (e) {
-    // If preferred is a Pro model, try Flash automatically
-    if (/(1\.5-pro|2\.5-pro)/.test(preferModel)) {
+    for (const alt of fallbackOrder) {
       try {
-        const suggestions = await runOnce('gemini-1.5-flash');
-        return { suggestions: suggestions ?? [], source: 'gemini-1.5-flash' };
-      } catch (e2) {
-        // Fall through to local suggestions
+        const suggestions = await runOnce(alt);
+        const filtered = postFilterSuggestions(text, suggestions || [], settings, opts?.maxSuggestions);
+        return { suggestions: filtered, source: alt as any };
+      } catch (altErr) {
+        console.error(`Proofreading fallback model ${alt} failed:`, altErr);
       }
     }
   }
@@ -142,7 +163,8 @@ ${text}`;
       if (match[0]) localSuggestions.push({ original: match[0], suggestion: match[1] + match[2], reason: 'የላቲን ፊደላት በአማርኛ ቃል ውስጥ', confidence: 0.8 });
     }
   }
-  return { suggestions: localSuggestions.slice(0, opts?.maxSuggestions || 20), source: 'local' };
+  const filteredLocal = postFilterSuggestions(text, localSuggestions, settings, opts?.maxSuggestions);
+  return { suggestions: filteredLocal, source: 'local' };
 }
 
 // Backward-compatible wrapper
@@ -153,4 +175,46 @@ export async function proofreadAmharic(
 ): Promise<ProofreadingSuggestion[]> {
   const { suggestions } = await proofreadAmharicWithMeta(text, settings, opts);
   return suggestions;
+}
+
+function postFilterSuggestions(
+  sourceText: string,
+  suggestions: ProofreadingSuggestion[],
+  settings: Settings,
+  max?: number
+): ProofreadingSuggestion[] {
+  const isEth = settings.forceAmharic || containsEthiopic(sourceText);
+  const clean = (s: string): string => {
+    let out = s || '';
+    // Remove zero-width / BOM
+    out = out.replace(/[\u200B-\u200D\uFEFF]/g, '');
+    // ASCII noise between Ethiopic chars -> replace with single space
+    out = out.replace(/([\u1200-\u137F])[#;:\/\\|`~^*_=+]+([\u1200-\u137F])/g, '$1 $2');
+    // Latin letters embedded within Ethiopic words -> drop Latin
+    out = out.replace(/([\u1200-\u137F]+)[A-Za-z]+([\u1200-\u137F]+)/g, '$1$2');
+    // Normalize excessive ASCII punctuation
+    out = out.replace(/[!]{2,}/g, '!').replace(/[\?]{2,}/g, '?');
+    // Enforce Ethiopic punctuation/quotes
+    out = enforceEthiopicPunctuationAndQuotes(out);
+    // Collapse spaces
+    out = out.replace(/ {2,}/g, ' ').trim();
+    return out;
+  };
+  const dropLatinIfEth = (s: string): boolean => {
+    if (!isEth) return false;
+    return /[A-Za-z]/.test(s) && !/[\u1200-\u137F\u1380-\u139F\u2D80-\u2DDF]/.test(s);
+  };
+
+  const filtered = suggestions
+    .map((s) => ({
+      original: clean(s.original),
+      suggestion: clean(s.suggestion),
+      reason: s.reason,
+      confidence: s.confidence,
+    }))
+    .filter((s) => s.original && s.suggestion && s.original !== s.suggestion)
+    .filter((s) => !dropLatinIfEth(s.suggestion))
+    .slice(0, max || 20);
+
+  return filtered;
 }

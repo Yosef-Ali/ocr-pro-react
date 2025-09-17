@@ -1,10 +1,14 @@
 /**
  * Advanced word-level analysis service for OCR text
  */
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Settings, ProofreadingSuggestion } from '@/types';
 import { extractJsonFromText } from '@/utils/textUtils';
 import { ensureNonTiffImage, toInlineImagePartFromDataUrl } from '@/utils/imageUtils';
+import {
+  DEFAULT_GEMINI_MODEL,
+  getGeminiModel,
+  resolvePreferredModel,
+} from '@/services/ai/geminiClient';
 
 export async function analyzeWordsWithConfidence(
   text: string,
@@ -22,9 +26,12 @@ export async function analyzeWordsWithConfidence(
   source: 'gemini-1.5-pro' | 'gemini-1.5-flash' | 'gemini-2.5-pro' | 'local';
 }> {
   if (!settings.apiKey) throw new Error('API key required for word analysis');
-  const genAI = new GoogleGenerativeAI(settings.apiKey);
-  // Use 1.5 Pro as default for word analysis if 2.5 Pro is selected (may not be available yet)
-  let preferModel = opts?.modelOverride || settings.model || 'gemini-1.5-pro';
+  // Use 2.5 Pro when available; fallback handled below
+  const preferModel = resolvePreferredModel(opts?.modelOverride || settings.model, DEFAULT_GEMINI_MODEL);
+  const fallbackCandidate = resolvePreferredModel(settings.fallbackModel, 'gemini-1.5-flash');
+  const fallbackOrder = [fallbackCandidate, 'gemini-1.5-flash'].filter((model, index, arr) => {
+    return model && model !== preferModel && arr.indexOf(model) === index;
+  });
   if (preferModel === 'gemini-2.5-pro') {
     console.log('Note: Gemini 2.5 Pro may not be available for word analysis yet, will try and fallback if needed');
   }
@@ -34,10 +41,8 @@ export async function analyzeWordsWithConfidence(
     topP: 0.95,
     topK: 40,
     maxOutputTokens: 4096,
-    responseMimeType: 'application/json'
   } as any;
-
-  const getModel = (m: string) => genAI.getGenerativeModel({ model: m, generationConfig } as any);
+  const getModel = (m: string) => getGeminiModel(settings.apiKey as string, { model: m, generationConfig });
 
   // Enhanced prompt for aggressive OCR error detection
   const prompt = `You are an expert Amharic OCR analysis system with deep knowledge of Ethiopian religious texts, manuscripts, and liturgical language. Your job is to be VERY AGGRESSIVE at finding OCR errors.
@@ -142,16 +147,14 @@ ${text}`;
     return { ...result, source: (preferModel as any) };
   } catch (e) {
     console.error(`Word analysis failed with ${preferModel}:`, e);
-    // If preferred is Pro, try Flash next
-    if (/(1\.5-pro|2\.5-pro)/.test(preferModel)) {
+    for (const alt of fallbackOrder) {
       try {
-        console.log('Rate limited, trying Flash model...');
-        const result = await runAnalysis('gemini-1.5-flash');
-        console.log(`Flash success! Analyzed ${result.wordAnalysis.length} words`);
-        return { ...result, source: 'gemini-1.5-flash' };
-      } catch (e2) {
-        console.error('Flash model also failed:', e2);
-        // Fall through to basic analysis
+        console.log(`Attempting fallback word analysis with ${alt}...`);
+        const result = await runAnalysis(alt);
+        console.log(`Fallback success! Analyzed ${result.wordAnalysis.length} words with ${alt}`);
+        return { ...result, source: alt as any };
+      } catch (altErr) {
+        console.error(`Fallback model ${alt} also failed:`, altErr);
       }
     }
   }
