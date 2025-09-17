@@ -47,6 +47,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
   const [autoSaved, setAutoSaved] = useState(false);
   const [pendingProposal, setPendingProposal] = useState<string | null>(null);
   const [pendingProposalRaw, setPendingProposalRaw] = useState<string | null>(null);
+  const [pendingProposalExact, setPendingProposalExact] = useState<string | null>(null);
   const [comparisonBase, setComparisonBase] = useState<string | null>(null);
   const [isProofreading, setIsProofreading] = useState(false);
   const [appliedPulse, setAppliedPulse] = useState(false);
@@ -291,6 +292,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
           const cleanedText = parseCorrected(correctedText);
           const staged = normalizeMarkdownForReview(cleanedText, result.detectedLanguage);
           setPendingProposalRaw(cleanedText);
+          setPendingProposalExact(cleanedText);
           setPendingProposal(staged);
           setAppliedPulse(true);
           setTimeout(() => setAppliedPulse(false), 1500);
@@ -330,15 +332,17 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
         }
       }
 
+      const exact = transformed;
+      let previewText = transformed;
       const cleaned = cleanupAsciiNoiseAndItalics(transformed);
       if (cleaned !== transformed) {
-        transformed = cleaned;
-        applied++;
+        previewText = cleaned;
       }
 
-      if (applied > 0 && transformed !== draft) {
-        const staged = normalizeMarkdownForReview(transformed, result.detectedLanguage);
-        setPendingProposalRaw(transformed);
+      if (applied > 0 && exact !== draft) {
+        const staged = normalizeMarkdownForReview(previewText, result.detectedLanguage);
+        setPendingProposalRaw(previewText);
+        setPendingProposalExact(exact);
         setPendingProposal(staged);
         setAppliedPulse(true);
         setTimeout(() => setAppliedPulse(false), 900);
@@ -616,7 +620,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                       role="menuitem"
                       className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50"
                       onClick={() => {
-                        let proposed = pendingProposalRaw ?? pendingProposal ?? draft;
+                        let proposed = pendingProposalExact ?? pendingProposalRaw ?? pendingProposal ?? draft;
                         try {
                           if (/^\s*`{3}/.test(proposed) || /\"correctedText\"\s*:/.test(proposed)) {
                             const json = extractJsonFromText(proposed);
@@ -625,12 +629,13 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                           }
                         } catch { }
                         const base = comparisonBase || draft;
-                        if (proposed.trim().length === 0 && base.trim().length > 0) {
+                        if (proposed.length === 0 && base.length > 0) {
                           if (!window.confirm('The suggestion would clear the content. Apply anyway?')) return;
                         }
                         setDraft(proposed);
                         setPendingProposal(null);
                         setPendingProposalRaw(null);
+                        setPendingProposalExact(null);
                         setComparisonBase(null);
                         const snapshot = (result as any).metadata?.originalBeforeAI || base;
                         updateResult(result.fileId, {
@@ -654,6 +659,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                       onClick={() => {
                         setPendingProposal(null);
                         setPendingProposalRaw(null);
+                        setPendingProposalExact(null);
                         setComparisonBase(null);
                         setSuggestionCount(0);
                         toast('Discarded AI proposal');
@@ -733,6 +739,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                   }
                   if (next.proposal !== undefined) {
                     setPendingProposalRaw(next.proposal);
+                    setPendingProposalExact(next.proposal);
                     const normalizedProposal = normalizeMarkdownForReview(next.proposal, result.detectedLanguage);
                     setPendingProposal(normalizedProposal);
                   }

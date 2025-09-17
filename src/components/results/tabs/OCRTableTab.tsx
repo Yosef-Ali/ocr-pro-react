@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useOCRStore } from '@/store/ocrStore';
 import { useExport } from '@/hooks/useExport';
@@ -23,6 +23,10 @@ export const OCRTableTab: React.FC = () => {
     const [sortBy, setSortBy] = useState<'created_at' | 'updated_at' | 'confidence'>('created_at');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
     const [query, setQuery] = useState('');
+
+    useEffect(() => {
+        setPage(0);
+    }, [currentProjectId, query]);
 
     useEffect(() => {
         let canceled = false;
@@ -61,6 +65,8 @@ export const OCRTableTab: React.FC = () => {
         return () => { canceled = true; };
     }, [currentProjectId, page, sortBy, sortDir]);
 
+    const getFileName = useCallback((fileId: string) => remoteFilesMap[fileId] || files.find(f => f.id === fileId)?.name || 'Unknown', [remoteFilesMap, files]);
+
     // Use remote results for the current project when available; otherwise fallback to local filtered results
     const baseResults = useMemo(() => {
         if (currentProjectId && remoteResults.length >= 0) return remoteResults;
@@ -77,8 +83,6 @@ export const OCRTableTab: React.FC = () => {
     }, [baseResults, query]);
     const allSelected = useMemo(() => filteredResults.length > 0 && filteredResults.every(r => selected[r.fileId]), [filteredResults, selected]);
     const countSelected = useMemo(() => filteredResults.filter(r => selected[r.fileId]).length, [filteredResults, selected]);
-
-    const getFileName = (fileId: string) => remoteFilesMap[fileId] || files.find(f => f.id === fileId)?.name || 'Unknown';
 
     if (!loading && filteredResults.length === 0) {
         return <p className="text-sm text-gray-500">No OCR results yet.</p>;

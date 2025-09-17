@@ -37,15 +37,15 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 async function listFiles(env: Env, projectId?: string | null): Promise<Response> {
   const stmt = projectId
     ? env.DB.prepare(
-        `SELECT id, project_id, name, size, mime_type, status, preview, original_preview,
+      `SELECT id, project_id, name, size, mime_type, status, preview, original_preview,
                 created_at, updated_at
            FROM files WHERE project_id = ?1`
-      ).bind(projectId)
+    ).bind(projectId)
     : env.DB.prepare(
-        `SELECT id, project_id, name, size, mime_type, status, preview, original_preview,
+      `SELECT id, project_id, name, size, mime_type, status, preview, original_preview,
                 created_at, updated_at
            FROM files`
-      );
+    );
 
   const files = await stmt.all();
   return jsonResponse({ files: files.results ?? [] });
@@ -66,10 +66,18 @@ async function upsertFiles(env: Env, request: Request): Promise<Response> {
   const now = Date.now();
   const statements: D1PreparedStatement[] = [];
 
+  const MAX_PREVIEW_CHARS = 300_000; // ~300KB of base64 to keep statements reasonable
   for (const file of payload.files) {
     if (!file.id || !file.name) {
       return errorResponse('File id and name are required', 422);
     }
+
+    const safePreview = typeof file.preview === 'string' && file.preview.length > MAX_PREVIEW_CHARS
+      ? null
+      : (file.preview ?? null);
+    const safeOriginalPreview = typeof file.original_preview === 'string' && file.original_preview.length > MAX_PREVIEW_CHARS
+      ? null
+      : (file.original_preview ?? null);
 
     statements.push(
       env.DB.prepare(
@@ -92,8 +100,8 @@ async function upsertFiles(env: Env, request: Request): Promise<Response> {
         file.size ?? null,
         file.mime_type ?? null,
         file.status ?? null,
-        file.preview ?? null,
-        file.original_preview ?? null,
+        safePreview,
+        safeOriginalPreview,
         now,
         now
       )
