@@ -6,7 +6,7 @@ import { ProcessingStatus } from './ProcessingStatus';
 import { EmptyState } from './EmptyState';
 import { useExport } from '@/hooks/useExport';
 import toast from 'react-hot-toast';
-import { exportSummaryTXT as exportSummaryTXTService, exportSummaryDOCX as exportSummaryDOCXService, exportSummaryJSON as exportSummaryJSONService, copyTocMarkdown as copyTocMarkdownService, exportBookDOCX as exportBookDOCXService, exportBookPDF as exportBookPDFService } from '@/services/export/projectExportService';
+import { exportSummaryTXT as exportSummaryTXTService, exportSummaryDOCX as exportSummaryDOCXService, exportSummaryJSON as exportSummaryJSONService, copyTocMarkdown as copyTocMarkdownService, exportBookDOCX as exportBookDOCXService, exportBookPDF as exportBookPDFService, exportOriginalsPDF as exportOriginalsPDFService } from '@/services/export/projectExportService';
 import { lazy, Suspense } from 'react';
 import { processWithTesseractOnly } from '@/services/ocr/ocrProcessingService';
 
@@ -122,6 +122,16 @@ export const ResultsSection: React.FC = () => {
     } catch (e) {
       console.error('Book PDF export failed', e);
       toast.error('Failed to export Book PDF');
+    }
+  };
+
+  const exportOriginalsPDF = async () => {
+    try {
+      await exportOriginalsPDFService(getActiveProjectResults());
+      toast.success('Original pages PDF exported');
+    } catch (e) {
+      console.error('Originals PDF export failed', e);
+      toast.error('Failed to export originals PDF');
     }
   };
 
@@ -251,6 +261,19 @@ export const ResultsSection: React.FC = () => {
           </motion.button>
         </div>
       </div>
+
+      {settings.endUserMode && (
+        <div className="mb-5 border rounded-lg p-4 bg-gray-50">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-gray-800">Export & Print</h3>
+            <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Export options">
+              <button onClick={exportBookPDF} className="px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Export PDF (text)">Export PDF</button>
+              <button onClick={exportBookDOCX} className="px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Export DOCX (text)">Export DOCX</button>
+              <button onClick={exportOriginalsPDF} className="px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Export Originals PDF (images)">Originals PDF</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!settings.endUserMode && activeSummary && activeResults.length > 0 && (
         <div className="mb-5 border rounded-lg p-4 bg-purple-50/40">

@@ -4,7 +4,7 @@ import { useOCRStore } from '@/store/ocrStore';
 import { OCRResult } from '@/types';
 import { ExtractedTextTab } from './tabs/ExtractedTextTab';
 import { LayoutPreservedTab } from './tabs/LayoutPreservedTab';
-import { AnalysisTab } from './tabs/AnalysisTab';
+import { BookPreviewTab } from './tabs/BookPreviewTab';
 import { OCRTableTab } from './tabs/OCRTableTab';
 
 interface Props {
@@ -14,7 +14,7 @@ interface Props {
 const tabs = [
   { id: 'extracted', label: 'Extracted Text', component: ExtractedTextTab },
   { id: 'layout', label: 'Layout Preserved', component: LayoutPreservedTab },
-  { id: 'analysis', label: 'Document Analysis', component: AnalysisTab },
+  { id: 'preview', label: 'Book Preview', component: BookPreviewTab },
   { id: 'table', label: 'All OCR (Table)', component: OCRTableTab as any },
 ] as const;
 

@@ -509,58 +509,58 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                   title={currentFile?.preview ? 'View original layout' : 'No original preview available'}
                 >Original</button>
               </div>
-            {(isProofreading || isAnalyzing || isCorrectingWithVision) && (
-              <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${isCorrectingWithVision ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-purple-700 bg-purple-50 border-purple-200'}`}>
-                <Loader2 className="w-3 h-3 animate-spin" />
-                {isCorrectingWithVision ? 'AI Vision' : isAnalyzing ? 'Analyzing' : 'Preparing'}
-              </span>
-            )}
-            {pendingProposal && (
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200" title="Remaining suggestions">
-                  {suggestionCount} suggestion{suggestionCount === 1 ? '' : 's'}
+              {(isProofreading || isAnalyzing || isCorrectingWithVision) && (
+                <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${isCorrectingWithVision ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-purple-700 bg-purple-50 border-purple-200'}`}>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  {isCorrectingWithVision ? 'AI Vision' : isAnalyzing ? 'Analyzing' : 'Preparing'}
                 </span>
-                <button
-                  type="button"
-                  className="px-3 py-1 text-xs font-medium rounded-full bg-emerald-600 text-white hover:bg-emerald-700 transition"
-                  onClick={() => {
-                    const proposed = pendingProposalRaw ?? pendingProposal ?? draft;
-                    const base = comparisonBase || draft;
-                    if (proposed.trim().length === 0 && base.trim().length > 0) {
-                      if (!window.confirm('The suggestion would clear the content. Apply anyway?')) return;
-                    }
-                    setDraft(proposed);
-                    setPendingProposal(null);
-                    setPendingProposalRaw(null);
-                    setComparisonBase(null);
-                    const snapshot = (result as any).metadata?.originalBeforeAI || base;
-                    updateResult(result.fileId, {
-                      extractedText: proposed,
-                      layoutPreserved: proposed,
-                      metadata: { ...(result as any).metadata, layoutMarkdown: proposed, originalBeforeAI: snapshot },
-                    });
-                    setSuggestionCount(0);
-                    toast.success('Applied AI changes');
-                  }}
-                >
-                  Apply All
-                </button>
-                <button
-                  type="button"
-                  className="px-3 py-1 text-xs font-medium rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
-                  onClick={() => {
-                    setPendingProposal(null);
-                    setPendingProposalRaw(null);
-                    setComparisonBase(null);
-                    setSuggestionCount(0);
-                    toast('Discarded AI proposal');
-                  }}
-                >
-                  Discard All
-                </button>
-              </div>
-            )}
-          </div>
+              )}
+              {pendingProposal && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200" title="Remaining suggestions">
+                    {suggestionCount} suggestion{suggestionCount === 1 ? '' : 's'}
+                  </span>
+                  <button
+                    type="button"
+                    className="px-3 py-1 text-xs font-medium rounded-full bg-emerald-600 text-white hover:bg-emerald-700 transition"
+                    onClick={() => {
+                      const proposed = pendingProposalRaw ?? pendingProposal ?? draft;
+                      const base = comparisonBase || draft;
+                      if (proposed.trim().length === 0 && base.trim().length > 0) {
+                        if (!window.confirm('The suggestion would clear the content. Apply anyway?')) return;
+                      }
+                      setDraft(proposed);
+                      setPendingProposal(null);
+                      setPendingProposalRaw(null);
+                      setComparisonBase(null);
+                      const snapshot = (result as any).metadata?.originalBeforeAI || base;
+                      updateResult(result.fileId, {
+                        extractedText: proposed,
+                        layoutPreserved: proposed,
+                        metadata: { ...(result as any).metadata, layoutMarkdown: proposed, originalBeforeAI: snapshot },
+                      });
+                      setSuggestionCount(0);
+                      toast.success('Applied AI changes');
+                    }}
+                  >
+                    Apply All
+                  </button>
+                  <button
+                    type="button"
+                    className="px-3 py-1 text-xs font-medium rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+                    onClick={() => {
+                      setPendingProposal(null);
+                      setPendingProposalRaw(null);
+                      setComparisonBase(null);
+                      setSuggestionCount(0);
+                      toast('Discarded AI proposal');
+                    }}
+                  >
+                    Discard All
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {pendingProposal && previewMode === 'text' ? (
@@ -616,16 +616,77 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
 const OriginalLayoutPanel: React.FC<{ fileName?: string; dataUrl: string }> = ({ fileName, dataUrl }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const imgRef = React.useRef<HTMLImageElement>(null);
+  const [convertedUrl, setConvertedUrl] = React.useState<string | null>(null);
+  const displayUrl = convertedUrl || dataUrl;
+
+  React.useEffect(() => {
+    let canceled = false;
+    const isTiff = (url: string, name?: string) => {
+      if (!url) return false;
+      if (url.startsWith('data:image/tiff') || url.startsWith('data:image/tif')) return true;
+      if (name && /\.(tif|tiff)$/i.test(name)) return true;
+      return false;
+    };
+
+    const toArrayBuffer = async (url: string): Promise<ArrayBuffer> => {
+      if (url.startsWith('data:')) {
+        const base64 = url.split(',')[1] || '';
+        const binary = atob(base64);
+        const len = binary.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+        return bytes.buffer;
+      } else {
+        const res = await fetch(url);
+        return res.arrayBuffer();
+      }
+    };
+
+    const convertTiffToPng = async () => {
+      try {
+        if (!isTiff(dataUrl, fileName)) {
+          setConvertedUrl(null);
+          return;
+        }
+        const buf = await toArrayBuffer(dataUrl);
+        const UTIF = await import('utif');
+        const ifds = UTIF.decode(buf as any);
+        if (!ifds || ifds.length === 0) return;
+        const first = ifds[0];
+        UTIF.decodeImage(buf as any, first);
+        const rgba = UTIF.toRGBA8(first);
+        const width = (first as any).width || (first as any).t256 || 0;
+        const height = (first as any).height || (first as any).t257 || 0;
+        if (!width || !height) return;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        const imageData = new ImageData(new Uint8ClampedArray(rgba), width, height);
+        ctx.putImageData(imageData, 0, 0);
+        const pngUrl = canvas.toDataURL('image/png');
+        if (!canceled) setConvertedUrl(pngUrl);
+      } catch (err) {
+        console.warn('TIFF conversion failed; falling back to original URL', err);
+        if (!canceled) setConvertedUrl(null);
+      }
+    };
+
+    convertTiffToPng();
+    return () => { canceled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataUrl, fileName]);
 
   const exportPdf = async () => {
-    if (!dataUrl) return;
+    if (!displayUrl) return;
     const { jsPDF } = await import('jspdf');
     // Load image to get dimensions
     const img = new Image();
     const dims = await new Promise<{ w: number; h: number }>((resolve, reject) => {
       img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
       img.onerror = reject;
-      img.src = dataUrl;
+      img.src = displayUrl;
     });
     const orientation = dims.w >= dims.h ? 'l' : 'p';
     const doc = new jsPDF({ orientation, unit: 'pt', format: 'a4' });
@@ -644,20 +705,21 @@ const OriginalLayoutPanel: React.FC<{ fileName?: string; dataUrl: string }> = ({
     }
     const offsetX = (pageW - renderW) / 2;
     const offsetY = (pageH - renderH) / 2;
-    doc.addImage(dataUrl, 'JPEG', offsetX, offsetY, renderW, renderH, undefined, 'FAST');
+    const imgFormat = displayUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+    doc.addImage(displayUrl, imgFormat as any, offsetX, offsetY, renderW, renderH, undefined, 'FAST');
     const name = (fileName || 'document').replace(/\.\w+$/, '') + '-original.pdf';
     doc.save(name);
   };
 
   const printImage = () => {
-    if (!dataUrl) return;
+    if (!displayUrl) return;
     const w = window.open('', '_blank');
     if (!w) return;
-    w.document.write(`<!doctype html><html><head><title>${fileName || 'Original'}</title><style>html,body{margin:0;padding:0}img{width:100%;height:auto;}</style></head><body><img src="${dataUrl}" onload="window.focus();window.print();"/></body></html>`);
+    w.document.write(`<!doctype html><html><head><title>${fileName || 'Original'}</title><style>html,body{margin:0;padding:0}img{width:100%;height:auto;}</style></head><body><img src="${displayUrl}" onload="window.focus();window.print();"/></body></html>`);
     w.document.close();
   };
 
-  if (!dataUrl) {
+  if (!displayUrl) {
     return (
       <div className="flex-1 flex items-center justify-center text-sm text-gray-500 bg-gray-50 rounded-lg border">
         No original preview available
@@ -682,7 +744,7 @@ const OriginalLayoutPanel: React.FC<{ fileName?: string; dataUrl: string }> = ({
         >Print</button>
       </div>
       <div className="p-3 flex items-start justify-center">
-        <img ref={imgRef} src={dataUrl} alt={fileName || 'Original'} className="max-w-full h-auto shadow-sm rounded" />
+        <img ref={imgRef} src={displayUrl} alt={fileName || 'Original'} className="max-w-full h-auto shadow-sm rounded" />
       </div>
     </div>
   );
