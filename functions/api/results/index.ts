@@ -1,10 +1,20 @@
 import { jsonResponse, methodNotAllowed } from '../../utils/http';
+// Minimal local type shapes to avoid external type dependency
+type LocalD1PreparedStatement = {
+  bind: (...args: any[]) => LocalD1PreparedStatement;
+  all: () => Promise<{ results?: any[] } | any>;
+  first: <T = any>() => Promise<T | null>;
+};
+type LocalD1Database = {
+  prepare: (sql: string) => LocalD1PreparedStatement;
+};
+type LocalPagesFunction<E> = (context: { request: Request; env: E }) => Promise<Response>;
 
 type Env = {
-  DB: D1Database;
+  DB: LocalD1Database;
 };
 
-export const onRequest: PagesFunction<Env> = async (context) => {
+export const onRequest: LocalPagesFunction<Env> = async (context) => {
   const { request, env } = context;
   const url = new URL(request.url);
   const projectId = url.searchParams.get('projectId');

@@ -50,11 +50,15 @@ export const ResultTabs: React.FC<Props> = ({ result }) => {
 
       {/* Tab Content */}
       <div className="fade-in">
-        {tabs.map(({ id, component: Component }) => (
-          activeTab === id && (
-            <Component key={id} result={result} />
-          )
-        ))}
+        {(() => {
+          const active = tabs.find(t => t.id === (activeTab as any));
+          if (!active) return null;
+          const Component: any = active.component;
+          if (active.id === 'table') {
+            return <Component key={active.id} />;
+          }
+          return <Component key={active.id} result={result} />;
+        })()}
       </div>
     </motion.div>
   );

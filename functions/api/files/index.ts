@@ -1,7 +1,18 @@
 import { jsonResponse, errorResponse, methodNotAllowed, readJson } from '../../utils/http';
+// Minimal local type shapes to avoid external type dependency
+type LocalD1PreparedStatement = {
+  bind: (...args: any[]) => LocalD1PreparedStatement;
+  all: () => Promise<{ results?: any[] } | any>;
+  first: <T = any>() => Promise<T | null>;
+};
+type LocalD1Database = {
+  prepare: (sql: string) => LocalD1PreparedStatement;
+  batch: (statements: LocalD1PreparedStatement[]) => Promise<any>;
+};
+type LocalPagesFunction<E> = (context: { request: Request; env: E }) => Promise<Response>;
 
 type Env = {
-  DB: D1Database;
+  DB: LocalD1Database;
 };
 
 type FilePayload = {
@@ -19,7 +30,7 @@ type BulkFilesPayload = {
   files: FilePayload[];
 };
 
-export const onRequest: PagesFunction<Env> = async (context) => {
+export const onRequest: LocalPagesFunction<Env> = async (context) => {
   const { request, env } = context;
   const url = new URL(request.url);
   const projectIdFilter = url.searchParams.get('projectId');
@@ -64,7 +75,7 @@ async function upsertFiles(env: Env, request: Request): Promise<Response> {
   }
 
   const now = Date.now();
-  const statements: D1PreparedStatement[] = [];
+  const statements: LocalD1PreparedStatement[] = [];
 
   const MAX_PREVIEW_CHARS = 300_000; // ~300KB of base64 to keep statements reasonable
   for (const file of payload.files) {
