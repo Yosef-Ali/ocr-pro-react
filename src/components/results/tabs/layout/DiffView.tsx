@@ -256,7 +256,7 @@ const DiffViewComponent: React.FC<DiffViewProps> = ({
 
   return (
     <div
-      className={`text-[13px] leading-relaxed whitespace-pre-wrap break-words relative ${isEthiopic ? 'font-ethiopic' : ''}`}
+      className={`text-[13px] leading-relaxed whitespace-pre-wrap break-words relative overflow-x-auto ${isEthiopic ? 'font-ethiopic' : ''}`}
       onContextMenu={handleContextMenu}
     >
       {diffNodes.nodes}

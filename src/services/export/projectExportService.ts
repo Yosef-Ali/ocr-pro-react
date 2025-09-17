@@ -3,6 +3,7 @@
  */
 import { ProjectSummary, Settings, OCRResult } from '@/types';
 import { downloadBlob } from '@/utils/validationUtils';
+import * as UTIF from 'utif';
 
 export const DEFAULT_PROJECT_ID = 'all';
 
@@ -319,7 +320,6 @@ export async function exportOriginalsPDF(results: OCRResult[]): Promise<void> {
     const convertTiffToPng = async (inputUrl: string): Promise<string | null> => {
         try {
             const buf = await toArrayBuffer(inputUrl);
-            const UTIF = await import('utif');
             const ifds = UTIF.decode(buf as any);
             if (!ifds || ifds.length === 0) return null;
             const first = ifds[0];

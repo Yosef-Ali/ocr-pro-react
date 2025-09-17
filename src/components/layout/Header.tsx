@@ -1,10 +1,32 @@
 import React from 'react';
-import { FileText, Settings, HelpCircle } from 'lucide-react';
+import { FileText, Settings, HelpCircle, Moon, Sun } from 'lucide-react';
 import { useOCRStore } from '@/store/ocrStore';
 import { motion } from 'framer-motion';
 
 export const Header: React.FC = () => {
   const { toggleSettings, toggleHelp, projects, currentProjectId, selectProject, createProject } = useOCRStore();
+  const [dark, setDark] = React.useState(false);
+
+  React.useEffect(() => {
+    try {
+      const stored = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const initialDark = stored ? stored === 'dark' : prefersDark;
+      setDark(initialDark);
+      const root = document.documentElement;
+      if (initialDark) root.classList.add('dark');
+      else root.classList.remove('dark');
+    } catch { }
+  }, []);
+
+  const toggleTheme = () => {
+    const next = !dark;
+    setDark(next);
+    const root = document.documentElement;
+    if (next) root.classList.add('dark');
+    else root.classList.remove('dark');
+    try { localStorage.setItem('theme', next ? 'dark' : 'light'); } catch { }
+  };
 
   React.useEffect(() => {
     if (projects.length === 0) return;
@@ -26,7 +48,7 @@ export const Header: React.FC = () => {
     <motion.header
       initial={{ y: -100 }}
       animate={{ y: 0 }}
-      className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white shadow-lg"
+      className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white shadow-lg dark:from-slate-900 dark:via-indigo-900 dark:to-purple-900"
     >
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
@@ -70,6 +92,15 @@ export const Header: React.FC = () => {
                 New
               </button>
             </div>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={toggleTheme}
+              className="p-2 rounded-lg bg-white/10 backdrop-blur hover:bg-white/20 transition-all"
+              title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {dark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </motion.button>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}

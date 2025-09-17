@@ -4,19 +4,83 @@ import { useOCRStore } from '@/store/ocrStore';
 import { useExport } from '@/hooks/useExport';
 import { MoreHorizontal } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { fetchResultsPaged as apiFetchResults } from '@/services/api/results';
+import { fetchFiles as apiFetchFiles } from '@/services/api/files';
+import { mapRemoteResult } from '@/services/api/transformers';
 //
 
 export const OCRTableTab: React.FC = () => {
     const { results, files, deleteResult, setCurrentFileIndex, currentProjectId, assignFilesToProject } = useOCRStore();
     const { exportResult, exportMany } = useExport();
     const [selected, setSelected] = useState<Record<string, boolean>>({});
-    const filteredResults = useMemo(() => currentProjectId ? results.filter(r => r.projectId === currentProjectId) : results, [results, currentProjectId]);
+    // Remote fetching by project (Cloudflare D1)
+    const [remoteResults, setRemoteResults] = useState<ReturnType<typeof mapRemoteResult>[]>([]);
+    const [remoteFilesMap, setRemoteFilesMap] = useState<Record<string, string>>({});
+    const [loading, setLoading] = useState(false);
+    const [total, setTotal] = useState(0);
+    const [page, setPage] = useState(0);
+    const pageSize = 25;
+    const [sortBy, setSortBy] = useState<'created_at' | 'updated_at' | 'confidence'>('created_at');
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+    const [query, setQuery] = useState('');
+
+    useEffect(() => {
+        let canceled = false;
+        (async () => {
+            try {
+                setLoading(true);
+                // If a project is selected, fetch that project's results/files from D1
+                if (currentProjectId) {
+                    const [{ results: rr, total }, rf] = await Promise.all([
+                        apiFetchResults({ projectId: currentProjectId }, { limit: pageSize, offset: page * pageSize, sortBy, sortDir }),
+                        apiFetchFiles(currentProjectId)
+                    ]);
+                    if (canceled) return;
+                    setRemoteResults(rr.map(mapRemoteResult));
+                    const map: Record<string, string> = {};
+                    rf.forEach(f => { map[f.id] = f.name; });
+                    setRemoteFilesMap(map);
+                    setTotal(total);
+                } else {
+                    // No project selected — show local state fallback
+                    setRemoteResults([]);
+                    setRemoteFilesMap({});
+                    setTotal(0);
+                }
+            } catch (err) {
+                console.warn('Failed to fetch results from D1; using local state', err);
+                if (!canceled) {
+                    setRemoteResults([]);
+                    setRemoteFilesMap({});
+                    setTotal(0);
+                }
+            } finally {
+                if (!canceled) setLoading(false);
+            }
+        })();
+        return () => { canceled = true; };
+    }, [currentProjectId, page, sortBy, sortDir]);
+
+    // Use remote results for the current project when available; otherwise fallback to local filtered results
+    const baseResults = useMemo(() => {
+        if (currentProjectId && remoteResults.length >= 0) return remoteResults;
+        return currentProjectId ? results.filter(r => r.projectId === currentProjectId) : results;
+    }, [results, currentProjectId, remoteResults]);
+    const filteredResults = useMemo(() => {
+        if (!query.trim()) return baseResults;
+        const q = query.toLowerCase();
+        return baseResults.filter(r =>
+            getFileName(r.fileId).toLowerCase().includes(q) ||
+            (r.documentType || '').toLowerCase().includes(q) ||
+            (r.detectedLanguage || '').toLowerCase().includes(q)
+        );
+    }, [baseResults, query]);
     const allSelected = useMemo(() => filteredResults.length > 0 && filteredResults.every(r => selected[r.fileId]), [filteredResults, selected]);
     const countSelected = useMemo(() => filteredResults.filter(r => selected[r.fileId]).length, [filteredResults, selected]);
 
-    const getFileName = (fileId: string) => files.find(f => f.id === fileId)?.name || 'Unknown';
+    const getFileName = (fileId: string) => remoteFilesMap[fileId] || files.find(f => f.id === fileId)?.name || 'Unknown';
 
-    if (filteredResults.length === 0) {
+    if (!loading && filteredResults.length === 0) {
         return <p className="text-sm text-gray-500">No OCR results yet.</p>;
     }
 
@@ -211,9 +275,21 @@ export const OCRTableTab: React.FC = () => {
 
     return (
         <div className="overflow-x-auto overflow-y-visible">
-            <div className="flex items-center justify-between mb-3">
-                <div className="text-sm text-gray-600">
-                    {countSelected > 0 ? `${countSelected} selected` : `${results.length} items`}
+            <div className="flex items-center justify-between mb-3 gap-3">
+                <div className="flex items-center gap-3">
+                    <div className="text-sm text-gray-600">
+                        {countSelected > 0 ? `${countSelected} selected` : loading ? 'Fetching…' : `${filteredResults.length}${currentProjectId ? ` of ${total}` : ''} items`}
+                    </div>
+                    {currentProjectId && (
+                        <div className="flex items-center gap-2 text-xs">
+                            <button className="px-2 py-1 rounded border bg-white disabled:opacity-50" disabled={page === 0 || loading} onClick={() => setPage(p => Math.max(0, p - 1))}>Prev</button>
+                            <span>Page {page + 1}</span>
+                            <button className="px-2 py-1 rounded border bg-white disabled:opacity-50" disabled={loading || ((page + 1) * pageSize >= total)} onClick={() => setPage(p => p + 1)}>Next</button>
+                        </div>
+                    )}
+                </div>
+                <div className="flex items-center gap-2">
+                    <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search…" className="px-2 py-1 text-sm border rounded" />
                 </div>
                 <BulkActions
                     disabled={countSelected === 0}
@@ -263,7 +339,14 @@ export const OCRTableTab: React.FC = () => {
                         <th className="py-2 pr-4">File</th>
                         <th className="py-2 pr-4">Language</th>
                         <th className="py-2 pr-4">Type</th>
-                        <th className="py-2 pr-4">Confidence</th>
+                        <th className="py-2 pr-4">
+                            <button className="inline-flex items-center gap-1 hover:underline" onClick={() => {
+                                const nextDir = sortBy === 'confidence' ? (sortDir === 'asc' ? 'desc' : 'asc') : 'desc';
+                                setSortBy('confidence');
+                                setSortDir(nextDir);
+                                setPage(0);
+                            }}>Confidence{sortBy === 'confidence' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}</button>
+                        </th>
                         <th className="py-2 pr-4">Words</th>
                         <th className="py-2 pr-4">Actions</th>
                     </tr>

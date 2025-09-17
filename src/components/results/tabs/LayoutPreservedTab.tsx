@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Bold, Italic, Heading1, Heading2, List, ListOrdered, Quote, Code, Link as LinkIcon, Type, Wand2, Loader2, RotateCcw, CheckCheck, XCircle, MoreVertical } from 'lucide-react';
+import * as UTIF from 'utif';
+import { Bold, Italic, Heading1, Heading2, List, ListOrdered, Quote, Code, Link as LinkIcon, Type, Wand2, Loader2, RotateCcw, CheckCheck, XCircle, MoreVertical, Copy as CopyIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { OCRResult } from '@/types';
@@ -60,6 +61,26 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
   const [applyPulse, setApplyPulse] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const actionsContainerRef = useRef<HTMLDivElement | null>(null);
+  const [fontScale, setFontScale] = useState<number>(1);
+  const [wrapEditor, setWrapEditor] = useState<boolean>(false);
+  const [zen, setZen] = useState(false);
+
+  // Load persisted preferences
+  useEffect(() => {
+    try {
+      const fs = parseFloat(localStorage.getItem('lp.fontScale') || '');
+      if (!Number.isNaN(fs) && fs >= 0.8 && fs <= 1.5) setFontScale(fs);
+      const wrap = localStorage.getItem('lp.wrap');
+      if (wrap === '1') setWrapEditor(true);
+    } catch { }
+  }, []);
+  // Persist preferences
+  useEffect(() => {
+    try { localStorage.setItem('lp.fontScale', String(fontScale)); } catch { }
+  }, [fontScale]);
+  useEffect(() => {
+    try { localStorage.setItem('lp.wrap', wrapEditor ? '1' : '0'); } catch { }
+  }, [wrapEditor]);
 
   useEffect(() => {
     if (!actionsOpen) return;
@@ -438,6 +459,33 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
             <ToolbarButton title="Quote" onClick={() => applyLinePrefix('> ')}><Quote className="w-4 h-4" /></ToolbarButton>
             <ToolbarButton title="Inline code" onClick={() => applyWrap('`', '`')}><Code className="w-4 h-4" /></ToolbarButton>
             <ToolbarButton title="Link" onClick={insertLink}><LinkIcon className="w-4 h-4" /></ToolbarButton>
+            <button type="button" className="px-2 py-1 text-[11px] rounded border bg-white hover:bg-gray-50" title="Zen mode (fullscreen)" onClick={() => setZen(true)}>Zen</button>
+            <div className="ml-auto inline-flex items-center gap-1">
+              <button
+                type="button"
+                className="px-2 py-1 text-[11px] rounded border bg-white hover:bg-gray-50"
+                title="Smaller text"
+                onClick={() => setFontScale(s => Math.max(0.8, +(s - 0.1).toFixed(2)))}
+              >A−</button>
+              <button
+                type="button"
+                className="px-2 py-1 text-[11px] rounded border bg-white hover:bg-gray-50"
+                title="Larger text"
+                onClick={() => setFontScale(s => Math.min(1.5, +(s + 0.1).toFixed(2)))}
+              >A+</button>
+              <button
+                type="button"
+                className={`px-2 py-1 text-[11px] rounded border ${wrapEditor ? 'bg-gray-900 text-white border-gray-900' : 'bg-white hover:bg-gray-50'}`}
+                title="Toggle line wrap"
+                onClick={() => setWrapEditor(v => !v)}
+              >Wrap</button>
+              <button
+                type="button"
+                className="px-2 py-1 text-[11px] rounded border bg-white hover:bg-gray-50"
+                title="Reset font & wrap"
+                onClick={() => { setFontScale(1); setWrapEditor(false); }}
+              >Reset</button>
+            </div>
             {settings.allowBasicLLMGuidance && settings.apiKey && (
               <button
                 type="button"
@@ -501,7 +549,8 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                   applyWrap('*', '*');
                 }
               }}
-              className={`w-full h-full min-h-[18rem] p-3 border border-gray-200 rounded-xl text-sm font-mono bg-gray-50 resize-none overflow-auto focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition ${(isProofreading || isAnalyzing || isCorrectingWithVision) ? 'opacity-60' : ''}`}
+              className={`w-full h-full min-h-[18rem] p-3 md:p-2.5 border border-gray-200 rounded-xl font-mono bg-gray-50 resize-none overflow-auto ${wrapEditor ? 'whitespace-pre-wrap break-words' : 'overflow-x-auto whitespace-pre'} focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition ${(isProofreading || isAnalyzing || isCorrectingWithVision) ? 'opacity-60' : ''}`}
+              style={{ fontSize: `${Math.round(14 * fontScale)}px`, lineHeight: 1.6 }}
               disabled={isProofreading || isAnalyzing || isCorrectingWithVision}
             />
 
@@ -562,7 +611,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                   </button>
                 )}
                 {actionsOpen && (
-                  <div role="menu" className="absolute right-0 top-full mt-1 z-30 min-w-[200px] rounded-lg border bg-white shadow-lg">
+                  <div role="menu" className="absolute right-0 top-full mt-1 z-30 min-w-[220px] rounded-lg border bg-white shadow-lg">
                     <button
                       role="menuitem"
                       className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50"
@@ -614,6 +663,28 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                       <XCircle className="w-4 h-4 text-gray-600" />
                       <span>Discard All</span>
                     </button>
+                    <div className="my-1 border-t" />
+                    <button
+                      role="menuitem"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50"
+                      onClick={async () => {
+                        try {
+                          const base = pendingProposalRaw ?? pendingProposal ?? draft;
+                          const normalized = normalizeMarkdownForReview(base, result.detectedLanguage);
+                          const cleaned = cleanupAsciiNoiseAndItalics(normalized);
+                          await navigator.clipboard.writeText(cleaned);
+                          toast.success('Cleaned text copied');
+                        } catch (e) {
+                          console.warn('Copy failed', e);
+                          toast.error('Copy failed');
+                        } finally {
+                          setActionsOpen(false);
+                        }
+                      }}
+                    >
+                      <CopyIcon className="w-4 h-4 text-gray-700" />
+                      <span>Copy cleaned text</span>
+                    </button>
                   </div>
                 )}
               </div>
@@ -637,7 +708,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
           )}
 
           {pendingProposal && previewMode === 'text' ? (
-            <div className={`prose prose-slate mx-auto max-w-[42rem] text-[15px] leading-7 overflow-auto flex-1 ${isEthiopic ? 'font-ethiopic' : ''}`}>
+            <div className={`prose prose-slate max-w-none w-full px-2 md:px-3 text-[15px] leading-7 overflow-auto flex-1 ${isEthiopic ? 'font-ethiopic' : ''}`} style={{ fontSize: `${Math.round(15 * fontScale)}px`, lineHeight: 1.7 }}>
               <DiffView
                 original={comparisonBase || draft}
                 current={pendingProposal!}
@@ -670,7 +741,8 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
             </div>
           ) : previewMode === 'text' ? (
             <div
-              className={`prose prose-slate mx-auto max-w-[42rem] text-[15px] leading-7 prose-headings:font-semibold prose-h1:text-2xl prose-h1:leading-tight prose-h1:mb-3 prose-h2:text-xl prose-h2:mt-4 prose-h2:mb-2 prose-p:my-2 prose-p:text-justify prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-pre:bg-gray-100 prose-pre:rounded prose-pre:p-3 prose-blockquote:italic prose-blockquote:border-l-4 prose-blockquote:border-gray-300 text-gray-900 overflow-auto flex-1 ${isEthiopic ? 'font-ethiopic leading-8 tracking-normal' : ''}`}
+              className={`prose prose-slate max-w-none w-full px-2 md:px-3 text-[15px] leading-7 prose-headings:font-semibold prose-h1:text-2xl prose-h1:leading-tight prose-h1:mb-3 prose-h2:text-xl prose-h2:mt-4 prose-h2:mb-2 prose-p:my-2 prose-p:text-justify prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-pre:bg-gray-100 prose-pre:rounded prose-pre:p-3 prose-blockquote:italic prose-blockquote:border-l-4 prose-blockquote:border-gray-300 text-gray-900 overflow-auto flex-1 ${isEthiopic ? 'font-ethiopic leading-8 tracking-normal' : ''}`}
+              style={{ fontSize: `${Math.round(15 * fontScale)}px`, lineHeight: 1.7 }}
               lang={result.detectedLanguage || 'am'}
               dir="auto"
             >
@@ -681,6 +753,23 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
           )}
         </div>
       </div>
+      {zen && (
+        <div className="fixed inset-0 z-[9998] bg-white/95 backdrop-blur-sm">
+          <div className="absolute top-2 right-2 flex items-center gap-2">
+            <button type="button" className="px-2 py-1 text-xs rounded border bg-white hover:bg-gray-50" onClick={() => setZen(false)}>Exit</button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full p-4">
+            <div className="h-full">
+              <textarea value={draft} onChange={(e) => setDraft(e.target.value)} className={`w-full h-full p-3 border rounded-xl font-mono bg-gray-50 ${wrapEditor ? 'whitespace-pre-wrap break-words' : 'overflow-x-auto whitespace-pre'}`} style={{ fontSize: `${Math.round(14 * fontScale)}px`, lineHeight: 1.6 }} />
+            </div>
+            <div className="h-full">
+              <div className={`prose prose-slate max-w-none w-full h-full px-3 overflow-auto ${isEthiopic ? 'font-ethiopic' : ''}`} style={{ fontSize: `${Math.round(15 * fontScale)}px`, lineHeight: 1.7 }}>
+                <SafeMarkdown content={preview} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-end" />
     </div>
   );
@@ -722,7 +811,6 @@ const OriginalLayoutPanel: React.FC<{ fileName?: string; dataUrl: string }> = ({
           return;
         }
         const buf = await toArrayBuffer(dataUrl);
-        const UTIF = await import('utif');
         const ifds = UTIF.decode(buf as any);
         if (!ifds || ifds.length === 0) return;
         const first = ifds[0];
