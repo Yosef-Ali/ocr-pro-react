@@ -46,7 +46,20 @@ export function toInlineImagePartFromDataUrl(dataUrl: string): { inlineData: { d
   return { inlineData: { data: base64, mimeType: mimeType === 'image/jpg' ? 'image/jpeg' : mimeType } };
 }
 
-const TIFF_PREVIEW_SCALE = 0.25;
+const DEFAULT_TIFF_PREVIEW_SCALE = 0.25;
+const MIN_DIMENSION_FOR_SCALING = 1200;
+const MAX_DIMENSION_FOR_MIN_SCALE = 4000;
+
+function resolveTiffPreviewScale(width: number, height: number): number {
+  const env = Number((import.meta as any).env?.VITE_TIFF_PREVIEW_SCALE ?? (globalThis as any)?.VITE_TIFF_PREVIEW_SCALE ?? '');
+  const base = Number.isFinite(env) && env > 0 && env <= 1 ? Number(env) : DEFAULT_TIFF_PREVIEW_SCALE;
+  const largest = Math.max(width, height);
+  if (largest <= MIN_DIMENSION_FOR_SCALING) return 1;
+  if (largest >= MAX_DIMENSION_FOR_MIN_SCALE) return base;
+  const ratio = (largest - MIN_DIMENSION_FOR_SCALING) / (MAX_DIMENSION_FOR_MIN_SCALE - MIN_DIMENSION_FOR_SCALING);
+  const scaled = 1 - (1 - base) * ratio;
+  return Math.max(base, Number(scaled.toFixed(3)));
+}
 
 /**
  * Converts a TIFF data URL to a PNG data URL if necessary.
@@ -68,7 +81,8 @@ export async function ensureNonTiffImage(dataUrl: string): Promise<string> {
     const rgba = UTIF.toRGBA8(first);
     const { width, height } = first as any;
     if (!rgba || !width || !height) throw new Error('Failed to decode TIFF RGBA');
-    const pngDataUrl = rgbaToPngDataUrl(rgba, width, height, TIFF_PREVIEW_SCALE);
+    const scale = resolveTiffPreviewScale(width, height);
+    const pngDataUrl = rgbaToPngDataUrl(rgba, width, height, scale);
     return pngDataUrl;
   } catch (e) {
     console.error('TIFF conversion failed:', e);
