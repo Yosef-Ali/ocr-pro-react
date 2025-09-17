@@ -117,6 +117,8 @@ export const useOCRStore = create<OCRState>()(
         addFiles: (newFiles) => {
           // Create data URLs so we can persist and re-run OCR after reloads
           (async () => {
+            const { ensureNonTiffImage } = await import('@/utils/imageUtils');
+
             const toDataUrl = (f: File) => new Promise<string>((resolve, reject) => {
               const reader = new FileReader();
               reader.readAsDataURL(f);
@@ -128,6 +130,18 @@ export const useOCRStore = create<OCRState>()(
               const file = newFiles[index];
               let dataUrl = '';
               try { dataUrl = await toDataUrl(file); } catch { }
+              let normalized = dataUrl;
+              try {
+                if (dataUrl && dataUrl.startsWith('data:')) {
+                  const header = dataUrl.slice(0, dataUrl.indexOf(',')).toLowerCase();
+                  if (/image\/(tiff|x-tiff)/.test(header)) {
+                    normalized = await ensureNonTiffImage(dataUrl);
+                  }
+                }
+              } catch (err) {
+                console.warn('Failed to normalize image for processing', err);
+                normalized = dataUrl;
+              }
               enriched.push({
                 id: `${Date.now()}-${index}`,
                 file,
@@ -135,7 +149,8 @@ export const useOCRStore = create<OCRState>()(
                 size: file.size,
                 type: file.type,
                 status: 'pending',
-                preview: dataUrl || null,
+                preview: normalized || dataUrl || null,
+                originalPreview: dataUrl || null,
                 projectId: useOCRStore.getState().currentProjectId ?? undefined,
               });
             }

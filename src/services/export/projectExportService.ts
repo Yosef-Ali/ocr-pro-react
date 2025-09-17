@@ -343,7 +343,7 @@ export async function exportOriginalsPDF(results: OCRResult[]): Promise<void> {
 
     let firstPage = true;
     for (const r of results) {
-        const url = (r as any).preview as string | undefined;
+        const url = ((r as any).originalPreview || (r as any).preview) as string | undefined;
         if (!url) continue;
         const useUrl = isTiff(url, (r as any).name) ? (await convertTiffToPng(url)) || url : url;
 

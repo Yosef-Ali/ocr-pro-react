@@ -8,6 +8,7 @@ export interface OCRFile {
   type: string;
   status: 'pending' | 'processing' | 'completed' | 'error';
   preview: string | null;
+  originalPreview?: string | null;
   projectId?: string;
   result?: OCRResult;
 }

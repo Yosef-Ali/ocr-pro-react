@@ -228,7 +228,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
           const { correctTextWithAIVision } = await import('@/services/geminiService');
           const { correctedText, source } = await correctTextWithAIVision(
             draft,
-            originalFile!.preview!,
+            originalFile!.preview || originalFile!.originalPreview || '',
             settings
           );
           const staged = normalizeMarkdownForReview(correctedText, result.detectedLanguage);

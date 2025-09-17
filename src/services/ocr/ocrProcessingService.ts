@@ -173,11 +173,12 @@ Examples:
     try {
       // Convert to base64; support persisted data URLs from preview when File is missing
       const base64 = await (async () => {
+        if (file.preview && file.preview.startsWith('data:')) return file.preview;
         const anyFile: File | undefined = (file as any).file;
         if (anyFile && typeof File !== 'undefined' && anyFile instanceof File) {
           return await fileToBase64(anyFile);
         }
-        if (file.preview && file.preview.startsWith('data:')) return file.preview;
+        if (file.originalPreview && file.originalPreview.startsWith('data:')) return file.originalPreview;
         throw new Error('No source data available (file or preview missing).');
       })();
       emit('uploading', 0.2);
