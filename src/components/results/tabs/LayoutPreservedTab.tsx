@@ -56,6 +56,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
   const [quickTips, setQuickTips] = useState<string[] | null>(null);
   const [tipsLoading, setTipsLoading] = useState(false);
   const [previewMode, setPreviewMode] = useState<'text' | 'original'>('text');
+  const [applyPulse, setApplyPulse] = useState(false);
 
   const debounceRef = useRef<number | null>(null);
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
@@ -492,18 +493,22 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
         </div>
 
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 overflow-hidden flex flex-col h-full min-h-0">
-          <div className="flex items-center justify-between mb-3">
+          <div className="sticky top-0 z-20 -mx-4 px-4 py-2 mb-3 bg-white/90 supports-[backdrop-filter]:bg-white/60 backdrop-blur border-b rounded-t-2xl flex items-center justify-between">
             <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide">Preview</label>
             <div className="flex items-center gap-2">
-              <div className="inline-flex bg-gray-100 rounded-lg p-0.5 text-xs">
+              <div className="inline-flex bg-gray-100 rounded-lg p-0.5 text-xs" role="tablist" aria-label="Preview mode">
                 <button
                   type="button"
-                  className={`px-2 py-0.5 rounded-md ${previewMode === 'text' ? 'bg-white shadow border' : 'text-gray-600 hover:text-gray-800'}`}
+                  role="tab"
+                  aria-selected={previewMode === 'text'}
+                  className={`px-2 py-0.5 rounded-md outline-none focus:ring-2 focus:ring-blue-400 ${previewMode === 'text' ? 'bg-white shadow border' : 'text-gray-600 hover:text-gray-800'}`}
                   onClick={() => setPreviewMode('text')}
                 >Text</button>
                 <button
                   type="button"
-                  className={`px-2 py-0.5 rounded-md ${previewMode === 'original' ? 'bg-white shadow border' : 'text-gray-600 hover:text-gray-800'}`}
+                  role="tab"
+                  aria-selected={previewMode === 'original'}
+                  className={`px-2 py-0.5 rounded-md outline-none focus:ring-2 focus:ring-blue-400 ${previewMode === 'original' ? 'bg-white shadow border' : 'text-gray-600 hover:text-gray-800'}`}
                   onClick={() => setPreviewMode('original')}
                   disabled={!currentFile?.preview}
                   title={currentFile?.preview ? 'View original layout' : 'No original preview available'}
@@ -516,13 +521,13 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                 </span>
               )}
               {pendingProposal && (
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200" title="Remaining suggestions">
+                <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-2 md:mt-0 max-[360px]:w-full max-[360px]:justify-end">
+                  <span className="text-[11px] px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold whitespace-nowrap mb-1 md:mb-0">
                     {suggestionCount} suggestion{suggestionCount === 1 ? '' : 's'}
                   </span>
                   <button
                     type="button"
-                    className="px-3 py-1 text-xs font-medium rounded-full bg-emerald-600 text-white hover:bg-emerald-700 transition"
+                    className={`px-5 py-1.5 text-sm font-semibold rounded-full bg-green-600 text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-400 transition whitespace-nowrap mb-1 md:mb-0 ${applyPulse ? 'ring-2 ring-green-300 shadow' : ''}`}
                     onClick={() => {
                       const proposed = pendingProposalRaw ?? pendingProposal ?? draft;
                       const base = comparisonBase || draft;
@@ -541,13 +546,15 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                       });
                       setSuggestionCount(0);
                       toast.success('Applied AI changes');
+                      setApplyPulse(true);
+                      window.setTimeout(() => setApplyPulse(false), 700);
                     }}
                   >
                     Apply All
                   </button>
                   <button
                     type="button"
-                    className="px-3 py-1 text-xs font-medium rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+                    className="px-5 py-1.5 text-sm font-semibold rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-400 transition whitespace-nowrap"
                     onClick={() => {
                       setPendingProposal(null);
                       setPendingProposalRaw(null);
@@ -562,6 +569,11 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
               )}
             </div>
           </div>
+          {(isProofreading || isAnalyzing || isCorrectingWithVision) && previewMode === 'text' && (
+            <div className="mb-2 -mx-4 px-4">
+              <div className="h-3 w-48 bg-gray-200/80 rounded-full animate-pulse" />
+            </div>
+          )}
 
           {pendingProposal && previewMode === 'text' ? (
             <div className={`prose prose-slate mx-auto max-w-[42rem] text-[15px] leading-7 overflow-auto flex-1 ${isEthiopic ? 'font-ethiopic' : ''}`}>
@@ -597,7 +609,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
             </div>
           ) : previewMode === 'text' ? (
             <div
-              className={`prose prose-slate mx-auto max-w-[42rem] text-[15px] leading-7 prose-headings:font-semibold prose-h1:text-2xl prose-h1:leading-tight prose-h1:mb-3 prose-h2:text-xl prose-h2:mt-4 prose-h2:mb-2 prose-p:my-2 prose-p:text-justify prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-pre:bg-gray-100 prose-pre:rounded prose-pre:p-3 prose-blockquote:italic prose-blockquote:border-l-4 prose-blockquote:border-gray-300 overflow-auto flex-1 ${isEthiopic ? 'font-ethiopic' : ''}`}
+              className={`prose prose-slate mx-auto max-w-[42rem] text-[15px] leading-7 prose-headings:font-semibold prose-h1:text-2xl prose-h1:leading-tight prose-h1:mb-3 prose-h2:text-xl prose-h2:mt-4 prose-h2:mb-2 prose-p:my-2 prose-p:text-justify prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-pre:bg-gray-100 prose-pre:rounded prose-pre:p-3 prose-blockquote:italic prose-blockquote:border-l-4 prose-blockquote:border-gray-300 text-gray-900 overflow-auto flex-1 ${isEthiopic ? 'font-ethiopic leading-8 tracking-normal' : ''}`}
               lang={result.detectedLanguage || 'am'}
               dir="auto"
             >

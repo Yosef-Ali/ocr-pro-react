@@ -35,14 +35,14 @@ export const SafeMarkdown: React.FC<SafeMarkdownProps> = ({ content }) => {
     return (
       <div className="text-xs text-gray-600">
         <div className="mb-1">Preview failed — showing raw text:</div>
-        <pre className="whitespace-pre-wrap break-words text-sm bg-white p-2 border rounded">{content}</pre>
+        <pre className="whitespace-pre-wrap break-words text-sm bg-white p-2 border rounded text-gray-900">{content}</pre>
       </div>
     );
   }
 
   try {
     return (
-      <div ref={containerRef} className="relative">
+      <div ref={containerRef} className="relative text-gray-900">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{
@@ -85,7 +85,7 @@ export const SafeMarkdown: React.FC<SafeMarkdownProps> = ({ content }) => {
                 }
               }
 
-              return <p>{children}</p>;
+              return <p className="text-gray-900">{children}</p>;
             },
           }}
         >
