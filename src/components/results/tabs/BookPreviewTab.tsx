@@ -6,7 +6,36 @@ import { useOCRStore } from '@/store/ocrStore';
 import { ProjectSummary, OCRResult } from '@/types';
 import { createBookPdfBlob } from '@/services/export/projectExportService';
 
-const MIN_RESULTS_FOR_BOOK = 2;
+const MIN_RESULTS_FOR_BOOK = 1;
+
+const deriveResultTitle = (result: OCRResult, index: number) => {
+  const metadataTitle = (result as any).metadata?.title as string | undefined;
+  if (metadataTitle && metadataTitle.trim()) return metadataTitle.trim();
+  if (result.documentType && result.documentType !== 'Unknown') return result.documentType;
+  if ((result as any).name) return String((result as any).name);
+  return `Document ${index + 1}`;
+};
+
+const buildFallbackSummary = (projectId: string, results: OCRResult[]): ProjectSummary => {
+  const generatedAt = Date.now();
+  const toc = results.map((res, idx) => ({
+    title: deriveResultTitle(res, idx),
+    level: 1,
+    page: idx + 1,
+  }));
+  const chapters = results.map((res, idx) => ({
+    title: toc[idx].title,
+    content: (res.layoutPreserved || res.extractedText || '').trim(),
+  }));
+  return {
+    projectId,
+    generatedAt,
+    toc,
+    summary: '',
+    chapters,
+    proofreadingNotes: [],
+  };
+};
 
 interface BookPreviewProps {
   result: OCRResult;
@@ -42,14 +71,19 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
 
   const ensureSummary = useCallback(async () => {
     if (activeSummary) return activeSummary;
-    if (!settings.apiKey) {
-      toast.error('Add a Gemini API key in Settings to generate a book preview.');
-      return undefined;
-    }
     if (!projectResults.length) {
       toast('No OCR results available for preview');
       return undefined;
     }
+
+    const fallback = buildFallbackSummary(scopedProjectId, projectResults);
+
+    if (!settings.apiKey) {
+      toast('Using layout-preserved text to build preview (no Gemini key found).');
+      setProjectSummary(fallback);
+      return fallback;
+    }
+
     try {
       toast.loading('Summarizing project for book preview…', { id: 'book-summary' });
       const { summarizeProject } = await import('@/services/geminiService');
@@ -62,10 +96,11 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
       return summary;
     } catch (err) {
       console.error('Failed to summarize project for preview', err);
-      toast.error('Summarization failed');
-      return undefined;
+      toast('Summarization failed — using layout-preserved text instead.');
+      setProjectSummary(fallback);
+      return fallback;
     }
-  }, [activeSummary, projectResults, settings, currentProjectId, setProjectSummary]);
+  }, [activeSummary, projectResults, settings, scopedProjectId, setProjectSummary]);
 
   useEffect(() => {
     return () => {
@@ -80,7 +115,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
     }
     const summary = await ensureSummary();
     if (!summary) {
-      setError('A project summary is required to build the book preview.');
+      setError('Unable to build the book preview yet.');
       return;
     }
     setLoading(true);
@@ -151,7 +186,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
       {needsMoreResults && (
         <p className="flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
           <AlertTriangle className="mt-0.5 h-4 w-4" />
-          Add at least two OCR results to build a book-style preview.
+          Run OCR on a document to build a book-style preview.
         </p>
       )}
 
