@@ -11,6 +11,8 @@ import { lazy, Suspense } from 'react';
 import { processWithTesseractOnly } from '@/services/ocr/ocrProcessingService';
 
 const ResultTabs = lazy(() => import('./ResultTabs').then(module => ({ default: module.ResultTabs })));
+const MotionDiv = motion.div as any;
+const MotionButton = motion.button as any;
 
 export const ResultsSection: React.FC = () => {
   const {
@@ -25,7 +27,6 @@ export const ResultsSection: React.FC = () => {
     settings,
     setProjectSummary,
     projectSummaries,
-    clearProjectSummary,
   } = useOCRStore();
 
   const { exportResult } = useExport();
@@ -70,7 +71,7 @@ export const ResultsSection: React.FC = () => {
       toast.loading('Summarizing project…', { id: 'sum' });
       const { summarizeProject } = await import('@/services/geminiService');
       const summary = await summarizeProject(projectResults, settings, { proofreadPageNumbers: true, projectId: currentProjectId || 'all' });
-      await setProjectSummary(summary);
+      setProjectSummary(summary);
       toast.success('Project summarized', { id: 'sum' });
     } catch (e) {
       console.error(e);
@@ -170,7 +171,7 @@ export const ResultsSection: React.FC = () => {
   };
 
   return (
-    <motion.div
+    <MotionDiv
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       className="bg-white rounded-xl shadow-lg p-6 relative overflow-visible"
@@ -188,7 +189,7 @@ export const ResultsSection: React.FC = () => {
 
         <div className="flex items-center space-x-3">
           {settings.endUserMode && (
-            <motion.button
+            <MotionButton
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={async () => {
@@ -199,14 +200,13 @@ export const ResultsSection: React.FC = () => {
               title="Re-run all (layout only)"
               aria-label="Re-run all with Tesseract only"
               className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
-              type="button"
             >
               <Download className="w-4 h-4 rotate-180" />
-            </motion.button>
+            </MotionButton>
           )}
 
           {!settings.endUserMode && (
-            <motion.button
+            <MotionButton
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleSummarizeProject}
@@ -215,7 +215,7 @@ export const ResultsSection: React.FC = () => {
               className="p-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
             >
               <BookOpen className="w-4 h-4" />
-            </motion.button>
+            </MotionButton>
           )}
 
           {/* AI proofreading button removed from header */}
@@ -240,7 +240,7 @@ export const ResultsSection: React.FC = () => {
             </>
           )}
 
-          <motion.button
+          <MotionButton
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleCopy}
@@ -250,9 +250,9 @@ export const ResultsSection: React.FC = () => {
             className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
           >
             <Copy className="w-4 h-4" aria-hidden="true" />
-          </motion.button>
+          </MotionButton>
 
-          <motion.button
+          <MotionButton
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleDownload}
@@ -262,7 +262,7 @@ export const ResultsSection: React.FC = () => {
             className="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             <Download className="w-4 h-4" aria-hidden="true" />
-          </motion.button>
+          </MotionButton>
         </div>
       </div>
 
@@ -294,15 +294,10 @@ export const ResultsSection: React.FC = () => {
               <div className="w-px h-4 bg-gray-200 mx-1" aria-hidden="true" />
               <button onClick={rerunAllLayoutOnly} aria-label="Re-run all with Tesseract only (preserve layout)" className="px-2 py-1 text-xs bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500">Re-run All (Layout only)</button>
               <button
-                onClick={async () => {
+                onClick={() => {
                   const pid = currentProjectId || 'all';
-                  try {
-                    await clearProjectSummary(pid);
-                    toast.success('Project summary cleared');
-                  } catch (error) {
-                    console.error('Failed to clear project summary', error);
-                    toast.error('Failed to clear project summary');
-                  }
+                  useOCRStore.getState().clearProjectSummary(pid);
+                  toast.success('Project summary cleared');
                 }}
                 aria-label="Clear project summary"
                 className="ml-2 px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -332,9 +327,13 @@ export const ResultsSection: React.FC = () => {
           {activeSummary.proofreadingNotes?.length ? (
             <div>
               <div className="text-xs text-gray-600 mb-1">Proofreading Notes</div>
-              <ul className="text-sm list-disc pl-5">
-                {activeSummary.proofreadingNotes.map((n, i) => <li key={i}>{n}</li>)}
-              </ul>
+                <ul className="text-sm list-disc pl-5">
+                  {activeSummary.proofreadingNotes.map((note: string, idx: number) => (
+                    <li key={idx} className="mb-1 whitespace-pre-wrap">
+                      {note}
+                    </li>
+                  ))}
+                </ul>
             </div>
           ) : null}
         </div>
@@ -351,6 +350,6 @@ export const ResultsSection: React.FC = () => {
           <EmptyState key="empty" />
         )}
       </AnimatePresence>
-    </motion.div>
+    </MotionDiv>
   );
 };
