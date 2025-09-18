@@ -1,7 +1,7 @@
 /**
  * Export services for project summaries and books
  */
-import { ProjectSummary, Settings, OCRResult } from '@/types';
+import { ProjectSummary, Settings, OCRResult, OCRFile } from '@/types';
 import { downloadBlob } from '@/utils/validationUtils';
 import * as UTIF from 'utif';
 
@@ -374,4 +374,52 @@ export async function exportOriginalsPDF(results: OCRResult[]): Promise<void> {
     const { saveAs } = await import('file-saver');
     const blob = doc.output('blob');
     saveAs(blob, `project-originals-${Date.now()}.pdf`);
+}
+
+export async function exportProjectResultsTableXLSX(results: OCRResult[], files: OCRFile[], projectId: string | null): Promise<void> {
+    if (!results.length) {
+        throw new Error('No OCR results available to export');
+    }
+
+    const [{ utils, writeFile }] = await Promise.all([
+        import('xlsx').then((m: any) => ({ utils: m.utils, writeFile: m.writeFile || (m as any).writeFileXLSX })),
+    ]);
+
+    const header = ['#', 'File', 'Language', 'Type', 'Confidence (%)', 'Words', 'Characters', 'Engine'];
+    const rows = results.map((result, index) => {
+        const fileName = files.find((f) => f.id === result.fileId)?.name || result.fileId;
+        const confidence = result.confidence != null ? Number((result.confidence * 100).toFixed(1)) : '';
+        const wordCount = result.metadata?.wordCount ?? '';
+        const characterCount = result.metadata?.characterCount ?? '';
+        const engine = (result.metadata as any)?.engine ?? '';
+        return [
+            index + 1,
+            fileName,
+            result.detectedLanguage || '',
+            result.documentType || '',
+            confidence,
+            wordCount,
+            characterCount,
+            engine,
+        ];
+    });
+
+    const worksheet = utils.aoa_to_sheet([header, ...rows]);
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, worksheet, 'OCR Results');
+
+    const safeProjectId = (projectId ?? 'all').replace(/[^a-zA-Z0-9_-]+/g, '-');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `ocr-project-${safeProjectId}-results-${timestamp}.xlsx`;
+
+    if (typeof writeFile === 'function') {
+        await writeFile(workbook, filename);
+        return;
+    }
+
+    const xlsxModule = await import('xlsx');
+    const workbookOut = (xlsxModule as any).write(workbook, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([workbookOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const { saveAs } = await import('file-saver');
+    saveAs(blob, filename);
 }

@@ -6,7 +6,7 @@ import { ProcessingStatus } from './ProcessingStatus';
 import { EmptyState } from './EmptyState';
 import { useExport } from '@/hooks/useExport';
 import toast from 'react-hot-toast';
-import { exportSummaryTXT as exportSummaryTXTService, exportSummaryDOCX as exportSummaryDOCXService, exportSummaryJSON as exportSummaryJSONService, copyTocMarkdown as copyTocMarkdownService, exportBookDOCX as exportBookDOCXService, exportBookPDF as exportBookPDFService, exportOriginalsPDF as exportOriginalsPDFService } from '@/services/export/projectExportService';
+import { exportSummaryTXT as exportSummaryTXTService, exportSummaryDOCX as exportSummaryDOCXService, exportSummaryJSON as exportSummaryJSONService, copyTocMarkdown as copyTocMarkdownService, exportBookDOCX as exportBookDOCXService, exportBookPDF as exportBookPDFService, exportOriginalsPDF as exportOriginalsPDFService, exportProjectResultsTableXLSX } from '@/services/export/projectExportService';
 import { lazy, Suspense } from 'react';
 import { processWithTesseractOnly } from '@/services/ocr/ocrProcessingService';
 
@@ -124,6 +124,21 @@ export const ResultsSection: React.FC = () => {
     } catch (e) {
       console.error('Book PDF export failed', e);
       toast.error('Failed to export Book PDF');
+    }
+  };
+
+  const exportAllResultsTable = async () => {
+    const projectResults = getActiveProjectResults();
+    if (projectResults.length === 0) {
+      toast('No OCR results to export');
+      return;
+    }
+    try {
+      await exportProjectResultsTableXLSX(projectResults, files, currentProjectId ?? 'all');
+      toast.success('All OCR results exported');
+    } catch (error) {
+      console.error('Failed to export All OCR table', error);
+      toast.error('Failed to export OCR table');
     }
   };
 
@@ -274,6 +289,7 @@ export const ResultsSection: React.FC = () => {
               <button onClick={exportBookPDF} className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring" aria-label="Export PDF (text)">Export PDF</button>
               <button onClick={exportBookDOCX} className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring" aria-label="Export DOCX (text)">Export DOCX</button>
               <button onClick={exportOriginalsPDF} className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring" aria-label="Export Originals PDF (images)">Originals PDF</button>
+              <button onClick={exportAllResultsTable} className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring" aria-label="Export All OCR table as XLSX">Export Table</button>
             </div>
           </div>
         </div>
@@ -291,6 +307,7 @@ export const ResultsSection: React.FC = () => {
               <div className="w-px h-4 bg-border mx-1" aria-hidden="true" />
               <button onClick={exportBookDOCX} aria-label="Export project as DOCX book" className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring">Book DOCX</button>
               <button onClick={exportBookPDF} aria-label="Export project as PDF book" className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring">Book PDF</button>
+              <button onClick={exportAllResultsTable} aria-label="Export All OCR table as XLSX" className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring">Export Table</button>
               <div className="w-px h-4 bg-border mx-1" aria-hidden="true" />
               <button onClick={rerunAllLayoutOnly} aria-label="Re-run all with Tesseract only (preserve layout)" className="px-2 py-1 text-xs bg-primary/10 text-primary border border-primary/30 rounded hover:bg-primary/20 focus:outline-none focus:ring-2 focus:ring-ring">Re-run All (Layout only)</button>
               <button

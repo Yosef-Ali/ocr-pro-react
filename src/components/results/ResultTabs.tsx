@@ -21,22 +21,8 @@ const ALL_TABS: Array<{ id: TabId; label: string; component: any }> = [
 ];
 
 export const ResultTabs: React.FC<Props> = ({ result }) => {
-  const { activeTab, setActiveTab, settings } = useOCRStore() as any;
-
-  // End-user mode hides the advanced Layout Preserved editor
-  const tabs = React.useMemo(() => {
-    if (settings?.endUserMode) {
-      return ALL_TABS.filter((t) => t.id !== 'layout');
-    }
-    return ALL_TABS;
-  }, [settings?.endUserMode]);
-
-  // If current active tab is hidden, fall back to first visible
-  React.useEffect(() => {
-    if (!tabs.some((t) => t.id === (activeTab as any))) {
-      setActiveTab(tabs[0]?.id as any);
-    }
-  }, [activeTab, setActiveTab, tabs]);
+  const { activeTab, setActiveTab } = useOCRStore();
+  const tabs = ALL_TABS;
 
   return (
     <motion.div

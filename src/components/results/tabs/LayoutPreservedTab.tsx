@@ -99,15 +99,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
 
   const preview = useMemo(() => draft, [draft]);
-  const docStats = useMemo(() => {
-    const text = draft || '';
-    const words = text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0;
-    const characters = text.length;
-    const paragraphs = text.split(/\n{2,}/).filter((section) => section.trim().length > 0).length;
-    const lines = text ? text.split(/\r?\n/).length : 0;
-    const readingMinutes = words === 0 ? 0 : Math.max(1, Math.round(words / 180));
-    return { words, characters, paragraphs, lines, readingMinutes };
-  }, [draft]);
+  // Removed doc statistics (words/characters/etc) per UX request.
 
   const ETH_RE = /[\u1200-\u137F\u1380-\u139F\u2D80-\u2DDF]/;
   const isEthiopic = (result.detectedLanguage === 'am') || ETH_RE.test(preview);
@@ -370,40 +362,11 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
     return `AI review with ${apiStatus.hasGemini ? 'Gemini' : 'OpenRouter'} — propose changes for approval`;
   };
 
-  const statPills = useMemo(
-    () => [
-      {
-        label: 'Words',
-        value: docStats.words.toLocaleString(),
-        tooltip: 'Total words in the markdown draft',
-      },
-      {
-        label: 'Characters',
-        value: docStats.characters.toLocaleString(),
-        tooltip: 'Total characters including punctuation',
-      },
-      {
-        label: 'Paragraphs',
-        value: String(docStats.paragraphs),
-        tooltip: 'Paragraphs detected from blank-line separation',
-      },
-      {
-        label: 'Lines',
-        value: String(docStats.lines),
-        tooltip: 'Line count in the markdown source',
-      },
-      {
-        label: 'Read',
-        value: docStats.readingMinutes ? `${docStats.readingMinutes}m` : '—',
-        tooltip: 'Estimated reading time at 180 words per minute',
-      },
-    ],
-    [docStats.characters, docStats.lines, docStats.paragraphs, docStats.readingMinutes, docStats.words]
-  );
+  // Removed stat pills config per UX request.
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid gap-4 lg:grid-cols-1">
         <div className="bg-card text-card-foreground border border-border rounded-2xl shadow-sm p-5">
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -440,14 +403,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
             )}
           </div>
         </div>
-        <div className="bg-card text-card-foreground border border-border rounded-2xl shadow-sm p-4 flex flex-wrap gap-2 items-center justify-between">
-          {statPills.map(({ label, value, tooltip }) => (
-            <div key={label} className="flex flex-col items-start px-3 py-2 rounded-xl border border-border bg-muted text-[11px] min-w-[88px]" title={tooltip}>
-              <span className="uppercase tracking-wide text-[10px] text-muted-foreground">{label}</span>
-              <span className="text-sm font-semibold text-foreground">{value}</span>
-            </div>
-          ))}
-        </div>
+        {/* Removed secondary stats card */}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 h-[72vh] min-h-[24rem]">
