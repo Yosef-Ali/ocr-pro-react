@@ -8,6 +8,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
+  sendEmailVerification,
   updateProfile,
 } from 'firebase/auth';
 import { useOCRStore } from '@/store/ocrStore';
@@ -75,12 +76,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
 
-      await signInWithPopup(auth, googleProvider);
+      // Add timeout wrapper for Firebase operations
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timed out. Please check your internet connection.')), 30000);
+      });
+
+      await Promise.race([
+        signInWithPopup(auth, googleProvider),
+        timeoutPromise
+      ]);
       // User state will be updated via onAuthStateChanged listener
 
     } catch (err: any) {
       console.error('Error signing in with Google:', err);
-      setError(err.message || 'Failed to sign in with Google');
+      
+      // Handle specific Firebase errors with user-friendly messages
+      let errorMessage = 'Failed to sign in with Google';
+      if (err.code === 'auth/popup-closed-by-user') {
+        errorMessage = 'Sign in was cancelled. Please try again.';
+      } else if (err.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else if (err.message === 'Request timed out. Please check your internet connection.') {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -90,10 +110,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      await signInWithEmailAndPassword(auth, email, password);
+      
+      // Add timeout wrapper for Firebase operations
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timed out. Please check your internet connection.')), 30000);
+      });
+
+      const cred = await Promise.race([
+        signInWithEmailAndPassword(auth, email, password),
+        timeoutPromise
+      ]) as any;
+
+      // Check if email is verified
+      if (cred.user && !cred.user.emailVerified) {
+        await signOut(auth);
+        setError('Please verify your email before signing in. Check your inbox for a verification email.');
+        return;
+      }
+
     } catch (err: any) {
       console.error('Error signing in with email:', err);
-      setError(err.message || 'Failed to sign in');
+      
+      // Handle specific Firebase errors with user-friendly messages
+      let errorMessage = 'Failed to sign in';
+      if (err.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email. Please sign up first.';
+      } else if (err.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password. Please try again.';
+      } else if (err.code === 'auth/invalid-email') {
+        errorMessage = 'Please enter a valid email address.';
+      } else if (err.code === 'auth/user-disabled') {
+        errorMessage = 'This account has been disabled. Please contact support.';
+      } else if (err.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else if (err.message === 'Request timed out. Please check your internet connection.') {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -103,18 +157,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Add timeout wrapper for Firebase operations
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timed out. Please check your internet connection.')), 30000);
+      });
+
+      const cred = await Promise.race([
+        createUserWithEmailAndPassword(auth, email, password),
+        timeoutPromise
+      ]) as any;
+      
       try {
         if (cred.user && name) {
           await updateProfile(cred.user, { displayName: name });
         }
+        
+        // Send email verification
+        if (cred.user) {
+          await sendEmailVerification(cred.user);
+          setError('Account created successfully! Please check your email to verify your account before signing in.');
+        }
       } catch (e) {
-        console.warn('Failed to set display name');
+        console.warn('Failed to set display name or send verification email:', e);
       }
       // onAuthStateChanged will handle sync and hydration
     } catch (err: any) {
       console.error('Error signing up with email:', err);
-      setError(err.message || 'Failed to sign up');
+      
+      // Handle specific Firebase errors with user-friendly messages
+      let errorMessage = 'Failed to sign up';
+      if (err.code === 'auth/email-already-in-use') {
+        errorMessage = 'An account with this email already exists. Please sign in instead.';
+      } else if (err.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak. Please use at least 6 characters.';
+      } else if (err.code === 'auth/invalid-email') {
+        errorMessage = 'Please enter a valid email address.';
+      } else if (err.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else if (err.message === 'Request timed out. Please check your internet connection.') {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

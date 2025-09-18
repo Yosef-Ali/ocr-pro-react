@@ -41,11 +41,18 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firebase Authentication and get a reference to the service
 export const auth = getAuth(app);
 
+// Configure auth settings
+auth.settings.appVerificationDisabledForTesting = false;
+
 // Initialize Google Auth Provider
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({
   prompt: 'select_account' // Always show account selection
 });
+
+// Add additional Google provider scopes if needed
+googleProvider.addScope('profile');
+googleProvider.addScope('email');
 
 // Helper function to get current user's ID token
 export const getCurrentUserToken = async (): Promise<string | null> => {
