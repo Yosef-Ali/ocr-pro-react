@@ -43,10 +43,11 @@ export async function fetchResults(filters: { projectId?: string | null; fileId?
   return results;
 }
 
-export async function upsertResults(projectId: string | null, results: UpsertResultPayload['results']): Promise<void> {
+export async function upsertResults(_projectId: string | null, results: UpsertResultPayload['results']): Promise<void> {
   if (!results.length) return;
-  const target = projectId ?? 'null';
-  await apiFetch(`/api/projects/${target}/results`, {
+  
+  // Use the new dedicated results upsert endpoint that includes user authentication
+  await apiFetch('/api/results/upsert', {
     method: 'POST',
     ...withJsonBody({ results }),
     parseJson: false,

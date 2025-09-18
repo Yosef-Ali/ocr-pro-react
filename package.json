@@ -21,6 +21,7 @@
     "docx": "^9.5.1",
     "file-saver": "^2.0.5",
     "firebase": "^12.2.1",
+    "firebase-admin": "^13.5.0",
     "framer-motion": "^10.16.0",
     "i18next": "^25.5.2",
     "jsonwebtoken": "^9.0.2",

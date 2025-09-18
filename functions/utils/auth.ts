@@ -55,20 +55,60 @@ export function verifyJWT(token: string, secret: string): any | null {
   }
 }
 
-// Verify Firebase ID token (placeholder for when Firebase Admin is configured)
+// Verify Firebase ID token using Firebase Admin SDK
 export async function verifyFirebaseToken(token: string, env: AuthEnv): Promise<any | null> {
   try {
-    // TODO: Implement Firebase Admin SDK verification
-    // This would verify the token with Firebase Admin SDK
-    // For now, we'll use basic JWT verification
-    
-    if (!env.JWT_SECRET) {
-      throw new Error('JWT_SECRET not configured');
+    // Use Firebase Admin SDK for proper token verification
+    const admin = await getFirebaseAdmin(env);
+    if (!admin) {
+      console.warn('Firebase Admin not configured, falling back to basic JWT verification');
+      return verifyJWT(token, env.JWT_SECRET || 'fallback');
     }
-    
-    return verifyJWT(token, env.JWT_SECRET);
+
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    return decodedToken;
   } catch (error) {
     console.error('Firebase token verification failed:', error);
+    return null;
+  }
+}
+
+// Initialize Firebase Admin SDK
+let adminApp: any = null;
+
+async function getFirebaseAdmin(env: AuthEnv): Promise<any | null> {
+  try {
+    if (adminApp) {
+      return adminApp;
+    }
+
+    // Dynamic import to avoid issues with Cloudflare Workers
+    const admin = await import('firebase-admin');
+
+    if (!env.FIREBASE_ADMIN_PROJECT_ID || !env.FIREBASE_ADMIN_CLIENT_EMAIL || !env.FIREBASE_ADMIN_PRIVATE_KEY) {
+      console.warn('Firebase Admin credentials not fully configured');
+      return null;
+    }
+
+    // Initialize Firebase Admin with service account
+    const serviceAccount = {
+      projectId: env.FIREBASE_ADMIN_PROJECT_ID,
+      clientEmail: env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      privateKey: env.FIREBASE_ADMIN_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    };
+
+    if (admin.getApps().length === 0) {
+      adminApp = admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount as any),
+        projectId: env.FIREBASE_ADMIN_PROJECT_ID,
+      });
+    } else {
+      adminApp = admin.getApp();
+    }
+
+    return adminApp;
+  } catch (error) {
+    console.error('Failed to initialize Firebase Admin:', error);
     return null;
   }
 }

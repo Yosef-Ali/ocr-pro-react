@@ -5,13 +5,30 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 const getFirebaseConfig = () => {
   const configString = (import.meta as any).env?.VITE_FIREBASE_CONFIG;
   if (!configString) {
-    throw new Error('VITE_FIREBASE_CONFIG environment variable is not set');
+    console.warn('VITE_FIREBASE_CONFIG environment variable is not set. Using demo config.');
+    // Return demo/placeholder config for development
+    return {
+      apiKey: "demo-api-key",
+      authDomain: "demo-project.firebaseapp.com",
+      projectId: "demo-project",
+      storageBucket: "demo-project.appspot.com",
+      messagingSenderId: "123456789",
+      appId: "demo-app-id"
+    };
   }
   
   try {
     return JSON.parse(configString);
   } catch (error) {
-    throw new Error('Invalid VITE_FIREBASE_CONFIG format. Must be valid JSON.');
+    console.error('Invalid VITE_FIREBASE_CONFIG format. Using demo config.');
+    return {
+      apiKey: "demo-api-key", 
+      authDomain: "demo-project.firebaseapp.com",
+      projectId: "demo-project",
+      storageBucket: "demo-project.appspot.com",
+      messagingSenderId: "123456789",
+      appId: "demo-app-id"
+    };
   }
 };
 
@@ -32,13 +49,27 @@ googleProvider.setCustomParameters({
 
 // Helper function to get current user's ID token
 export const getCurrentUserToken = async (): Promise<string | null> => {
-  if (auth?.currentUser) {
-    return await auth.currentUser.getIdToken();
+  try {
+    if (auth?.currentUser) {
+      return await auth.currentUser.getIdToken();
+    }
+  } catch (error) {
+    console.error('Error getting user token:', error);
   }
   return null;
 };
 
 // Helper function to check if user is authenticated
 export const isAuthenticated = (): boolean => {
-  return !!auth?.currentUser;
+  try {
+    return !!auth?.currentUser;
+  } catch (error) {
+    console.error('Error checking authentication:', error);
+    return false;
+  }
+};
+
+// Helper function to check if Firebase is properly configured
+export const isFirebaseConfigured = (): boolean => {
+  return firebaseConfig.apiKey !== 'demo-api-key';
 };

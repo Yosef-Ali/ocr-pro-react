@@ -1,7 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import type { User } from '@/types';
 import { auth, googleProvider } from '@/config/firebase';
-import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import {
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updateProfile,
+} from 'firebase/auth';
 import { useOCRStore } from '@/store/ocrStore';
 
 interface AuthContextType {
@@ -9,6 +17,9 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (name: string, email: string, password: string) => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
 }
@@ -63,13 +74,60 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       await signInWithPopup(auth, googleProvider);
       // User state will be updated via onAuthStateChanged listener
-      
+
     } catch (err: any) {
       console.error('Error signing in with Google:', err);
       setError(err.message || 'Failed to sign in with Google');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signInWithEmail = async (email: string, password: string): Promise<void> => {
+    try {
+      setLoading(true);
+      setError(null);
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (err: any) {
+      console.error('Error signing in with email:', err);
+      setError(err.message || 'Failed to sign in');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signUpWithEmail = async (name: string, email: string, password: string): Promise<void> => {
+    try {
+      setLoading(true);
+      setError(null);
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      try {
+        if (cred.user && name) {
+          await updateProfile(cred.user, { displayName: name });
+        }
+      } catch (e) {
+        console.warn('Failed to set display name');
+      }
+      // onAuthStateChanged will handle sync and hydration
+    } catch (err: any) {
+      console.error('Error signing up with email:', err);
+      setError(err.message || 'Failed to sign up');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendPasswordReset = async (email: string): Promise<void> => {
+    try {
+      setLoading(true);
+      setError(null);
+      await sendPasswordResetEmail(auth, email);
+    } catch (err: any) {
+      console.error('Error sending password reset email:', err);
+      setError(err.message || 'Failed to send reset email');
     } finally {
       setLoading(false);
     }
@@ -79,10 +137,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       await signOut(auth);
       // User state will be updated via onAuthStateChanged listener
-      
+
     } catch (err: any) {
       console.error('Error signing out:', err);
       setError(err.message || 'Failed to sign out');
@@ -106,11 +164,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
         body: JSON.stringify(userData),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to sync user data');
       }
-      
+
     } catch (err) {
       console.error('Error syncing user to backend:', err);
       throw err;
@@ -122,6 +180,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
     error,
     signInWithGoogle,
+    signInWithEmail,
+    signUpWithEmail,
+    sendPasswordReset,
     signOut: handleSignOut,
     clearError,
   };

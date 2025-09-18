@@ -1,7 +1,24 @@
 import { jsonResponse, errorResponse, methodNotAllowed, readJson } from '../../../utils/http';
+import { authenticateRequest } from '../../../utils/auth';
+
+// Minimal local type shapes to avoid external type dependency
+type LocalD1PreparedStatement = {
+  bind: (...args: any[]) => LocalD1PreparedStatement;
+  all: () => Promise<{ results?: any[] } | any>;
+  first: <T = any>() => Promise<T | null>;
+  run: () => Promise<any>;
+};
+type LocalD1Database = {
+  prepare: (sql: string) => LocalD1PreparedStatement;
+};
+type LocalPagesFunction<E> = (context: { request: Request; env: E; params: any }) => Promise<Response>;
 
 type Env = {
-  DB: D1Database;
+  DB: LocalD1Database;
+  JWT_SECRET: string;
+  FIREBASE_ADMIN_PROJECT_ID?: string;
+  FIREBASE_ADMIN_CLIENT_EMAIL?: string;
+  FIREBASE_ADMIN_PRIVATE_KEY?: string;
 };
 
 type SummaryPayload = {
@@ -12,11 +29,28 @@ type SummaryPayload = {
   proofreading_notes?: unknown;
 };
 
-export const onRequest: PagesFunction<Env> = async (context) => {
+export const onRequest: LocalPagesFunction<Env> = async (context) => {
   const { request, env, params } = context;
   const projectId = params?.id as string | undefined;
   if (!projectId) {
     return errorResponse('Project ID missing', 400);
+  }
+
+  // Authenticate request
+  const authResult = await authenticateRequest(request, env);
+  if (!authResult.success) {
+    return errorResponse(authResult.error || 'Authentication failed', 401);
+  }
+
+  const userId = authResult.user!.id;
+
+  // Verify user owns the project
+  const projectCheck = await env.DB.prepare(
+    'SELECT id FROM projects WHERE id = ?1 AND user_id = ?2'
+  ).bind(projectId, userId).first();
+
+  if (!projectCheck) {
+    return errorResponse('Project not found', 404);
   }
 
   switch (request.method.toUpperCase()) {
