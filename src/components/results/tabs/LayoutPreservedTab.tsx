@@ -404,7 +404,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-  <div className="bg-card text-card-foreground border border-border rounded-2xl shadow-sm p-5">
+        <div className="bg-card text-card-foreground border border-border rounded-2xl shadow-sm p-5">
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               Layout-preserved editor
@@ -440,7 +440,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
             )}
           </div>
         </div>
-  <div className="bg-card text-card-foreground border border-border rounded-2xl shadow-sm p-4 flex flex-wrap gap-2 items-center justify-between">
+        <div className="bg-card text-card-foreground border border-border rounded-2xl shadow-sm p-4 flex flex-wrap gap-2 items-center justify-between">
           {statPills.map(({ label, value, tooltip }) => (
             <div key={label} className="flex flex-col items-start px-3 py-2 rounded-xl border border-border bg-muted text-[11px] min-w-[88px]" title={tooltip}>
               <span className="uppercase tracking-wide text-[10px] text-muted-foreground">{label}</span>
@@ -451,7 +451,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 h-[72vh] min-h-[24rem]">
-  <div className="bg-card text-card-foreground border border-border rounded-3xl shadow-sm p-5 overflow-hidden flex flex-col h-full min-h-0">
+        <div className="bg-card text-card-foreground border border-border rounded-3xl shadow-sm p-5 overflow-hidden flex flex-col h-full min-h-0">
           <div className="flex items-start justify-between mb-4 border-b border-border pb-3">
             <div className="flex items-start gap-3">
               <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-primary/10 text-primary border border-primary/20">
@@ -663,7 +663,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
         </div>
 
         <div className="bg-card text-card-foreground border border-border rounded-3xl shadow-sm overflow-hidden flex flex-col h-full min-h-0">
-              <div className="sticky top-0 z-20 bg-card/95 backdrop-blur px-5 py-3 border-b border-border flex flex-wrap items-center justify-between gap-3">
+          <div className="sticky top-0 z-20 bg-card/95 backdrop-blur px-5 py-3 border-b border-border flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-foreground text-background">
                 {previewMode === 'text' ? <Sparkles className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
