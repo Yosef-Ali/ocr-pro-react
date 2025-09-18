@@ -41,18 +41,18 @@ export const ProcessingStatus: React.FC<Props> = ({ status }) => {
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center"
+          className="w-16 h-16 mx-auto bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center"
         >
           <Brain className="w-8 h-8 text-blue-600" />
         </motion.div>
-        
-        <h3 className="text-lg font-semibold text-gray-800">
+
+        <h3 className="text-lg font-semibold text-foreground">
           Processing with Gemini AI
         </h3>
-        
-        <p className="text-gray-600">{statusMessages[status]}</p>
-        
-        <div className="w-64 mx-auto bg-gray-200 rounded-full h-2">
+
+        <p className="text-muted-foreground">{statusMessages[status]}</p>
+
+        <div className="w-64 mx-auto bg-muted rounded-full h-2">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}

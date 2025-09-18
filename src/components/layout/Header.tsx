@@ -105,7 +105,7 @@ export const Header: React.FC = () => {
             <MotionDiv
               whileHover={{ rotate: 360 }}
               transition={{ duration: 0.5 }}
-              className="w-10 h-10 bg-white rounded-lg flex items-center justify-center"
+              className="w-10 h-10 bg-background rounded-lg flex items-center justify-center"
             >
               <FileText className="w-6 h-6 text-blue-600" />
             </MotionDiv>
@@ -116,17 +116,17 @@ export const Header: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-4">
-            <div className="flex items-center gap-2 bg-white/10 rounded-lg px-2 py-1">
+            <div className="flex items-center gap-2 bg-foreground/10 rounded-lg px-2 py-1">
               <select
                 value={currentProjectId ?? ''}
                 onChange={(e) => {
                   void selectProject(e.target.value || null);
                 }}
-                className="bg-transparent text-white text-sm outline-none"
+                className="bg-transparent text-primary-foreground text-sm outline-none"
               >
-                <option value="" className="text-black">All Projects</option>
+                <option value="" className="text-foreground">All Projects</option>
                 {projects.map((p) => (
-                  <option key={p.id} value={p.id} className="text-black">
+                  <option key={p.id} value={p.id} className="text-foreground">
                     {p.name}
                   </option>
                 ))}
@@ -146,7 +146,7 @@ export const Header: React.FC = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={toggleSettings}
-              className="p-2 rounded-lg bg-white/10 backdrop-blur hover:bg-white/20 transition-all"
+              className="p-2 rounded-lg bg-foreground/10 backdrop-blur hover:bg-foreground/20 transition-all"
             >
               <Settings className="w-5 h-5" />
             </MotionButton>
@@ -155,7 +155,7 @@ export const Header: React.FC = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={toggleHelp}
-              className="p-2 rounded-lg bg-white/10 backdrop-blur hover:bg-white/20 transition-all"
+              className="p-2 rounded-lg bg-foreground/10 backdrop-blur hover:bg-foreground/20 transition-all"
             >
               <HelpCircle className="w-5 h-5" />
             </MotionButton>
