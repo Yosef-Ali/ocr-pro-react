@@ -1,7 +1,19 @@
+export interface RemoteUser {
+  id: string;
+  email: string;
+  name: string;
+  google_id: string | null;
+  profile_picture: string | null;
+  created_at: number;
+  updated_at: number;
+  last_login: number | null;
+}
+
 export interface RemoteProject {
   id: string;
   name: string;
   description: string | null;
+  user_id: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -9,6 +21,7 @@ export interface RemoteProject {
 export interface RemoteFile {
   id: string;
   project_id: string | null;
+  user_id: string | null;
   name: string;
   size: number | null;
   mime_type: string | null;
@@ -23,6 +36,7 @@ export interface RemoteResult {
   id: string;
   file_id: string;
   project_id: string | null;
+  user_id: string | null;
   extracted_text: string | null;
   layout_preserved: string | null;
   detected_language: string | null;

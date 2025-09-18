@@ -1,4 +1,5 @@
 import type { ApiError } from './types';
+import { getCurrentUserToken } from '@/config/firebase';
 
 const apiBase = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_BASE_URL) || '';
 const API_BASE = apiBase ? apiBase.replace(/\/$/, '') : '';
@@ -34,12 +35,23 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   const parseJson = options.parseJson ?? true;
   const url = `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
   const headers = new Headers(options.headers || {});
+  
   if (!headers.has('Accept')) {
     headers.set('Accept', 'application/json');
   }
 
   if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
+  }
+
+  // Add authentication header if user is authenticated
+  try {
+    const token = await getCurrentUserToken();
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+  } catch (error) {
+    console.warn('Failed to get authentication token:', error);
   }
 
   const response = await fetch(url, { ...options, headers });

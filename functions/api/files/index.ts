@@ -1,4 +1,5 @@
 import { jsonResponse, errorResponse, methodNotAllowed, readJson } from '../../utils/http';
+import { authenticateRequest } from '../../utils/auth';
 // Minimal local type shapes to avoid external type dependency
 type LocalD1PreparedStatement = {
   bind: (...args: any[]) => LocalD1PreparedStatement;
@@ -13,11 +14,16 @@ type LocalPagesFunction<E> = (context: { request: Request; env: E }) => Promise<
 
 type Env = {
   DB: LocalD1Database;
+  JWT_SECRET: string;
+  FIREBASE_ADMIN_PROJECT_ID?: string;
+  FIREBASE_ADMIN_CLIENT_EMAIL?: string;
+  FIREBASE_ADMIN_PRIVATE_KEY?: string;
 };
 
 type FilePayload = {
   id: string;
   project_id?: string | null;
+  user_id?: string | null;
   name: string;
   size?: number;
   mime_type?: string;
@@ -32,37 +38,45 @@ type BulkFilesPayload = {
 
 export const onRequest: LocalPagesFunction<Env> = async (context) => {
   const { request, env } = context;
+  
+  // Authenticate request
+  const authResult = await authenticateRequest(request, env);
+  if (!authResult.success) {
+    return errorResponse(authResult.error || 'Authentication failed', 401);
+  }
+
+  const user = authResult.user!;
   const url = new URL(request.url);
   const projectIdFilter = url.searchParams.get('projectId');
 
   switch (request.method.toUpperCase()) {
     case 'GET':
-      return listFiles(env, projectIdFilter);
+      return listFiles(env, user.id, projectIdFilter);
     case 'POST':
-      return upsertFiles(env, request);
+      return upsertFiles(env, request, user.id);
     default:
       return methodNotAllowed();
   }
 };
 
-async function listFiles(env: Env, projectId?: string | null): Promise<Response> {
+async function listFiles(env: Env, userId: string, projectId?: string | null): Promise<Response> {
   const stmt = projectId
     ? env.DB.prepare(
-      `SELECT id, project_id, name, size, mime_type, status, preview, original_preview,
+      `SELECT id, project_id, user_id, name, size, mime_type, status, preview, original_preview,
                 created_at, updated_at
-           FROM files WHERE project_id = ?1`
-    ).bind(projectId)
+           FROM files WHERE user_id = ?1 AND project_id = ?2`
+    ).bind(userId, projectId)
     : env.DB.prepare(
-      `SELECT id, project_id, name, size, mime_type, status, preview, original_preview,
+      `SELECT id, project_id, user_id, name, size, mime_type, status, preview, original_preview,
                 created_at, updated_at
-           FROM files`
-    );
+           FROM files WHERE user_id = ?1`
+    ).bind(userId);
 
   const files = await stmt.all();
   return jsonResponse({ files: files.results ?? [] });
 }
 
-async function upsertFiles(env: Env, request: Request): Promise<Response> {
+async function upsertFiles(env: Env, request: Request, userId: string): Promise<Response> {
   let payload: BulkFilesPayload;
   try {
     payload = await readJson<BulkFilesPayload>(request);
@@ -93,10 +107,11 @@ async function upsertFiles(env: Env, request: Request): Promise<Response> {
     statements.push(
       env.DB.prepare(
         `INSERT INTO files (
-           id, project_id, name, size, mime_type, status, preview, original_preview, created_at, updated_at
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+           id, project_id, user_id, name, size, mime_type, status, preview, original_preview, created_at, updated_at
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
          ON CONFLICT(id) DO UPDATE SET
            project_id = excluded.project_id,
+           user_id = excluded.user_id,
            name = excluded.name,
            size = excluded.size,
            mime_type = excluded.mime_type,
@@ -107,6 +122,7 @@ async function upsertFiles(env: Env, request: Request): Promise<Response> {
       ).bind(
         file.id,
         file.project_id ?? null,
+        userId, // Always use authenticated user's ID
         file.name,
         file.size ?? null,
         file.mime_type ?? null,

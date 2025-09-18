@@ -17,10 +17,13 @@
   "dependencies": {
     "@google/generative-ai": "^0.1.0",
     "@tailwindcss/typography": "^0.5.16",
+    "@types/jsonwebtoken": "^9.0.10",
     "docx": "^9.5.1",
     "file-saver": "^2.0.5",
+    "firebase": "^12.2.1",
     "framer-motion": "^10.16.0",
     "i18next": "^25.5.2",
+    "jsonwebtoken": "^9.0.2",
     "jspdf": "^3.0.2",
     "jszip": "^3.10.1",
     "lucide-react": "^0.263.1",

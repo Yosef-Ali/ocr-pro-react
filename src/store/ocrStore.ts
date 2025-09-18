@@ -1,7 +1,7 @@
 // Zustand store for OCR application state
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import type { OCRFile, OCRResult, Settings, ProcessingStatus, Project, ProjectSummary } from '@/types';
+import type { OCRFile, OCRResult, Settings, ProcessingStatus, Project, ProjectSummary, User } from '@/types';
 import {
   fetchProjects,
   createProject as apiCreateProject,
@@ -15,6 +15,9 @@ import { fetchResults, upsertResults as apiUpsertResults, deleteResult as apiDel
 import { mapRemoteFile, mapRemoteResult, mapRemoteSummary } from '@/services/api/transformers';
 
 interface OCRState {
+  // User state
+  currentUser: User | null;
+  
   // Projects
   projects: Project[];
   currentProjectId: string | null;
@@ -46,6 +49,7 @@ interface OCRState {
   settings: Settings;
 
   // Actions
+  setCurrentUser: (user: User | null) => void;
   addFiles: (files: File[]) => Promise<string[]>;
   removeFile: (index: number) => Promise<void>;
   clearFiles: () => Promise<void>;
@@ -81,6 +85,7 @@ export const useOCRStore = create<OCRState>()(
     persist(
       (set) => ({
         // Initial state
+        currentUser: null,
         projects: [],
         currentProjectId: null,
         projectSummaries: {},
@@ -132,7 +137,32 @@ export const useOCRStore = create<OCRState>()(
           bookIncludeCover: true,
         },
 
+        setCurrentUser: (user) => {
+          set({ currentUser: user });
+          
+          // Clear all data when user changes/logs out
+          if (!user) {
+            set({
+              projects: [],
+              currentProjectId: null,
+              projectSummaries: {},
+              files: [],
+              currentFileIndex: 0,
+              results: [],
+              currentResult: null,
+              isRemoteHydrated: false,
+            });
+          }
+        },
+
         hydrateFromRemote: async () => {
+          const state = useOCRStore.getState();
+          if (!state.currentUser) {
+            console.warn('Cannot hydrate without authenticated user');
+            set({ isRemoteHydrated: true });
+            return;
+          }
+
           try {
             const [remoteProjects, remoteFiles, remoteResults] = await Promise.all([
               fetchProjects(),
@@ -172,6 +202,7 @@ export const useOCRStore = create<OCRState>()(
               id: p.id,
               name: p.name,
               description: p.description ?? undefined,
+              userId: p.user_id ?? undefined,
               createdAt: p.created_at,
             }));
 
@@ -232,6 +263,7 @@ export const useOCRStore = create<OCRState>()(
               normalized = dataUrl;
             }
 
+            const state = useOCRStore.getState();
             enriched.push({
               id: `${Date.now()}-${index}`,
               file,
@@ -241,7 +273,8 @@ export const useOCRStore = create<OCRState>()(
               status: 'pending',
               preview: normalized || dataUrl || null,
               originalPreview: dataUrl || null,
-              projectId: useOCRStore.getState().currentProjectId ?? undefined,
+              projectId: state.currentProjectId ?? undefined,
+              userId: state.currentUser?.id,
             });
           }
 
@@ -253,6 +286,7 @@ export const useOCRStore = create<OCRState>()(
                   id: file.id,
                   name: file.name,
                   project_id: file.projectId ?? null,
+                  user_id: file.userId ?? null,
                   size: file.size,
                   mime_type: file.type,
                   status: file.status,
@@ -315,6 +349,7 @@ export const useOCRStore = create<OCRState>()(
             enrichedResults = incomingResults.map(r => ({
               ...r,
               projectId: r.projectId ?? state.currentProjectId ?? undefined,
+              userId: r.userId ?? state.currentUser?.id,
               metadata: {
                 ...((r as any).metadata || {}),
                 originalOCRText: ((r as any).metadata?.originalOCRText) || r.layoutPreserved || r.extractedText || ''

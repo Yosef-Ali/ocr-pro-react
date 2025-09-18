@@ -1,5 +1,18 @@
-import type { RemoteFile, RemoteResult, RemoteSummary } from './types';
-import type { OCRFile, OCRResult, ProjectSummary } from '@/types';
+import type { RemoteUser, RemoteFile, RemoteResult, RemoteSummary } from './types';
+import type { User, OCRFile, OCRResult, ProjectSummary } from '@/types';
+
+export function mapRemoteUser(remote: RemoteUser): User {
+  return {
+    id: remote.id,
+    email: remote.email,
+    name: remote.name,
+    googleId: remote.google_id ?? undefined,
+    profilePicture: remote.profile_picture ?? undefined,
+    createdAt: remote.created_at,
+    updatedAt: remote.updated_at,
+    lastLogin: remote.last_login ?? undefined,
+  };
+}
 
 export function mapRemoteFile(remote: RemoteFile): OCRFile {
   return {
@@ -11,6 +24,7 @@ export function mapRemoteFile(remote: RemoteFile): OCRFile {
     preview: remote.preview,
     originalPreview: remote.original_preview ?? undefined,
     projectId: remote.project_id ?? undefined,
+    userId: remote.user_id ?? undefined,
     file: undefined,
   } as OCRFile;
 }
@@ -28,6 +42,7 @@ export function mapRemoteResult(remote: RemoteResult): OCRResult {
     id: remote.id,
     fileId: remote.file_id,
     projectId: remote.project_id ?? undefined,
+    userId: remote.user_id ?? undefined,
     extractedText: remote.extracted_text ?? '',
     layoutPreserved: remote.layout_preserved ?? remote.extracted_text ?? '',
     detectedLanguage: remote.detected_language ?? 'unknown',

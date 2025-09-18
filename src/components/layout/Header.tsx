@@ -1,10 +1,13 @@
 import React from 'react';
 import { FileText, Settings, HelpCircle, Moon, Sun } from 'lucide-react';
 import { useOCRStore } from '@/store/ocrStore';
+import { useAuth } from '@/contexts/AuthContext';
+import { LoginButton, UserProfile } from '@/components/auth';
 import { motion } from 'framer-motion';
 
 export const Header: React.FC = () => {
   const { toggleSettings, toggleHelp, projects, currentProjectId, selectProject, createProject } = useOCRStore();
+  const { user } = useAuth();
   const [dark, setDark] = React.useState(false);
 
   React.useEffect(() => {
@@ -118,6 +121,11 @@ export const Header: React.FC = () => {
             >
               <HelpCircle className="w-5 h-5" />
             </motion.button>
+
+            {/* Authentication Section */}
+            <div className="ml-4 pl-4 border-l border-white/20">
+              {user ? <UserProfile /> : <LoginButton />}
+            </div>
           </div>
         </div>
       </div>

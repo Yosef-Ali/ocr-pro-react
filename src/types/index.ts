@@ -10,6 +10,7 @@ export interface OCRFile {
   preview: string | null;
   originalPreview?: string | null;
   projectId?: string;
+  userId?: string;
   result?: OCRResult;
 }
 
@@ -17,6 +18,7 @@ export interface OCRResult {
   id: string;
   fileId: string;
   projectId?: string;
+  userId?: string;
   extractedText: string;
   layoutPreserved: string;
   detectedLanguage: string;
@@ -45,10 +47,22 @@ export interface ProofreadingSuggestion {
   confidence?: number; // optional confidence score 0..1
 }
 
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  googleId?: string;
+  profilePicture?: string;
+  createdAt: number;
+  updatedAt: number;
+  lastLogin?: number;
+}
+
 export interface Project {
   id: string;
   name: string;
   description?: string;
+  userId?: string;
   createdAt: number;
 }
 

@@ -1,4 +1,5 @@
 import { jsonResponse, methodNotAllowed } from '../../utils/http';
+import { authenticateRequest } from '../../utils/auth';
 // Minimal local type shapes to avoid external type dependency
 type LocalD1PreparedStatement = {
   bind: (...args: any[]) => LocalD1PreparedStatement;
@@ -12,10 +13,25 @@ type LocalPagesFunction<E> = (context: { request: Request; env: E }) => Promise<
 
 type Env = {
   DB: LocalD1Database;
+  JWT_SECRET: string;
+  FIREBASE_ADMIN_PROJECT_ID?: string;
+  FIREBASE_ADMIN_CLIENT_EMAIL?: string;
+  FIREBASE_ADMIN_PRIVATE_KEY?: string;
 };
 
 export const onRequest: LocalPagesFunction<Env> = async (context) => {
   const { request, env } = context;
+  
+  // Authenticate request
+  const authResult = await authenticateRequest(request, env);
+  if (!authResult.success) {
+    return new Response(
+      JSON.stringify({ error: authResult.error || 'Authentication failed' }),
+      { status: 401, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const user = authResult.user!;
   const url = new URL(request.url);
   const projectId = url.searchParams.get('projectId');
   const fileId = url.searchParams.get('fileId');
@@ -26,7 +42,7 @@ export const onRequest: LocalPagesFunction<Env> = async (context) => {
 
   switch (request.method.toUpperCase()) {
     case 'GET':
-      return listResults(env, { projectId, fileId, limit, offset, sortBy, sortDir });
+      return listResults(env, { projectId, fileId, limit, offset, sortBy, sortDir, userId: user.id });
     default:
       return methodNotAllowed();
   }
@@ -35,6 +51,7 @@ export const onRequest: LocalPagesFunction<Env> = async (context) => {
 type Filters = {
   projectId: string | null;
   fileId: string | null;
+  userId: string;
   limit?: string | null;
   offset?: string | null;
   sortBy?: string | null;
@@ -49,8 +66,9 @@ async function listResults(env: Env, filters: Filters): Promise<Response> {
   // Whitelist sortable columns
   const sortColumn = ['created_at', 'confidence', 'updated_at'].includes(sortBy) ? sortBy : 'created_at';
 
-  const whereClauses: string[] = [];
-  const bindings: unknown[] = [];
+  const whereClauses: string[] = ['user_id = ?'];
+  const bindings: unknown[] = [filters.userId];
+  
   if (filters.fileId) {
     whereClauses.push('file_id = ?');
     bindings.push(filters.fileId);
@@ -58,7 +76,7 @@ async function listResults(env: Env, filters: Filters): Promise<Response> {
     whereClauses.push('project_id = ?');
     bindings.push(filters.projectId);
   }
-  const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
+  const whereSql = `WHERE ${whereClauses.join(' AND ')}`;
 
   // Total count
   const totalStmt = env.DB.prepare(`SELECT COUNT(*) as total FROM results ${whereSql}`);
@@ -66,7 +84,7 @@ async function listResults(env: Env, filters: Filters): Promise<Response> {
   const total = Number(totalRow?.total || 0);
 
   // Data query
-  let sql = `SELECT id, file_id, project_id, extracted_text, layout_preserved, detected_language,
+  let sql = `SELECT id, file_id, project_id, user_id, extracted_text, layout_preserved, detected_language,
                     confidence, document_type, metadata, created_at, updated_at
                FROM results ${whereSql} ORDER BY ${sortColumn} ${sortDir}`;
   const bound: unknown[] = [...bindings];

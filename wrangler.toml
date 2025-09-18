@@ -5,14 +5,15 @@ pages_build_output_dir = "./dist"
 # Enable Node.js compatibility for Pages Functions utilities
 compatibility_flags = ["nodejs_compat"]
 
+# Environment variables for authentication
+[vars]
+JWT_SECRET = "your_jwt_secret_here"
+FIREBASE_ADMIN_PROJECT_ID = "your_project_id"
+FIREBASE_ADMIN_CLIENT_EMAIL = "your_service_account_email"
+# Note: FIREBASE_ADMIN_PRIVATE_KEY should be set as a secret, not in vars
+
 [[d1_databases]]
 binding = "DB"            # Accessible via env.DB inside Pages Functions
-# Update these with `wrangler d1 create` results before deploying
-# Example: wrangler d1 create ocrpro-db
-# Then paste the generated database_id below
-# database_name is informative for wrangler; it's fine to reuse the created name
-# Replace the placeholders once you have the actual values
-# These placeholders keep the repo committed while signalling required action
-# DO NOT DEPLOY until database_id is filled in.
 database_name = "ocrpro-db"
 database_id = "5f16e784-85fc-4dc7-b1ee-34eb91074d5b"
+migrations_dir = "migrations"
