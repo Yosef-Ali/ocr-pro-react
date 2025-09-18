@@ -35,13 +35,13 @@ export const BaseTab: React.FC<BaseTabProps> = ({
   const isEthiopic = result.detectedLanguage === LANGUAGE_CODES.AMHARIC || containsEthiopic(result.extractedText);
 
   return (
-    <div className={`bg-gray-50 rounded-lg ${className}`}>
+    <div className={`bg-card text-card-foreground border border-border rounded-lg ${className}`}>
       {/* Confidence Warning */}
       {/* Confidence banner intentionally removed per product feedback */}
 
       {/* Language Indicator */}
       {isEthiopic && (
-        <div className="mb-3 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+        <div className="mb-3 inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold bg-primary/10 text-primary border border-primary/20">
           🇪🇹 Amharic Text Detected
         </div>
       )}
@@ -53,18 +53,18 @@ export const BaseTab: React.FC<BaseTabProps> = ({
 
       {/* Metadata Footer */}
       {showMetadata && (
-        <div className="border-t border-gray-200 px-4 py-3 bg-gray-100 rounded-b-lg">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-gray-600">
+        <div className="border-t border-border px-4 py-3 bg-muted rounded-b-lg">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-muted-foreground">
             <div>
               <span className="font-medium">Engine:</span> {result.metadata?.engine || 'Unknown'}
             </div>
             <div>
               <span className="font-medium">Confidence:</span>
-              <span className={`ml-1 px-2 py-1 text-xs rounded-full ${result.confidence >= CONFIDENCE_THRESHOLDS.HIGH ? 'bg-green-100 text-green-800' :
-                result.confidence >= CONFIDENCE_THRESHOLDS.MEDIUM ? 'bg-blue-100 text-blue-800' :
-                  result.confidence >= CONFIDENCE_THRESHOLDS.FAIR ? 'bg-yellow-100 text-yellow-800' :
-                    result.confidence >= CONFIDENCE_THRESHOLDS.LOW ? 'bg-orange-100 text-orange-800' :
-                      'bg-red-100 text-red-800'
+              <span className={`ml-1 px-2 py-0.5 text-[11px] rounded-full ${result.confidence >= CONFIDENCE_THRESHOLDS.HIGH ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                result.confidence >= CONFIDENCE_THRESHOLDS.MEDIUM ? 'bg-primary/10 text-primary border border-primary/20' :
+                  result.confidence >= CONFIDENCE_THRESHOLDS.FAIR ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' :
+                    result.confidence >= CONFIDENCE_THRESHOLDS.LOW ? 'bg-orange-50 text-orange-800 border border-orange-200' :
+                      'bg-red-50 text-red-700 border border-red-200'
                 }`}>
                 {Math.round(result.confidence * 100)}% ({getConfidenceLabel(result.confidence)})
               </span>
@@ -77,7 +77,7 @@ export const BaseTab: React.FC<BaseTabProps> = ({
             </div>
           </div>
           {result.layoutAnalysis && (
-            <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-gray-600">
+            <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-muted-foreground">
               <div>
                 <span className="font-medium">Text Blocks:</span> {result.layoutAnalysis.textBlocks}
               </div>
@@ -124,7 +124,7 @@ export const TextContainer: React.FC<TextContainerProps> = ({
   return (
     <div className={`${maxHeight} overflow-y-auto ${className}`}>
       <pre
-        className={`whitespace-pre-wrap text-sm text-gray-800 font-mono leading-relaxed ${hasEthiopic ? 'font-ethiopic leading-8 tracking-normal' : ''}`}
+        className={`whitespace-pre-wrap text-sm text-foreground font-mono leading-relaxed ${hasEthiopic ? 'font-ethiopic leading-8 tracking-normal' : ''}`}
         lang={hasEthiopic ? 'am' : undefined}
         dir="auto"
       >
@@ -146,8 +146,8 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
 }) => {
   return (
     <div className="flex items-center justify-center py-8">
-      <div className="flex items-center space-x-2 text-gray-600">
-        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+      <div className="flex items-center space-x-2 text-muted-foreground">
+        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
         <span className="text-sm">{message}</span>
       </div>
     </div>
@@ -167,7 +167,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   icon = '📄'
 }) => {
   return (
-    <div className="flex flex-col items-center justify-center py-8 text-gray-500">
+    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
       <div className="text-4xl mb-2">{icon}</div>
       <p className="text-sm">{message}</p>
     </div>

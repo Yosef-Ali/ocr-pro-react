@@ -105,7 +105,7 @@ export const UploadSection: React.FC = () => {
         className="bg-card text-card-foreground border border-border rounded-xl shadow-lg p-6"
       >
         <h2 className="text-xl font-semibold mb-4 flex items-center">
-          <Upload className="w-5 h-5 mr-2 text-blue-600" />
+          <Upload className="w-5 h-5 mr-2 text-primary" />
           {t('upload.title')}
         </h2>
 

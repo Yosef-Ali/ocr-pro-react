@@ -434,7 +434,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-foreground">Language: {result.detectedLanguage || 'unknown'}</span>
             {edgeEnabled && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-foreground">
-                <Loader2 className={`w-3 h-3 ${edgeProgress > 0 && edgeProgress < 100 ? 'animate-spin text-blue-500' : 'text-emerald-500'}`} />
+                <Loader2 className={`w-3 h-3 ${edgeProgress > 0 && edgeProgress < 100 ? 'animate-spin text-primary' : 'text-emerald-500'}`} />
                 Edge LLM {edgeProgress > 0 && edgeProgress < 100 ? `loading ${edgeProgress}%` : 'ready'}
               </span>
             )}
@@ -640,7 +640,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
 
             {showAiOverlay && (
               <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-2xl bg-background/80 backdrop-blur-sm text-sm text-foreground">
-                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-blue-700">
+                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   {aiStateBadge}
                 </span>
@@ -767,7 +767,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                       setActionsOpen(false);
                     }}
                   >
-                    <XCircle className="w-4 h-4 text-gray-500" />
+                    <XCircle className="w-4 h-4 text-muted-foreground" />
                     <span>Discard suggestions</span>
                   </button>
                   <div className="my-1 border-t border-border" />
@@ -789,7 +789,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                       }
                     }}
                   >
-                    <CopyIcon className="w-4 h-4 text-gray-600" />
+                    <CopyIcon className="w-4 h-4 text-muted-foreground" />
                     <span>Copy cleaned text</span>
                   </button>
                 </div>

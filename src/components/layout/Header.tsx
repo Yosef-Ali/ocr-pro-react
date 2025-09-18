@@ -165,7 +165,7 @@ export const Header: React.FC = () => {
           </div>
         </div>
       </div>
-      <Dialog open={createOpen} onOpenChange={(open) => (open ? openCreateDialog() : closeCreateDialog())}>
+      <Dialog open={createOpen} onOpenChange={(open) => (!open ? closeCreateDialog() : undefined)}>
         <DialogContent>
           <form onSubmit={handleCreateProject}>
             <DialogHeader>

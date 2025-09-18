@@ -47,22 +47,22 @@ export const HelpModal: React.FC = () => {
             {steps.map(({ icon: Icon, title, description }, index) => (
               <div key={title} className="flex space-x-4">
                 <div className="flex-shrink-0">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Icon className="w-5 h-5 text-blue-600" />
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <Icon className="w-5 h-5 text-primary" />
                   </div>
                 </div>
                 <div>
-                  <h4 className="font-semibold text-gray-800 mb-1">
+                  <h4 className="font-semibold text-foreground mb-1">
                     {index + 1}. {title}
                   </h4>
-                  <p className="text-sm text-gray-600">{description}</p>
+                  <p className="text-sm text-muted-foreground">{description}</p>
                 </div>
               </div>
             ))}
           </div>
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-semibold text-blue-800 mb-2">Pro Tips</h4>
-            <ul className="text-sm text-blue-700 space-y-1">
+          <div className="mt-6 p-4 bg-primary/10 rounded-lg">
+            <h4 className="font-semibold text-primary mb-2">Pro Tips</h4>
+            <ul className="text-sm text-foreground space-y-1">
               <li>• For best results, use high-quality images with good lighting</li>
               <li>• Enable image enhancement for low-quality scans</li>
               <li>• Use batch processing for multiple documents</li>

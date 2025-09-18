@@ -2,6 +2,7 @@ import React from 'react';
 import { Settings2 } from 'lucide-react';
 import { useOCRStore } from '@/store/ocrStore';
 import { motion } from 'framer-motion';
+const MotionLabel = motion.label as any;
 
 export const OCROptions: React.FC = () => {
   const { settings, updateSettings } = useOCRStore();
@@ -26,13 +27,13 @@ export const OCROptions: React.FC = () => {
 
   return (
     <div className="mt-6">
-      <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+      <h3 className="text-sm font-medium text-foreground mb-3 flex items-center">
         <Settings2 className="w-4 h-4 mr-1" />
         OCR Options
       </h3>
       <div className="space-y-3">
         {options.map(({ id, label, description }) => (
-          <motion.label
+          <MotionLabel
             key={id}
             whileHover={{ x: 2 }}
             className="flex items-start cursor-pointer group"
@@ -41,15 +42,15 @@ export const OCROptions: React.FC = () => {
               type="checkbox"
               checked={settings[id as keyof typeof settings] as boolean}
               onChange={(e) => updateSettings({ [id]: e.target.checked })}
-              className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="mt-1 rounded border-input text-primary focus:ring-ring"
             />
             <div className="ml-3">
-              <span className="text-sm text-gray-600 group-hover:text-gray-800">
+              <span className="text-sm text-muted-foreground group-hover:text-foreground">
                 {label}
               </span>
-              <p className="text-xs text-gray-400">{description}</p>
+              <p className="text-xs text-muted-foreground/70">{description}</p>
             </div>
-          </motion.label>
+          </MotionLabel>
         ))}
       </div>
     </div>

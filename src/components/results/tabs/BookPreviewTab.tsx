@@ -119,13 +119,13 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-xl border border-gray-200 bg-gray-50 p-4 sticky top-0 z-10">
+      <section className="rounded-xl border border-border bg-muted p-4 sticky top-0 z-10">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-blue-600" />
+            <FileText className="w-5 h-5 text-primary" />
             <div>
-              <h3 className="text-base font-semibold text-gray-900">Book Preview</h3>
-              <p className="text-sm text-gray-600">
+              <h3 className="text-base font-semibold text-foreground">Book Preview</h3>
+              <p className="text-sm text-muted-foreground">
                 Review the compiled PDF using the layout preserved text for the current project.
               </p>
             </div>
@@ -135,7 +135,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
               type="button"
               onClick={generatePreview}
               disabled={loading || isProcessing || needsMoreResults}
-              className="inline-flex items-center gap-2 rounded-lg border border-blue-500 bg-blue-500 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-200 disabled:text-gray-500"
+              className="inline-flex items-center gap-2 rounded-lg border border-primary bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:text-muted-foreground"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               {loading ? 'Building…' : 'Generate Preview'}
@@ -147,7 +147,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                 generatePreview().catch(() => { });
               }}
               disabled={loading || !pdfUrl}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent disabled:cursor-not-allowed disabled:text-muted-foreground/60"
             >
               <RefreshCcw className="w-4 h-4" />
               Refresh
@@ -171,25 +171,25 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
       )}
 
       {loading && !pdfUrl && (
-        <div className="rounded-xl border border-gray-200 p-4">
-          <div className="h-6 w-40 bg-gray-200/80 rounded mb-3 animate-pulse" />
-          <div className="h-[60vh] w-full bg-gray-100 animate-pulse rounded" />
+        <div className="rounded-xl border border-border p-4">
+          <div className="h-6 w-40 bg-muted rounded mb-3 animate-pulse" />
+          <div className="h-[60vh] w-full bg-muted animate-pulse rounded" />
         </div>
       )}
 
       {pdfUrl ? (
-        <div className="overflow-hidden rounded-xl border border-gray-200">
-          <div className="flex items-center justify-between p-2 border-b bg-gray-50">
-            <div className="text-sm text-gray-600">PDF Preview</div>
+        <div className="overflow-hidden rounded-xl border border-border">
+          <div className="flex items-center justify-between p-2 border-b bg-muted">
+            <div className="text-sm text-muted-foreground">PDF Preview</div>
             <div className="flex items-center gap-2">
               <a
                 href={pdfUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-2 py-1 text-xs rounded border bg-white hover:bg-gray-50"
+                className="px-2 py-1 text-xs rounded border border-border bg-background hover:bg-accent"
               >Open in new tab</a>
               <button
-                className="px-2 py-1 text-xs rounded border bg-white hover:bg-gray-50 disabled:opacity-50"
+                className="px-2 py-1 text-xs rounded border border-border bg-background hover:bg-accent disabled:opacity-50"
                 disabled={downloading}
                 onClick={async () => {
                   try {
@@ -209,18 +209,18 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
               >{downloading ? 'Downloading…' : 'Download'}</button>
             </div>
           </div>
-          <iframe title="Book Preview" src={pdfUrl} className="h-[70vh] w-full bg-white" />
+          <iframe title="Book Preview" src={pdfUrl} className="h-[70vh] w-full bg-background" />
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 p-10 text-center text-sm text-gray-500">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted p-10 text-center text-sm text-muted-foreground">
           {loading ? (
             <>
-              <Loader2 className="mb-3 h-6 w-6 animate-spin text-blue-600" />
+              <Loader2 className="mb-3 h-6 w-6 animate-spin text-primary" />
               Generating book preview…
             </>
           ) : (
             <>
-              <Monitor className="mb-3 h-8 w-8 text-blue-500" />
+              <Monitor className="mb-3 h-8 w-8 text-primary" />
               {needsMoreResults
                 ? 'Upload additional pages or chapters, then run OCR to see the compiled preview.'
                 : 'Click “Generate Preview” to build a PDF using the layout-preserved results.'}

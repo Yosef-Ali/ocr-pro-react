@@ -288,10 +288,10 @@ export const ResultsSection: React.FC = () => {
               <button onClick={exportSummaryDOCX} aria-label="Export project summary as DOCX file" className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring">Export DOCX</button>
               <button onClick={exportSummaryJSON} aria-label="Export project summary as JSON file" className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring">Export JSON</button>
               <button onClick={copyTocMarkdown} aria-label="Copy table of contents as Markdown" className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring">Copy TOC (MD)</button>
-              <div className="w-px h-4 bg-gray-200 mx-1" aria-hidden="true" />
+              <div className="w-px h-4 bg-border mx-1" aria-hidden="true" />
               <button onClick={exportBookDOCX} aria-label="Export project as DOCX book" className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring">Book DOCX</button>
               <button onClick={exportBookPDF} aria-label="Export project as PDF book" className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring">Book PDF</button>
-              <div className="w-px h-4 bg-gray-200 mx-1" aria-hidden="true" />
+              <div className="w-px h-4 bg-border mx-1" aria-hidden="true" />
               <button onClick={rerunAllLayoutOnly} aria-label="Re-run all with Tesseract only (preserve layout)" className="px-2 py-1 text-xs bg-primary/10 text-primary border border-primary/30 rounded hover:bg-primary/20 focus:outline-none focus:ring-2 focus:ring-ring">Re-run All (Layout only)</button>
               <button
                 onClick={() => {
@@ -308,7 +308,7 @@ export const ResultsSection: React.FC = () => {
           </div>
           {activeSummary.toc?.length ? (
             <div className="mb-3">
-              <div className="text-xs text-gray-600 mb-1">Table of Contents</div>
+              <div className="text-xs text-muted-foreground mb-1">Table of Contents</div>
               <ul className="text-sm list-disc pl-5">
                 {activeSummary.toc.map((t, i) => (
                   <li key={i} style={{ marginLeft: `${Math.max(0, (t.level || 1) - 1) * 12}px` }}>
@@ -320,13 +320,13 @@ export const ResultsSection: React.FC = () => {
           ) : null}
           {activeSummary.summary && (
             <div className="mb-3">
-              <div className="text-xs text-gray-600 mb-1">Summary</div>
+              <div className="text-xs text-muted-foreground mb-1">Summary</div>
               <p className="text-sm whitespace-pre-wrap">{activeSummary.summary}</p>
             </div>
           )}
           {activeSummary.proofreadingNotes?.length ? (
             <div>
-              <div className="text-xs text-gray-600 mb-1">Proofreading Notes</div>
+              <div className="text-xs text-muted-foreground mb-1">Proofreading Notes</div>
               <ul className="text-sm list-disc pl-5">
                 {activeSummary.proofreadingNotes.map((note: string, idx: number) => (
                   <li key={idx} className="mb-1 whitespace-pre-wrap">

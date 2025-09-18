@@ -1,6 +1,7 @@
 import React from 'react';
 import { Play, Loader, Zap, Brain, Cpu } from 'lucide-react';
 import { motion } from 'framer-motion';
+const MotionButton = motion.button as any;
 import { useOCRStore } from '@/store/ocrStore';
 import { useOCRProcessing } from '@/hooks/useOCRProcessing';
 import { checkAvailableApiKeys } from '@/utils/validationUtils';
@@ -61,11 +62,11 @@ export const ProcessButton: React.FC = () => {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-center text-xs text-gray-500" aria-live="polite">
+      <div className="flex items-center justify-center text-xs text-muted-foreground" aria-live="polite">
         <EngineIcon className="w-3 h-3 mr-1" aria-hidden="true" />
         Using {engineInfo.name}
       </div>
-      <motion.button
+      <MotionButton
         whileHover={{ scale: files.length > 0 ? 1.02 : 1 }}
         whileTap={{ scale: files.length > 0 ? 0.98 : 1 }}
         onClick={handleClick}
@@ -77,8 +78,8 @@ export const ProcessButton: React.FC = () => {
           transition-all duration-300 flex items-center justify-center
           focus:outline-none focus:ring-2 focus:ring-offset-2
           ${files.length === 0 || isProcessing
-            ? 'bg-gray-300 text-gray-500 cursor-not-allowed focus:ring-gray-400'
-            : `bg-gradient-to-r ${engineInfo.color} text-white hover:opacity-90 focus:ring-blue-500`
+            ? 'bg-muted text-muted-foreground cursor-not-allowed focus:ring-border'
+            : `bg-gradient-to-r ${engineInfo.color} text-white hover:opacity-90 focus:ring-ring`
           }
         `}
       >
@@ -93,7 +94,7 @@ export const ProcessButton: React.FC = () => {
             <Play className="w-4 h-4 ml-2" aria-hidden="true" />
           </>
         )}
-      </motion.button>
+      </MotionButton>
       <div id="process-status" className="sr-only">
         {files.length === 0 ? 'No files uploaded' : `${files.length} file${files.length > 1 ? 's' : ''} ready for processing`}
       </div>

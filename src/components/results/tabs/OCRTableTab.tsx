@@ -86,7 +86,7 @@ export const OCRTableTab: React.FC = () => {
     const countSelected = selectedResults.length;
 
     if (!loading && filteredResults.length === 0) {
-        return <p className="text-sm text-gray-500">No OCR results yet.</p>;
+        return <p className="text-sm text-muted-foreground">No OCR results yet.</p>;
     }
 
     const handleExportXlsx = async () => {
@@ -280,14 +280,14 @@ export const OCRTableTab: React.FC = () => {
         <div className="overflow-x-auto overflow-y-visible">
             <div className="flex items-center justify-between mb-3 gap-3">
                 <div className="flex items-center gap-3">
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-muted-foreground">
                         {countSelected > 0 ? `${countSelected} selected` : loading ? 'Fetching…' : `${filteredResults.length}${currentProjectId ? ` of ${total}` : ''} items`}
                     </div>
                     {currentProjectId && (
                         <div className="flex items-center gap-2 text-xs">
-                            <button className="px-2 py-1 rounded border bg-white disabled:opacity-50" disabled={page === 0 || loading} onClick={() => setPage(p => Math.max(0, p - 1))}>Prev</button>
+                            <button className="px-2 py-1 rounded border border-border bg-background disabled:opacity-50 hover:bg-accent" disabled={page === 0 || loading} onClick={() => setPage(p => Math.max(0, p - 1))}>Prev</button>
                             <span>Page {page + 1}</span>
-                            <button className="px-2 py-1 rounded border bg-white disabled:opacity-50" disabled={loading || ((page + 1) * pageSize >= total)} onClick={() => setPage(p => p + 1)}>Next</button>
+                            <button className="px-2 py-1 rounded border border-border bg-background disabled:opacity-50 hover:bg-accent" disabled={loading || ((page + 1) * pageSize >= total)} onClick={() => setPage(p => p + 1)}>Next</button>
                         </div>
                     )}
                 </div>
@@ -356,7 +356,7 @@ export const OCRTableTab: React.FC = () => {
                 </thead>
                 <tbody>
                     {filteredResults.map((r) => (
-                        <tr key={r.id} className="border-b hover:bg-gray-50">
+                        <tr key={r.id} className="border-b border-border hover:bg-accent">
                             <td className="py-2 pr-4">
                                 <input
                                     type="checkbox"
@@ -366,7 +366,7 @@ export const OCRTableTab: React.FC = () => {
                             </td>
                             <td className="py-2 pr-4">
                                 <button
-                                    className="text-blue-600 hover:underline"
+                                    className="text-primary hover:underline"
                                     onClick={() => {
                                         const idx = files.findIndex(f => f.id === r.fileId);
                                         if (idx >= 0) setCurrentFileIndex(idx);
@@ -529,7 +529,7 @@ const MenuButton: React.FC<MenuHandlers> = ({ onExportTxt, onExportPdf, onAssign
     return (
         <div className="relative" ref={ref}>
             <button
-                className="p-2 rounded hover:bg-gray-200"
+                className="p-2 rounded hover:bg-accent"
                 onClick={() => setOpen(o => !o)}
                 aria-haspopup="menu"
                 aria-expanded={open}
@@ -540,16 +540,16 @@ const MenuButton: React.FC<MenuHandlers> = ({ onExportTxt, onExportPdf, onAssign
             {open && pos && createPortal(
                 <div
                     ref={menuRef}
-                    className="fixed w-48 bg-white border rounded shadow-xl z-[9999]"
+                    className="fixed w-48 bg-card text-card-foreground border border-border rounded shadow-xl z-[9999]"
                     style={{ top: pos.top, left: pos.left }}
                     role="menu"
                     onKeyDown={onMenuKeyDown}
                 >
-                    <button ref={(el) => { itemsRef.current[0] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" onClick={() => { setOpen(false); onExportTxt(); }}>Export TXT</button>
-                    <button ref={(el) => { itemsRef.current[1] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" onClick={() => { setOpen(false); onExportPdf(); }}>Export PDF</button>
+                    <button ref={(el) => { itemsRef.current[0] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-accent text-sm" onClick={() => { setOpen(false); onExportTxt(); }}>Export TXT</button>
+                    <button ref={(el) => { itemsRef.current[1] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-accent text-sm" onClick={() => { setOpen(false); onExportPdf(); }}>Export PDF</button>
                     <div className="border-t my-1" />
-                    <button ref={(el) => { itemsRef.current[2] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" onClick={() => { setOpen(false); onAssignCurrent(); }}>Assign to Current Project</button>
-                    <button ref={(el) => { itemsRef.current[3] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" onClick={() => { setOpen(false); onClearProject(); }}>Clear Project</button>
+                    <button ref={(el) => { itemsRef.current[2] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-accent text-sm" onClick={() => { setOpen(false); onAssignCurrent(); }}>Assign to Current Project</button>
+                    <button ref={(el) => { itemsRef.current[3] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-accent text-sm" onClick={() => { setOpen(false); onClearProject(); }}>Clear Project</button>
                     <div className="border-t my-1" />
                     <button ref={(el) => { itemsRef.current[4] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-red-50 text-sm text-red-600" onClick={() => { setOpen(false); onDelete(); }}>Delete</button>
                 </div>, document.body)
@@ -660,15 +660,15 @@ const BulkActions: React.FC<{ disabled: boolean; onTxt: () => void; onPdf: () =>
 
     return (
         <div className="relative inline-block text-left" ref={ref}>
-            <button disabled={disabled} onClick={() => setOpen(o => !o)} className="px-3 py-1.5 rounded bg-gray-100 hover:bg-gray-200 disabled:opacity-50" aria-haspopup="menu" aria-expanded={open} ref={triggerRef}>Bulk Actions</button>
+            <button disabled={disabled} onClick={() => setOpen(o => !o)} className="px-3 py-1.5 rounded bg-muted hover:bg-accent disabled:opacity-50" aria-haspopup="menu" aria-expanded={open} ref={triggerRef}>Bulk Actions</button>
             {open && pos && createPortal(
-                <div ref={menuRef} className="fixed w-64 bg-white border rounded shadow-xl z-[9999]" style={{ top: pos.top, left: pos.left }} role="menu" onKeyDown={onMenuKeyDown}>
-                    <button ref={(el) => { itemsRef.current[0] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" onClick={() => { setOpen(false); onTxt(); }}>Export TXT (ZIP)</button>
-                    <button ref={(el) => { itemsRef.current[1] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" onClick={() => { setOpen(false); onPdf(); }}>Export PDF (ZIP)</button>
-                    <button ref={(el) => { itemsRef.current[2] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" onClick={() => { setOpen(false); onDocx(); }}>Export DOCX (ZIP)</button>
-                    <button ref={(el) => { itemsRef.current[3] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" onClick={() => { setOpen(false); onXlsx(); }}>Export XLSX</button>
-                    <button ref={(el) => { itemsRef.current[4] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" onClick={() => { setOpen(false); onCsv(); }}>Export CSV</button>
-                    <button ref={(el) => { itemsRef.current[5] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" onClick={() => { setOpen(false); onCopyCsv(); }}>Copy CSV</button>
+                <div ref={menuRef} className="fixed w-64 bg-card text-card-foreground border border-border rounded shadow-xl z-[9999]" style={{ top: pos.top, left: pos.left }} role="menu" onKeyDown={onMenuKeyDown}>
+                    <button ref={(el) => { itemsRef.current[0] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-accent text-sm" onClick={() => { setOpen(false); onTxt(); }}>Export TXT (ZIP)</button>
+                    <button ref={(el) => { itemsRef.current[1] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-accent text-sm" onClick={() => { setOpen(false); onPdf(); }}>Export PDF (ZIP)</button>
+                    <button ref={(el) => { itemsRef.current[2] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-accent text-sm" onClick={() => { setOpen(false); onDocx(); }}>Export DOCX (ZIP)</button>
+                    <button ref={(el) => { itemsRef.current[3] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-accent text-sm" onClick={() => { setOpen(false); onXlsx(); }}>Export XLSX</button>
+                    <button ref={(el) => { itemsRef.current[4] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-accent text-sm" onClick={() => { setOpen(false); onCsv(); }}>Export CSV</button>
+                    <button ref={(el) => { itemsRef.current[5] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-accent text-sm" onClick={() => { setOpen(false); onCopyCsv(); }}>Copy CSV</button>
                     <button ref={(el) => { itemsRef.current[6] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" onClick={() => { setOpen(false); onCopyMd(); }}>Copy Markdown Table</button>
                     <div className="border-t my-1" />
                     <button ref={(el) => { itemsRef.current[7] = el; }} role="menuitem" className="block w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" onClick={() => { setOpen(false); onBookDocx(); }}>Book DOCX (Selection)</button>

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { LogIn, AlertTriangle } from 'lucide-react';
+import { User as UserIcon, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { isFirebaseConfigured } from '@/config/firebase';
 import { AuthModal } from './AuthModal';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 
 export const LoginButton: React.FC = () => {
   const { loading } = useAuth();
@@ -15,35 +16,37 @@ export const LoginButton: React.FC = () => {
   if (!firebaseConfigured) {
     return (
       <div className="flex flex-col items-center space-y-2">
-        <div className="flex items-center space-x-2 px-4 py-2 rounded-lg border border-orange-300 bg-orange-50">
-          <AlertTriangle className="w-4 h-4 text-orange-600" />
-          <span className="text-orange-700 font-medium">Firebase Not Configured</span>
+        <div className="flex items-center space-x-2 px-3 py-2 rounded-lg border border-border bg-card text-foreground">
+          <AlertTriangle className="w-4 h-4 text-destructive" />
+          <span className="text-sm">Firebase Not Configured</span>
         </div>
-        <div className="text-sm text-gray-600 text-center max-w-md">
-          To enable authentication, configure Firebase by setting the <code className="bg-gray-100 px-1 rounded">VITE_FIREBASE_CONFIG</code> environment variable.
+        <div className="text-sm text-muted-foreground text-center max-w-md">
+          To enable authentication, configure Firebase by setting the <code className="bg-muted px-1 rounded">VITE_FIREBASE_CONFIG</code> environment variable.
           <br />
-          See <code className="bg-gray-100 px-1 rounded">firebase-setup.md</code> for setup instructions.
+          See <code className="bg-muted px-1 rounded">firebase-setup.md</code> for setup instructions.
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center space-y-2">
-      <Button onClick={() => setOpen(true)} disabled={loading} variant="outline">
+    <div className="flex items-center">
+      <Button
+        onClick={() => setOpen(true)}
+        disabled={loading}
+        variant="ghost"
+        size="icon"
+        className="rounded-full"
+        aria-label={loading ? 'Signing in' : 'Sign in'}
+      >
         {loading ? (
-          <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+          <Spinner size="sm" variant="muted" />
         ) : (
-          <LogIn className="w-4 h-4" />
+          <UserIcon className="w-5 h-5 text-foreground" />
         )}
-        <span>
-          {loading ? 'Signing in...' : 'Sign in'}
-        </span>
+        <span className="sr-only">{loading ? 'Signing in…' : 'Sign in'}</span>
       </Button>
       <AuthModal isOpen={open} onClose={() => setOpen(false)} />
-
-      {/* Errors are displayed inside AuthModal */}
-
     </div>
   );
 };

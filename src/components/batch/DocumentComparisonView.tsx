@@ -129,7 +129,7 @@ export const DocumentComparisonView: React.FC<Props> = ({
 
   const getQualityTrend = (quality: number, average: number) => {
     const diff = quality - average;
-    if (Math.abs(diff) < 0.05) return { icon: <Minus className="w-4 h-4 text-gray-500" />, color: 'text-gray-500' };
+    if (Math.abs(diff) < 0.05) return { icon: <Minus className="w-4 h-4 text-muted-foreground" />, color: 'text-muted-foreground' };
     if (diff > 0) return { icon: <TrendingUp className="w-4 h-4 text-green-600" />, color: 'text-green-600' };
     return { icon: <TrendingDown className="w-4 h-4 text-red-600" />, color: 'text-red-600' };
   };
@@ -357,8 +357,8 @@ export const DocumentComparisonView: React.FC<Props> = ({
                       <div className="flex items-center">
                         {rank <= 3 && (
                           <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold mr-2 ${rank === 1 ? 'bg-yellow-100 text-yellow-800' :
-                              rank === 2 ? 'bg-gray-100 text-gray-800' :
-                                'bg-orange-100 text-orange-800'
+                            rank === 2 ? 'bg-gray-100 text-gray-800' :
+                              'bg-orange-100 text-orange-800'
                             }`}>
                             {rank}
                           </div>
