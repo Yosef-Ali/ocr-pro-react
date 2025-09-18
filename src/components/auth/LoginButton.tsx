@@ -3,6 +3,7 @@ import { LogIn, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { isFirebaseConfigured } from '@/config/firebase';
 import { AuthModal } from './AuthModal';
+import { Button } from '@/components/ui/button';
 
 export const LoginButton: React.FC = () => {
   const { loading } = useAuth();
@@ -29,18 +30,7 @@ export const LoginButton: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center space-y-2">
-      <button
-        onClick={() => setOpen(true)}
-        disabled={loading}
-        className={`
-          flex items-center space-x-2 px-4 py-2 rounded-lg border transition-all
-          ${loading
-            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
-          }
-          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-        `}
-      >
+      <Button onClick={() => setOpen(true)} disabled={loading} variant="outline">
         {loading ? (
           <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
         ) : (
@@ -49,7 +39,7 @@ export const LoginButton: React.FC = () => {
         <span>
           {loading ? 'Signing in...' : 'Sign in'}
         </span>
-      </button>
+      </Button>
       <AuthModal isOpen={open} onClose={() => setOpen(false)} />
 
       {/* Errors are displayed inside AuthModal */}

@@ -50,7 +50,7 @@ async function getFile(env: Env, fileId: string, userId: string): Promise<Respon
   const file = await env.DB.prepare(
     `SELECT id, project_id, user_id, name, size, mime_type, status, preview, original_preview,
             created_at, updated_at
-       FROM files WHERE id = ?1 AND user_id = ?2`
+       FROM files WHERE id = ?1 AND (user_id = ?2 OR user_id IS NULL)`
   ).bind(fileId, userId).first();
 
   if (!file) {

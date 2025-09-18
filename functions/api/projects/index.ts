@@ -38,7 +38,7 @@ type ProjectPayload = {
 
 export const onRequest: LocalPagesFunction<Env> = async (context) => {
   const { request, env } = context;
-  
+
   // Authenticate request
   const authResult = await authenticateRequest(request, env);
   if (!authResult.success) {
@@ -46,7 +46,7 @@ export const onRequest: LocalPagesFunction<Env> = async (context) => {
   }
 
   const user = authResult.user!;
-  
+
   switch (request.method.toUpperCase()) {
     case 'GET':
       return listProjects(env, user.id);
@@ -59,8 +59,8 @@ export const onRequest: LocalPagesFunction<Env> = async (context) => {
 
 async function listProjects(env: Env, userId: string): Promise<Response> {
   const result = await env.DB.prepare(
-    'SELECT id, name, description, user_id, created_at, updated_at FROM projects WHERE user_id = ?1 ORDER BY created_at ASC'
-  ).bind(userId).all<ProjectRow>();
+    'SELECT id, name, description, user_id, created_at, updated_at FROM projects WHERE (user_id = ?1 OR user_id IS NULL) ORDER BY created_at ASC'
+  ).bind(userId).all();
   return jsonResponse({ projects: result.results ?? [] });
 }
 

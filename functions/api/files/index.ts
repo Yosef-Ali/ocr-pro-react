@@ -38,7 +38,7 @@ type BulkFilesPayload = {
 
 export const onRequest: LocalPagesFunction<Env> = async (context) => {
   const { request, env } = context;
-  
+
   // Authenticate request
   const authResult = await authenticateRequest(request, env);
   if (!authResult.success) {
@@ -60,16 +60,17 @@ export const onRequest: LocalPagesFunction<Env> = async (context) => {
 };
 
 async function listFiles(env: Env, userId: string, projectId?: string | null): Promise<Response> {
+  // Include legacy rows created before auth (user_id IS NULL)
   const stmt = projectId
     ? env.DB.prepare(
       `SELECT id, project_id, user_id, name, size, mime_type, status, preview, original_preview,
                 created_at, updated_at
-           FROM files WHERE user_id = ?1 AND project_id = ?2`
+           FROM files WHERE (user_id = ?1 OR user_id IS NULL) AND project_id = ?2`
     ).bind(userId, projectId)
     : env.DB.prepare(
       `SELECT id, project_id, user_id, name, size, mime_type, status, preview, original_preview,
                 created_at, updated_at
-           FROM files WHERE user_id = ?1`
+           FROM files WHERE (user_id = ?1 OR user_id IS NULL)`
     ).bind(userId);
 
   const files = await stmt.all();

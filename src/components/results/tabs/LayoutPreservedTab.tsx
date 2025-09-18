@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as UTIF from 'utif';
-import { Bold, Italic, Heading1, Heading2, List, ListOrdered, Quote, Code, Link as LinkIcon, Type, Wand2, Loader2, RotateCcw, CheckCheck, XCircle, MoreVertical, Copy as CopyIcon } from 'lucide-react';
+import { Bold, Italic, Heading1, Heading2, List, ListOrdered, Quote, Code, Link as LinkIcon, Type, Wand2, Loader2, RotateCcw, CheckCheck, XCircle, MoreVertical, Copy as CopyIcon, Sparkles, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { OCRResult } from '@/types';
@@ -114,6 +114,12 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
   const engine = (result.metadata as any)?.engine || 'unknown';
   const routingMode = (settings as any)?.routingMode || 'auto';
   const edgeEnabled = !!(settings as any)?.edgeLLMEnabled;
+
+  const hasProposal = Boolean(pendingProposal);
+  const showAiOverlay = isProofreading || isAnalyzing || isCorrectingWithVision;
+  const aiStateLabel = isCorrectingWithVision ? 'Vision reviewing' : isAnalyzing ? 'Analyzing' : 'Preparing';
+  const aiStateBadge = isCorrectingWithVision ? 'AI Vision' : apiStatus.hasGemini ? 'Gemini AI' : 'OpenRouter AI';
+  const disableEditorInteractions = showAiOverlay;
 
   const [edgeProgress, setEdgeProgress] = useState(0);
   useEffect(() => {
@@ -364,18 +370,56 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
     return `AI review with ${apiStatus.hasGemini ? 'Gemini' : 'OpenRouter'} — propose changes for approval`;
   };
 
+  const statPills = useMemo(
+    () => [
+      {
+        label: 'Words',
+        value: docStats.words.toLocaleString(),
+        tooltip: 'Total words in the markdown draft',
+      },
+      {
+        label: 'Characters',
+        value: docStats.characters.toLocaleString(),
+        tooltip: 'Total characters including punctuation',
+      },
+      {
+        label: 'Paragraphs',
+        value: String(docStats.paragraphs),
+        tooltip: 'Paragraphs detected from blank-line separation',
+      },
+      {
+        label: 'Lines',
+        value: String(docStats.lines),
+        tooltip: 'Line count in the markdown source',
+      },
+      {
+        label: 'Read',
+        value: docStats.readingMinutes ? `${docStats.readingMinutes}m` : '—',
+        tooltip: 'Estimated reading time at 180 words per minute',
+      },
+    ],
+    [docStats.characters, docStats.lines, docStats.paragraphs, docStats.readingMinutes, docStats.words]
+  );
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            Layout-preserved editor
-            <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium rounded-full bg-blue-50 text-blue-700 border border-blue-100">Focus mode</span>
-          </h3>
-          <p className="text-sm text-gray-500 mt-1 max-w-xl">
-            Maintain structured Amharic output while reviewing AI suggestions. Formatting and inline fixes update instantly without losing layout.
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              Layout-preserved editor
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-100">Focus mode</span>
+            </h3>
+            {hasProposal && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <Sparkles className="w-3 h-3" /> Fresh AI suggestions ready
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-gray-500 max-w-2xl">
+            Refine structured Amharic output with live AI proofreading. Accept, adjust, or dismiss changes while keeping the original layout intact.
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-gray-600">
             {currentFile?.name && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
                 <Type className="w-3 h-3" />
@@ -387,7 +431,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
               Engine: {engine}
             </span>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">Routing: {routingMode}</span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">Lang: {result.detectedLanguage || 'unknown'}</span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">Language: {result.detectedLanguage || 'unknown'}</span>
             {edgeEnabled && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
                 <Loader2 className={`w-3 h-3 ${edgeProgress > 0 && edgeProgress < 100 ? 'animate-spin text-blue-500' : 'text-emerald-500'}`} />
@@ -396,39 +440,39 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
             )}
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-700">
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 border border-gray-200" title="Total words in the markdown draft">
-            <span className="uppercase text-[10px] text-gray-500">Words</span>
-            <span className="font-semibold text-gray-900">{docStats.words.toLocaleString()}</span>
-          </span>
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 border border-gray-200" title="Total characters including punctuation">
-            <span className="uppercase text-[10px] text-gray-500">Characters</span>
-            <span className="font-semibold text-gray-900">{docStats.characters.toLocaleString()}</span>
-          </span>
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 border border-gray-200" title="Paragraphs detected from blank-line separation">
-            <span className="uppercase text-[10px] text-gray-500">Paragraphs</span>
-            <span className="font-semibold text-gray-900">{docStats.paragraphs}</span>
-          </span>
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 border border-gray-200" title="Line count in the markdown source">
-            <span className="uppercase text-[10px] text-gray-500">Lines</span>
-            <span className="font-semibold text-gray-900">{docStats.lines}</span>
-          </span>
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 border border-gray-200" title="Estimated reading time at 180 words per minute">
-            <span className="uppercase text-[10px] text-gray-500">Read</span>
-            <span className="font-semibold text-gray-900">{docStats.readingMinutes ? `${docStats.readingMinutes}m` : '—'}</span>
-          </span>
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 flex flex-wrap gap-2 items-center justify-between">
+          {statPills.map(({ label, value, tooltip }) => (
+            <div key={label} className="flex flex-col items-start px-3 py-2 rounded-xl border border-gray-100 bg-gray-50 text-[11px] min-w-[88px]" title={tooltip}>
+              <span className="uppercase tracking-wide text-[10px] text-gray-500">{label}</span>
+              <span className="text-sm font-semibold text-gray-900">{value}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[70vh] min-h-[24rem]">
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 overflow-hidden flex flex-col h-full min-h-0">
-          <div className="flex items-center justify-between mb-3">
-            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide">Markdown editor</label>
-            {autoSaved && <span className="text-xs text-emerald-600">Auto-saved</span>}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 h-[72vh] min-h-[24rem]">
+        <div className="bg-white border border-gray-200 rounded-3xl shadow-sm p-5 overflow-hidden flex flex-col h-full min-h-0">
+          <div className="flex items-start justify-between mb-4 border-b border-gray-100 pb-3">
+            <div className="flex items-start gap-3">
+              <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100">
+                <Code className="w-5 h-5" />
+              </span>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Markdown editor</p>
+                <p className="text-sm text-gray-600">
+                  Polish the OCR draft before exporting or sharing. Keyboard shortcuts stay active for bold/italic.
+                </p>
+              </div>
+            </div>
+            {autoSaved && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                Auto-saved
+              </span>
+            )}
           </div>
-          <div className="flex flex-wrap gap-1.5 items-center mb-3 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
-            <ToolbarButton title={getAiTitle()} onClick={runUnifiedAIFix} disabled={isAnalyzing || isProofreading || isCorrectingWithVision}>
-              {(isAnalyzing || isProofreading || isCorrectingWithVision) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+          <div className={`flex flex-wrap gap-1.5 items-center mb-4 rounded-2xl border px-3 py-2 ${showAiOverlay ? 'bg-blue-50/70 border-blue-100' : 'bg-gray-50 border-gray-200'}`}>
+            <ToolbarButton title={getAiTitle()} onClick={runUnifiedAIFix} disabled={disableEditorInteractions}>
+              {showAiOverlay ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
             </ToolbarButton>
             <ToolbarButton
               title="Restore original OCR text"
@@ -450,44 +494,75 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                 });
                 toast.success('Restored original OCR text');
               }}
+              disabled={disableEditorInteractions}
             >
               <RotateCcw className="w-4 h-4" />
             </ToolbarButton>
-            <ToolbarButton title="Format (auto)" onClick={() => setDraft((value) => smartFormatToMarkdown(value))}><Type className="w-4 h-4" /></ToolbarButton>
-            <ToolbarButton title="Heading 1" onClick={() => applyPrefix('# ')}><Heading1 className="w-4 h-4" /></ToolbarButton>
-            <ToolbarButton title="Heading 2" onClick={() => applyPrefix('## ')}><Heading2 className="w-4 h-4" /></ToolbarButton>
-            <ToolbarButton title="Bold" onClick={() => applyWrap('**', '**')}><Bold className="w-4 h-4" /></ToolbarButton>
-            <ToolbarButton title="Italic" onClick={() => applyWrap('*', '*')}><Italic className="w-4 h-4" /></ToolbarButton>
-            <ToolbarButton title="Bulleted list" onClick={() => applyLinePrefix('- ')}><List className="w-4 h-4" /></ToolbarButton>
-            <ToolbarButton title="Numbered list" onClick={() => applyLinePrefix('1. ')}><ListOrdered className="w-4 h-4" /></ToolbarButton>
-            <ToolbarButton title="Quote" onClick={() => applyLinePrefix('> ')}><Quote className="w-4 h-4" /></ToolbarButton>
-            <ToolbarButton title="Inline code" onClick={() => applyWrap('`', '`')}><Code className="w-4 h-4" /></ToolbarButton>
-            <ToolbarButton title="Link" onClick={insertLink}><LinkIcon className="w-4 h-4" /></ToolbarButton>
-            <button type="button" className="px-2 py-1 text-[11px] rounded border bg-white hover:bg-gray-50" title="Zen mode (fullscreen)" onClick={() => setZen(true)}>Zen</button>
+            <ToolbarButton title="Format (auto)" onClick={() => setDraft((value) => smartFormatToMarkdown(value))} disabled={disableEditorInteractions}><Type className="w-4 h-4" /></ToolbarButton>
+            <ToolbarButton title="Heading 1" onClick={() => applyPrefix('# ')} disabled={disableEditorInteractions}><Heading1 className="w-4 h-4" /></ToolbarButton>
+            <ToolbarButton title="Heading 2" onClick={() => applyPrefix('## ')} disabled={disableEditorInteractions}><Heading2 className="w-4 h-4" /></ToolbarButton>
+            <ToolbarButton title="Bold" onClick={() => applyWrap('**', '**')} disabled={disableEditorInteractions}><Bold className="w-4 h-4" /></ToolbarButton>
+            <ToolbarButton title="Italic" onClick={() => applyWrap('*', '*')} disabled={disableEditorInteractions}><Italic className="w-4 h-4" /></ToolbarButton>
+            <ToolbarButton title="Bulleted list" onClick={() => applyLinePrefix('- ')} disabled={disableEditorInteractions}><List className="w-4 h-4" /></ToolbarButton>
+            <ToolbarButton title="Numbered list" onClick={() => applyLinePrefix('1. ')} disabled={disableEditorInteractions}><ListOrdered className="w-4 h-4" /></ToolbarButton>
+            <ToolbarButton title="Quote" onClick={() => applyLinePrefix('> ')} disabled={disableEditorInteractions}><Quote className="w-4 h-4" /></ToolbarButton>
+            <ToolbarButton title="Inline code" onClick={() => applyWrap('`', '`')} disabled={disableEditorInteractions}><Code className="w-4 h-4" /></ToolbarButton>
+            <ToolbarButton title="Link" onClick={insertLink} disabled={disableEditorInteractions}><LinkIcon className="w-4 h-4" /></ToolbarButton>
+            <button
+              type="button"
+              className={`px-2 py-1 text-[11px] rounded border ${disableEditorInteractions ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-50'}`}
+              title="Zen mode (fullscreen)"
+              onClick={() => {
+                if (disableEditorInteractions) return;
+                setZen(true);
+              }}
+              disabled={disableEditorInteractions}
+            >
+              Zen
+            </button>
             <div className="ml-auto inline-flex items-center gap-1">
               <button
                 type="button"
-                className="px-2 py-1 text-[11px] rounded border bg-white hover:bg-gray-50"
+                className={`px-2 py-1 text-[11px] rounded border ${disableEditorInteractions ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-50'}`}
                 title="Smaller text"
-                onClick={() => setFontScale(s => Math.max(0.8, +(s - 0.1).toFixed(2)))}
-              >A−</button>
+                onClick={() => {
+                  if (disableEditorInteractions) return;
+                  setFontScale((s) => Math.max(0.8, +(s - 0.1).toFixed(2)));
+                }}
+                disabled={disableEditorInteractions}
+              >
+                A−
+              </button>
               <button
                 type="button"
-                className="px-2 py-1 text-[11px] rounded border bg-white hover:bg-gray-50"
+                className={`px-2 py-1 text-[11px] rounded border ${disableEditorInteractions ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-50'}`}
                 title="Larger text"
-                onClick={() => setFontScale(s => Math.min(1.5, +(s + 0.1).toFixed(2)))}
+                onClick={() => {
+                  if (disableEditorInteractions) return;
+                  setFontScale((s) => Math.min(1.5, +(s + 0.1).toFixed(2)));
+                }}
+                disabled={disableEditorInteractions}
               >A+</button>
               <button
                 type="button"
-                className={`px-2 py-1 text-[11px] rounded border ${wrapEditor ? 'bg-gray-900 text-white border-gray-900' : 'bg-white hover:bg-gray-50'}`}
+                className={`px-2 py-1 text-[11px] rounded border ${wrapEditor ? 'bg-gray-900 text-white border-gray-900' : disableEditorInteractions ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-50'}`}
                 title="Toggle line wrap"
-                onClick={() => setWrapEditor(v => !v)}
+                onClick={() => {
+                  if (disableEditorInteractions) return;
+                  setWrapEditor((v) => !v);
+                }}
+                disabled={disableEditorInteractions}
               >Wrap</button>
               <button
                 type="button"
-                className="px-2 py-1 text-[11px] rounded border bg-white hover:bg-gray-50"
+                className={`px-2 py-1 text-[11px] rounded border ${disableEditorInteractions ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-50'}`}
                 title="Reset font & wrap"
-                onClick={() => { setFontScale(1); setWrapEditor(false); }}
+                onClick={() => {
+                  if (disableEditorInteractions) return;
+                  setFontScale(1);
+                  setWrapEditor(false);
+                }}
+                disabled={disableEditorInteractions}
               >Reset</button>
             </div>
             {settings.allowBasicLLMGuidance && settings.apiKey && (
@@ -504,35 +579,40 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                     setTipsLoading(false);
                   }
                 }}
-                className="ml-1 inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded border bg-white text-gray-700 hover:bg-gray-50"
+                className={`ml-1 inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded border ${disableEditorInteractions ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                disabled={disableEditorInteractions}
               >
                 {tipsLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} Tips
               </button>
             )}
           </div>
           {quickTips && quickTips.length > 0 && (
-            <div className="mb-3 text-xs text-gray-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
-              <div className="font-medium text-emerald-800 mb-1">Quick Tips</div>
-              <ul className="list-disc pl-5 space-y-0.5">
+            <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-xs text-gray-700">
+              <div className="flex items-center gap-1 text-emerald-800 font-semibold text-[11px] uppercase tracking-wide"><Sparkles className="w-3 h-3" /> Quick guidance</div>
+              <ul className="list-disc pl-4 mt-1 space-y-1">
                 {quickTips.map((t, i) => (<li key={i}>{t}</li>))}
               </ul>
             </div>
           )}
 
-          <div className="flex flex-wrap gap-2 items-center text-[11px] text-gray-500 mb-2">
-            {pendingProposal && (
-              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                Right-click highlighted words in the preview to resolve.
+          {hasProposal && (
+            <div className="flex flex-wrap gap-2 items-center text-[11px] text-gray-600 mb-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50 text-amber-700">
+                <Sparkles className="w-3 h-3" />
+                Right-click highlighted words in the preview to accept or ignore.
               </div>
-            )}
-          </div>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700">
+                <CheckCheck className="w-3 h-3" />
+                Apply from the actions menu to commit all changes.
+              </div>
+            </div>
+          )}
 
-          <div className={`relative flex-1 min-h-0 ${appliedPulse ? 'ring-2 ring-green-400 rounded-xl' : ''}`}>
-            {(isProofreading || isAnalyzing || isCorrectingWithVision) && (
-              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gray-200 rounded-t z-20 overflow-hidden">
+          <div className={`relative flex-1 min-h-0 ${appliedPulse ? 'ring-4 ring-emerald-200 rounded-2xl' : ''}`}>
+            {showAiOverlay && (
+              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gray-100 rounded-t z-30 overflow-hidden">
                 <div
-                  className={`h-full transition-[width] duration-150 ease-linear ${isCorrectingWithVision ? 'bg-blue-500' : 'bg-purple-500'}`}
+                  className={`h-full transition-[width] duration-200 ease-linear ${isCorrectingWithVision ? 'bg-blue-500' : 'bg-purple-500'}`}
                   style={{ width: `${pfProgress}%` }}
                 />
               </div>
@@ -553,20 +633,21 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                   applyWrap('*', '*');
                 }
               }}
-              className={`w-full h-full min-h-[18rem] p-3 md:p-2.5 border border-gray-200 rounded-xl font-mono bg-gray-50 resize-none overflow-auto ${wrapEditor ? 'whitespace-pre-wrap break-words' : 'overflow-x-auto whitespace-pre'} focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition ${(isProofreading || isAnalyzing || isCorrectingWithVision) ? 'opacity-60' : ''}`}
+              className={`w-full h-full min-h-[18rem] p-3 md:p-3.5 border border-gray-200 rounded-2xl font-mono bg-gray-50/90 shadow-inner resize-none overflow-auto transition focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 ${wrapEditor ? 'whitespace-pre-wrap break-words' : 'overflow-x-auto whitespace-pre'} ${showAiOverlay ? 'opacity-60' : ''}`}
               style={{ fontSize: `${Math.round(14 * fontScale)}px`, lineHeight: 1.6 }}
-              disabled={isProofreading || isAnalyzing || isCorrectingWithVision}
+              disabled={showAiOverlay}
             />
 
-            {(isProofreading || isAnalyzing || isCorrectingWithVision) && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-xl bg-white/70 backdrop-blur-sm">
-                <div className="flex items-center gap-2 text-sm text-gray-700">
+            {showAiOverlay && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-2xl bg-white/80 backdrop-blur-sm text-sm text-gray-700">
+                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-blue-700">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>{apiStatus.hasGemini ? 'Gemini' : 'OpenRouter'} AI preparing suggestions…</span>
-                </div>
+                  {aiStateBadge}
+                </span>
+                <p className="text-xs text-gray-600 text-center max-w-[220px]">{aiStateLabel} the document to build cleaner suggestions. You can cancel anytime.</p>
                 <button
                   type="button"
-                  className="px-3 py-1 text-xs rounded-full border bg-white hover:bg-gray-50 text-gray-700"
+                  className="px-3 py-1 text-xs rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-gray-700"
                   onClick={() => {
                     setIsProofreading(false);
                     setIsAnalyzing(false);
@@ -581,140 +662,149 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 overflow-hidden flex flex-col h-full min-h-0">
-          <div className="sticky top-0 z-20 -mx-4 px-4 py-2 mb-3 bg-white/90 supports-[backdrop-filter]:bg-white/60 backdrop-blur border-b rounded-t-2xl flex items-center justify-between">
-            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide">Preview</label>
+        <div className="bg-white border border-gray-200 rounded-3xl shadow-sm overflow-hidden flex flex-col h-full min-h-0">
+          <div className="sticky top-0 z-20 bg-white/95 backdrop-blur px-5 py-3 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <div className="relative inline-flex bg-gray-100 rounded-lg p-0.5 text-xs" role="tablist" aria-label="Preview mode" ref={actionsContainerRef}>
+              <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-gray-900 text-white">
+                {previewMode === 'text' ? <Sparkles className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </span>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{previewMode === 'text' ? 'Smart preview' : 'Original snapshot'}</p>
+                <p className="text-sm text-gray-600">
+                  {previewMode === 'text'
+                    ? hasProposal
+                      ? 'Review highlighted diffs and right-click to accept or ignore.'
+                      : 'Preview the cleaned markdown exactly as it will export.'
+                    : 'Compare side-by-side with the captured file to validate layout.'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2" ref={actionsContainerRef}>
+              <div className="relative inline-flex bg-gray-100 rounded-xl p-0.5 text-xs" role="tablist" aria-label="Preview mode">
                 <button
                   type="button"
                   role="tab"
                   aria-selected={previewMode === 'text'}
-                  className={`px-2 py-0.5 rounded-md outline-none focus:ring-2 focus:ring-blue-400 ${previewMode === 'text' ? 'bg-white shadow border' : 'text-gray-600 hover:text-gray-800'}`}
+                  className={`px-2.5 py-1 rounded-lg outline-none focus:ring-2 focus:ring-blue-400 transition ${previewMode === 'text' ? 'bg-white shadow border border-gray-200 text-gray-900' : 'text-gray-600 hover:text-gray-800'}`}
                   onClick={() => setPreviewMode('text')}
                 >Text</button>
                 <button
                   type="button"
                   role="tab"
                   aria-selected={previewMode === 'original'}
-                  className={`px-2 py-0.5 rounded-md outline-none focus:ring-2 focus:ring-blue-400 ${previewMode === 'original' ? 'bg-white shadow border' : 'text-gray-600 hover:text-gray-800'}`}
-                  onClick={() => setPreviewMode('original')}
+                  className={`px-2.5 py-1 rounded-lg outline-none focus:ring-2 focus:ring-blue-400 transition ${previewMode === 'original' ? 'bg-white shadow border border-gray-200 text-gray-900' : currentFile?.preview ? 'text-gray-600 hover:text-gray-800' : 'text-gray-400 cursor-not-allowed'}`}
+                  onClick={() => currentFile?.preview && setPreviewMode('original')}
                   disabled={!currentFile?.preview}
                   title={currentFile?.preview ? 'View original layout' : 'No original preview available'}
                 >Original</button>
-                {pendingProposal && (
-                  <button
-                    type="button"
-                    title="AI Actions"
-                    aria-haspopup="menu"
-                    aria-expanded={actionsOpen}
-                    className={`ml-0.5 px-1.5 py-0.5 rounded-md outline-none focus:ring-2 focus:ring-blue-400 text-gray-700 hover:text-gray-900 ${applyPulse ? 'ring-2 ring-green-300 shadow' : ''}`}
-                    onClick={() => setActionsOpen(v => !v)}
-                  >
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
-                )}
-                {actionsOpen && (
-                  <div role="menu" className="absolute right-0 top-full mt-1 z-30 min-w-[220px] rounded-lg border bg-white shadow-lg">
-                    <button
-                      role="menuitem"
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50"
-                      onClick={() => {
-                        let proposed = pendingProposalExact ?? pendingProposalRaw ?? pendingProposal ?? draft;
-                        try {
-                          if (/^\s*`{3}/.test(proposed) || /\"correctedText\"\s*:/.test(proposed)) {
-                            const json = extractJsonFromText(proposed);
-                            const obj = JSON.parse(json);
-                            if (obj && typeof obj.correctedText === 'string') proposed = obj.correctedText;
-                          }
-                        } catch { }
-                        const base = comparisonBase || draft;
-                        if (proposed.length === 0 && base.length > 0) {
-                          if (!window.confirm('The suggestion would clear the content. Apply anyway?')) return;
-                        }
-                        setDraft(proposed);
-                        setPendingProposal(null);
-                        setPendingProposalRaw(null);
-                        setPendingProposalExact(null);
-                        setComparisonBase(null);
-                        const snapshot = (result as any).metadata?.originalBeforeAI || base;
-                        updateResult(result.fileId, {
-                          extractedText: proposed,
-                          layoutPreserved: proposed,
-                          metadata: { ...(result as any).metadata, layoutMarkdown: proposed, originalBeforeAI: snapshot },
-                        });
-                        setSuggestionCount(0);
-                        toast.success('Applied AI changes');
-                        setApplyPulse(true);
-                        window.setTimeout(() => setApplyPulse(false), 700);
-                        setActionsOpen(false);
-                      }}
-                    >
-                      <CheckCheck className="w-4 h-4 text-green-600" />
-                      <span>Apply All</span>
-                    </button>
-                    <button
-                      role="menuitem"
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50"
-                      onClick={() => {
-                        setPendingProposal(null);
-                        setPendingProposalRaw(null);
-                        setPendingProposalExact(null);
-                        setComparisonBase(null);
-                        setSuggestionCount(0);
-                        toast('Discarded AI proposal');
-                        setActionsOpen(false);
-                      }}
-                    >
-                      <XCircle className="w-4 h-4 text-gray-600" />
-                      <span>Discard All</span>
-                    </button>
-                    <div className="my-1 border-t" />
-                    <button
-                      role="menuitem"
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50"
-                      onClick={async () => {
-                        try {
-                          const base = pendingProposalRaw ?? pendingProposal ?? draft;
-                          const normalized = normalizeMarkdownForReview(base, result.detectedLanguage);
-                          const cleaned = cleanupAsciiNoiseAndItalics(normalized);
-                          await navigator.clipboard.writeText(cleaned);
-                          toast.success('Cleaned text copied');
-                        } catch (e) {
-                          console.warn('Copy failed', e);
-                          toast.error('Copy failed');
-                        } finally {
-                          setActionsOpen(false);
-                        }
-                      }}
-                    >
-                      <CopyIcon className="w-4 h-4 text-gray-700" />
-                      <span>Copy cleaned text</span>
-                    </button>
-                  </div>
-                )}
               </div>
-              {(isProofreading || isAnalyzing || isCorrectingWithVision) && (
-                <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${isCorrectingWithVision ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-purple-700 bg-purple-50 border-purple-200'}`}>
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  {isCorrectingWithVision ? 'AI Vision' : isAnalyzing ? 'Analyzing' : 'Preparing'}
-                </span>
-              )}
-              {pendingProposal && (
-                <span className="text-[11px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold whitespace-nowrap">
+              {hasProposal && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 font-semibold whitespace-nowrap">
                   {suggestionCount} suggestion{suggestionCount === 1 ? '' : 's'}
                 </span>
               )}
+              {hasProposal && (
+                <button
+                  type="button"
+                  title="AI actions"
+                  aria-haspopup="menu"
+                  aria-expanded={actionsOpen}
+                  className={`inline-flex items-center justify-center w-8 h-8 rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400 ${applyPulse ? 'ring-2 ring-green-300 shadow' : ''}`}
+                  onClick={() => setActionsOpen(v => !v)}
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+              )}
+              {actionsOpen && (
+                <div role="menu" className="absolute right-0 top-full mt-2 z-30 min-w-[220px] rounded-2xl border border-gray-200 bg-white shadow-xl">
+                  <button
+                    role="menuitem"
+                    className="w-full flex items-center gap-2 px-3.5 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-50"
+                    onClick={() => {
+                      let proposed = pendingProposalExact ?? pendingProposalRaw ?? pendingProposal ?? draft;
+                      try {
+                        if (/^\s*`{3}/.test(proposed) || /"correctedText"\s*:/.test(proposed)) {
+                          const json = extractJsonFromText(proposed);
+                          const obj = JSON.parse(json);
+                          if (obj && typeof obj.correctedText === 'string') proposed = obj.correctedText;
+                        }
+                      } catch { }
+                      const base = comparisonBase || draft;
+                      if (proposed.length === 0 && base.length > 0 && !window.confirm('The suggestion would clear the content. Apply anyway?')) {
+                        return;
+                      }
+                      setDraft(proposed);
+                      setPendingProposal(null);
+                      setPendingProposalRaw(null);
+                      setPendingProposalExact(null);
+                      setComparisonBase(null);
+                      const snapshot = (result as any).metadata?.originalBeforeAI || base;
+                      updateResult(result.fileId, {
+                        extractedText: proposed,
+                        layoutPreserved: proposed,
+                        metadata: { ...(result as any).metadata, layoutMarkdown: proposed, originalBeforeAI: snapshot },
+                      });
+                      setSuggestionCount(0);
+                      toast.success('Applied AI changes');
+                      setApplyPulse(true);
+                      window.setTimeout(() => setApplyPulse(false), 700);
+                      setActionsOpen(false);
+                    }}
+                  >
+                    <CheckCheck className="w-4 h-4 text-green-600" />
+                    <span>Apply all changes</span>
+                  </button>
+                  <button
+                    role="menuitem"
+                    className="w-full flex items-center gap-2 px-3.5 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                    onClick={() => {
+                      setPendingProposal(null);
+                      setPendingProposalRaw(null);
+                      setPendingProposalExact(null);
+                      setComparisonBase(null);
+                      setSuggestionCount(0);
+                      toast('Discarded AI proposal');
+                      setActionsOpen(false);
+                    }}
+                  >
+                    <XCircle className="w-4 h-4 text-gray-500" />
+                    <span>Discard suggestions</span>
+                  </button>
+                  <div className="my-1 border-t border-gray-100" />
+                  <button
+                    role="menuitem"
+                    className="w-full flex items-center gap-2 px-3.5 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                    onClick={async () => {
+                      try {
+                        const base = pendingProposalRaw ?? pendingProposal ?? draft;
+                        const normalized = normalizeMarkdownForReview(base, result.detectedLanguage);
+                        const cleaned = cleanupAsciiNoiseAndItalics(normalized);
+                        await navigator.clipboard.writeText(cleaned);
+                        toast.success('Cleaned text copied');
+                      } catch (e) {
+                        console.warn('Copy failed', e);
+                        toast.error('Copy failed');
+                      } finally {
+                        setActionsOpen(false);
+                      }
+                    }}
+                  >
+                    <CopyIcon className="w-4 h-4 text-gray-600" />
+                    <span>Copy cleaned text</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
-          {(isProofreading || isAnalyzing || isCorrectingWithVision) && previewMode === 'text' && (
-            <div className="mb-2 -mx-4 px-4">
-              <div className="h-3 w-48 bg-gray-200/80 rounded-full animate-pulse" />
+
+          {showAiOverlay && previewMode === 'text' && (
+            <div className="px-5 pt-4">
+              <div className="h-3 w-52 bg-gray-200/70 rounded-full animate-pulse" />
             </div>
           )}
 
-          {pendingProposal && previewMode === 'text' ? (
-            <div className={`prose prose-slate max-w-none w-full px-2 md:px-3 text-[15px] leading-7 overflow-auto flex-1 ${isEthiopic ? 'font-ethiopic' : ''}`} style={{ fontSize: `${Math.round(15 * fontScale)}px`, lineHeight: 1.7 }}>
+          {hasProposal && previewMode === 'text' ? (
+            <div className={`prose prose-slate max-w-none w-full px-5 pb-5 text-[15px] leading-7 overflow-auto flex-1 ${isEthiopic ? 'font-ethiopic' : ''}`} style={{ fontSize: `${Math.round(15 * fontScale)}px`, lineHeight: 1.7 }}>
               <DiffView
                 original={comparisonBase || draft}
                 current={pendingProposal!}
@@ -748,7 +838,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
             </div>
           ) : previewMode === 'text' ? (
             <div
-              className={`prose prose-slate max-w-none w-full px-2 md:px-3 text-[15px] leading-7 prose-headings:font-semibold prose-h1:text-2xl prose-h1:leading-tight prose-h1:mb-3 prose-h2:text-xl prose-h2:mt-4 prose-h2:mb-2 prose-p:my-2 prose-p:text-justify prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-pre:bg-gray-100 prose-pre:rounded prose-pre:p-3 prose-blockquote:italic prose-blockquote:border-l-4 prose-blockquote:border-gray-300 text-gray-900 overflow-auto flex-1 ${isEthiopic ? 'font-ethiopic leading-8 tracking-normal' : ''}`}
+              className={`prose prose-slate max-w-none w-full px-5 pb-5 text-[15px] leading-7 prose-headings:font-semibold prose-h1:text-2xl prose-h1:leading-tight prose-h1:mb-3 prose-h2:text-xl prose-h2:mt-4 prose-h2:mb-2 prose-p:my-2 prose-p:text-justify prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-pre:bg-gray-100 prose-pre:rounded prose-pre:p-3 prose-blockquote:italic prose-blockquote:border-l-4 prose-blockquote:border-gray-300 text-gray-900 overflow-auto flex-1 ${isEthiopic ? 'font-ethiopic leading-8 tracking-normal' : ''}`}
               style={{ fontSize: `${Math.round(15 * fontScale)}px`, lineHeight: 1.7 }}
               lang={result.detectedLanguage || 'am'}
               dir="auto"

@@ -21,7 +21,7 @@ type Env = {
 
 export const onRequest: LocalPagesFunction<Env> = async (context) => {
   const { request, env } = context;
-  
+
   // Authenticate request
   const authResult = await authenticateRequest(request, env);
   if (!authResult.success) {
@@ -66,9 +66,10 @@ async function listResults(env: Env, filters: Filters): Promise<Response> {
   // Whitelist sortable columns
   const sortColumn = ['created_at', 'confidence', 'updated_at'].includes(sortBy) ? sortBy : 'created_at';
 
-  const whereClauses: string[] = ['user_id = ?'];
+  // Include legacy rows with NULL user_id so old files/results remain visible
+  const whereClauses: string[] = ['(user_id = ? OR user_id IS NULL)'];
   const bindings: unknown[] = [filters.userId];
-  
+
   if (filters.fileId) {
     whereClauses.push('file_id = ?');
     bindings.push(filters.fileId);

@@ -50,7 +50,7 @@ async function getResult(env: Env, resultId: string, userId: string): Promise<Re
   const result = await env.DB.prepare(
     `SELECT id, file_id, project_id, user_id, extracted_text, layout_preserved, detected_language,
             confidence, document_type, metadata, created_at, updated_at
-       FROM results WHERE id = ?1 AND user_id = ?2`
+       FROM results WHERE id = ?1 AND (user_id = ?2 OR user_id IS NULL)`
   ).bind(resultId, userId).first();
 
   if (!result) {

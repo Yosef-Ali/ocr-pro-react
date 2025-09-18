@@ -17,7 +17,7 @@ import { mapRemoteFile, mapRemoteResult, mapRemoteSummary } from '@/services/api
 interface OCRState {
   // User state
   currentUser: User | null;
-  
+
   // Projects
   projects: Project[];
   currentProjectId: string | null;
@@ -139,7 +139,7 @@ export const useOCRStore = create<OCRState>()(
 
         setCurrentUser: (user) => {
           set({ currentUser: user });
-          
+
           // Clear all data when user changes/logs out
           if (!user) {
             set({
@@ -208,6 +208,47 @@ export const useOCRStore = create<OCRState>()(
 
             const files = remoteFiles.map((f) => mapRemoteFile(f));
             const results = remoteResults.map((r) => mapRemoteResult(r));
+
+            // Claim legacy records (created before auth) by setting user_id
+            // This runs in background and does not block UI hydration
+            try {
+              const legacyProjects = remoteProjects.filter((p: any) => !p.user_id);
+              const legacyFiles = remoteFiles.filter((f: any) => !f.user_id);
+              const legacyResults = remoteResults.filter((r: any) => !r.user_id);
+              await Promise.allSettled([
+                // Upsert projects with same ID to attach user
+                ...legacyProjects.map((p: any) => apiCreateProject({ id: p.id, name: p.name, description: p.description ?? undefined })),
+                legacyFiles.length
+                  ? apiUpsertFiles(
+                    legacyFiles.map((file: any) => ({
+                      id: file.id,
+                      name: file.name,
+                      project_id: file.project_id ?? null,
+                      size: file.size ?? null,
+                      mime_type: file.mime_type ?? null,
+                      status: file.status ?? null,
+                      preview: file.preview ?? null,
+                      original_preview: file.original_preview ?? null,
+                    }))
+                  )
+                  : Promise.resolve(),
+                legacyResults.length
+                  ? apiUpsertResults(null, legacyResults.map((item: any) => ({
+                    id: item.id,
+                    file_id: item.file_id,
+                    project_id: item.project_id ?? null,
+                    extracted_text: item.extracted_text ?? null,
+                    layout_preserved: item.layout_preserved ?? null,
+                    detected_language: item.detected_language ?? null,
+                    confidence: item.confidence ?? null,
+                    document_type: item.document_type ?? null,
+                    metadata: item.metadata ?? null,
+                  })))
+                  : Promise.resolve(),
+              ]);
+            } catch (claimErr) {
+              console.warn('Failed to adopt legacy records', claimErr);
+            }
 
             set((state) => {
               const currentFile = files[state.currentFileIndex] ?? files[0];

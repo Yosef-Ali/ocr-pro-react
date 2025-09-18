@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Modal } from '@/components/ui/Modal';
+import { Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type Mode = 'sign-in' | 'sign-up' | 'forgot';
 
@@ -35,102 +38,98 @@ export const AuthModal: React.FC<AuthModalProps> = (props: AuthModalProps) => {
 
     const Footer = (
         <div className="w-full flex flex-col sm:flex-row gap-2 sm:gap-3">
-            <button
-                type="button"
-                onClick={() => signInWithGoogle().then(onClose).catch(() => { })}
-                disabled={loading}
-                className={`flex-1 px-4 py-2 rounded-lg transition-colors ${loading ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-            >
+            <Button type="button" onClick={() => signInWithGoogle().then(onClose).catch(() => { })} disabled={loading} className="flex-1">
                 {loading ? 'Please wait…' : 'Continue with Google'}
-            </button>
-            <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-            >
+            </Button>
+            <Button type="button" variant="ghost" onClick={onClose}>
                 Cancel
-            </button>
+            </Button>
         </div>
     );
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={mode === 'sign-in' ? 'Sign in' : mode === 'sign-up' ? 'Create account' : 'Reset password'} footer={Footer} maxWidth="max-w-md">
-            <div className="space-y-4">
-                {error && (
-                    <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
-                        {error}
-                        <button onClick={clearError} className="ml-2 underline">dismiss</button>
-                    </div>
-                )}
-                {successMessage && (
-                    <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">
-                        {successMessage}
-                        <button onClick={clearSuccessMessage} className="ml-2 underline">dismiss</button>
-                    </div>
-                )}
-                {message && (
-                    <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">{message}</div>
-                )}
-                <form onSubmit={submit} className="space-y-3">
-                    {mode === 'sign-up' && (
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Name</label>
-                            <input
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                required
-                                className="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
-                                placeholder="Your name"
-                            />
-                        </div>
-                    )}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Email</label>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            className="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
-                            placeholder="you@example.com"
-                            autoComplete="email"
-                        />
-                    </div>
-                    {mode !== 'forgot' && (
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Password</label>
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                className="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-400"
-                                placeholder="••••••••"
-                                autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'}
-                            />
-                        </div>
-                    )}
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className={`w-full px-4 py-2 rounded-lg transition-colors ${loading ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-                    >
-                        {loading ? 'Please wait…' : mode === 'sign-in' ? 'Sign in' : mode === 'sign-up' ? 'Create account' : 'Send reset link'}
-                    </button>
-                </form>
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-md">
+                <DialogHeader className="flex items-center justify-between">
+                    <DialogTitle>{mode === 'sign-in' ? 'Sign in' : mode === 'sign-up' ? 'Create account' : 'Reset password'}</DialogTitle>
+                    <DialogClose aria-label="Close" onClick={onClose}>✕</DialogClose>
+                </DialogHeader>
+                <DialogBody>
+                    <div className="space-y-4">
+                        {error && (
+                            <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
+                                {error}
+                                <button onClick={clearError} className="ml-2 underline">dismiss</button>
+                            </div>
+                        )}
+                        {successMessage && (
+                            <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">
+                                {successMessage}
+                                <button onClick={clearSuccessMessage} className="ml-2 underline">dismiss</button>
+                            </div>
+                        )}
+                        {message && (
+                            <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">{message}</div>
+                        )}
+                        <form onSubmit={submit} className="space-y-3">
+                            {mode === 'sign-up' && (
+                                <div>
+                                    <Label>Name</Label>
+                                    <Input
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        required
+                                        placeholder="Your name"
+                                        className="mt-1"
+                                    />
+                                </div>
+                            )}
+                            <div>
+                                <Label>Email</Label>
+                                <Input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                    placeholder="you@example.com"
+                                    autoComplete="email"
+                                    className="mt-1"
+                                />
+                            </div>
+                            {mode !== 'forgot' && (
+                                <div>
+                                    <Label>Password</Label>
+                                    <Input
+                                        type="password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                        placeholder="••••••••"
+                                        autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'}
+                                        className="mt-1"
+                                    />
+                                </div>
+                            )}
+                            <Button type="submit" disabled={loading} className="w-full">
+                                {loading ? 'Please wait…' : mode === 'sign-in' ? 'Sign in' : mode === 'sign-up' ? 'Create account' : 'Send reset link'}
+                            </Button>
+                        </form>
 
-                <div className="text-sm text-gray-600 flex justify-between">
-                    {mode !== 'sign-in' ? (
-                        <button className="underline" onClick={() => setMode('sign-in')}>Have an account? Sign in</button>
-                    ) : (
-                        <button className="underline" onClick={() => setMode('sign-up')}>Create an account</button>
-                    )}
-                    {mode !== 'forgot' && (
-                        <button className="underline" onClick={() => setMode('forgot')}>Forgot password?</button>
-                    )}
-                </div>
-            </div>
-        </Modal>
+                        <div className="text-sm text-gray-600 flex justify-between">
+                            {mode !== 'sign-in' ? (
+                                <Button variant="link" onClick={() => setMode('sign-in')}>Have an account? Sign in</Button>
+                            ) : (
+                                <Button variant="link" onClick={() => setMode('sign-up')}>Create an account</Button>
+                            )}
+                            {mode !== 'forgot' && (
+                                <Button variant="link" onClick={() => setMode('forgot')}>Forgot password?</Button>
+                            )}
+                        </div>
+                    </div>
+                </DialogBody>
+                <DialogFooter>{Footer}</DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 };
 
