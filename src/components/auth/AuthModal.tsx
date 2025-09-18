@@ -7,7 +7,7 @@ type Mode = 'sign-in' | 'sign-up' | 'forgot';
 interface AuthModalProps { isOpen: boolean; onClose: () => void }
 export const AuthModal: React.FC<AuthModalProps> = (props: AuthModalProps) => {
     const { isOpen, onClose } = props;
-    const { signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset, loading, error, clearError } = useAuth();
+    const { signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset, loading, error, successMessage, clearError, clearSuccessMessage } = useAuth();
     const [mode, setMode] = useState<Mode>('sign-in');
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -60,6 +60,12 @@ export const AuthModal: React.FC<AuthModalProps> = (props: AuthModalProps) => {
                     <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
                         {error}
                         <button onClick={clearError} className="ml-2 underline">dismiss</button>
+                    </div>
+                )}
+                {successMessage && (
+                    <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">
+                        {successMessage}
+                        <button onClick={clearSuccessMessage} className="ml-2 underline">dismiss</button>
                     </div>
                 )}
                 {message && (

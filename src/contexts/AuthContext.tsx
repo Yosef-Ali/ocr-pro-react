@@ -17,12 +17,14 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   error: string | null;
+  successMessage: string | null;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (name: string, email: string, password: string) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
+  clearSuccessMessage: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,6 +37,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { setCurrentUser, hydrateFromRemote } = useOCRStore();
 
   useEffect(() => {
@@ -110,6 +113,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
+      setSuccessMessage(null);
       
       // Add timeout wrapper for Firebase operations
       const timeoutPromise = new Promise((_, reject) => {
@@ -157,6 +161,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
+      setSuccessMessage(null);
       
       // Add timeout wrapper for Firebase operations
       const timeoutPromise = new Promise((_, reject) => {
@@ -176,7 +181,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Send email verification
         if (cred.user) {
           await sendEmailVerification(cred.user);
-          setError('Account created successfully! Please check your email to verify your account before signing in.');
+          setSuccessMessage('Account created successfully! Please check your email to verify your account before signing in.');
         }
       } catch (e) {
         console.warn('Failed to set display name or send verification email:', e);
@@ -238,6 +243,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
   };
 
+  const clearSuccessMessage = () => {
+    setSuccessMessage(null);
+  };
+
   // Sync user data to our backend when authenticated
   const syncUserToBackend = async (userData: User): Promise<void> => {
     try {
@@ -264,12 +273,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     loading,
     error,
+    successMessage,
     signInWithGoogle,
     signInWithEmail,
     signUpWithEmail,
     sendPasswordReset,
     signOut: handleSignOut,
     clearError,
+    clearSuccessMessage,
   };
 
   return (
