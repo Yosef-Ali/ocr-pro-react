@@ -327,13 +327,13 @@ export const ResultsSection: React.FC = () => {
           {activeSummary.proofreadingNotes?.length ? (
             <div>
               <div className="text-xs text-gray-600 mb-1">Proofreading Notes</div>
-                <ul className="text-sm list-disc pl-5">
-                  {activeSummary.proofreadingNotes.map((note: string, idx: number) => (
-                    <li key={idx} className="mb-1 whitespace-pre-wrap">
-                      {note}
-                    </li>
-                  ))}
-                </ul>
+              <ul className="text-sm list-disc pl-5">
+                {activeSummary.proofreadingNotes.map((note: string, idx: number) => (
+                  <li key={idx} className="mb-1 whitespace-pre-wrap">
+                    {note}
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : null}
         </div>
