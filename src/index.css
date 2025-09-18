@@ -97,6 +97,24 @@
   .text-shadow {
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
+
+  /* High-contrast markdown/typography defaults in both themes */
+  .prose :where(p, li, strong, em, code) {
+    color: hsl(var(--foreground));
+  }
+
+  .dark .prose :where(p, li, strong, em, code) {
+    color: hsl(var(--foreground));
+  }
+
+  .prose :where(h1, h2, h3, h4, h5, h6) {
+    color: hsl(var(--foreground));
+  }
+
+  .prose a {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+  }
 }
 
 @keyframes fadeIn {

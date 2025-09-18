@@ -760,7 +760,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
           )}
 
           {hasProposal && previewMode === 'text' ? (
-            <div className={`prose prose-slate dark:prose-invert max-w-none w-full px-5 pb-5 text-[15px] leading-7 overflow-auto flex-1 ${isEthiopic ? 'font-ethiopic' : ''}`} style={{ fontSize: `${Math.round(15 * fontScale)}px`, lineHeight: 1.7 }}>
+            <div className={`prose prose-slate dark:prose-invert max-w-none w-full px-5 pb-5 text-[15px] leading-7 overflow-auto flex-1 prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground prose-em:text-foreground prose-code:text-foreground prose-a:text-primary ${isEthiopic ? 'font-ethiopic' : ''}`} style={{ fontSize: `${Math.round(15 * fontScale)}px`, lineHeight: 1.7 }}>
               <DiffView
                 original={comparisonBase || draft}
                 current={pendingProposal!}
@@ -794,7 +794,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
             </div>
           ) : previewMode === 'text' ? (
             <div
-              className={`prose prose-slate dark:prose-invert max-w-none w-full px-5 pb-5 text-[15px] leading-7 prose-headings:font-semibold prose-h1:text-2xl prose-h1:leading-tight prose-h1:mb-3 prose-h2:text-xl prose-h2:mt-4 prose-h2:mb-2 prose-p:my-2 prose-p:text-justify prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-pre:bg-muted prose-pre:rounded prose-pre:p-3 prose-blockquote:italic prose-blockquote:border-l-4 prose-blockquote:border-border text-foreground overflow-auto flex-1 ${isEthiopic ? 'font-ethiopic leading-8 tracking-normal' : ''}`}
+              className={`prose prose-slate dark:prose-invert max-w-none w-full px-5 pb-5 text-[15px] leading-7 prose-headings:font-semibold prose-h1:text-2xl prose-h1:leading-tight prose-h1:mb-3 prose-h2:text-xl prose-h2:mt-4 prose-h2:mb-2 prose-p:my-2 prose-p:text-justify prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-pre:bg-muted prose-pre:rounded prose-pre:p-3 prose-blockquote:italic prose-blockquote:border-l-4 prose-blockquote:border-border prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground prose-em:text-foreground prose-code:text-foreground prose-a:text-primary text-foreground overflow-auto flex-1 ${isEthiopic ? 'font-ethiopic leading-8 tracking-normal' : ''}`}
               style={{ fontSize: `${Math.round(15 * fontScale)}px`, lineHeight: 1.7 }}
               lang={result.detectedLanguage || 'am'}
               dir="auto"
