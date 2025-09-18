@@ -14,7 +14,7 @@ import { fetchFiles, upsertFiles as apiUpsertFiles, deleteFile as apiDeleteFile 
 import { fetchResults, upsertResults as apiUpsertResults, deleteResult as apiDeleteResult } from '@/services/api/results';
 import { mapRemoteFile, mapRemoteResult, mapRemoteSummary } from '@/services/api/transformers';
 
-const LAST_PROJECT_KEY = 'ocr:lastProjectId';
+export const LAST_PROJECT_STORAGE_KEY = 'ocr:lastProjectId';
 
 interface OCRState {
   // User state
@@ -89,7 +89,7 @@ export const useOCRStore = create<OCRState>()(
         // Initial state
         currentUser: null,
         projects: [],
-        currentProjectId: (typeof window !== 'undefined' ? localStorage.getItem(LAST_PROJECT_KEY) : null) || null,
+        currentProjectId: (typeof window !== 'undefined' ? localStorage.getItem(LAST_PROJECT_STORAGE_KEY) : null) || null,
         projectSummaries: {},
         files: [],
         currentFileIndex: 0,
@@ -145,7 +145,7 @@ export const useOCRStore = create<OCRState>()(
           // Clear all data when user changes/logs out
           if (!user) {
             if (typeof window !== 'undefined') {
-              localStorage.removeItem(LAST_PROJECT_KEY);
+              localStorage.removeItem(LAST_PROJECT_STORAGE_KEY);
             }
             set({
               projects: [],
@@ -256,7 +256,7 @@ export const useOCRStore = create<OCRState>()(
             }
 
             const sortedProjects = [...projects].sort((a, b) => b.createdAt - a.createdAt);
-            const storedProjectId = typeof window !== 'undefined' ? localStorage.getItem(LAST_PROJECT_KEY) : null;
+            const storedProjectId = typeof window !== 'undefined' ? localStorage.getItem(LAST_PROJECT_STORAGE_KEY) : null;
 
             set((state) => {
               let nextProjectId = state.currentProjectId;
@@ -270,9 +270,9 @@ export const useOCRStore = create<OCRState>()(
 
                 if (typeof window !== 'undefined') {
                   if (nextProjectId) {
-                    localStorage.setItem(LAST_PROJECT_KEY, nextProjectId);
+                    localStorage.setItem(LAST_PROJECT_STORAGE_KEY, nextProjectId);
                   } else {
-                    localStorage.removeItem(LAST_PROJECT_KEY);
+                    localStorage.removeItem(LAST_PROJECT_STORAGE_KEY);
                   }
                 }
               }
@@ -575,7 +575,7 @@ export const useOCRStore = create<OCRState>()(
             createdAt: remote.created_at,
           };
           if (typeof window !== 'undefined') {
-            localStorage.setItem(LAST_PROJECT_KEY, project.id);
+            localStorage.setItem(LAST_PROJECT_STORAGE_KEY, project.id);
           }
           set((state) => ({
             projects: [project, ...state.projects.filter((p) => p.id !== project.id)].sort((a, b) => b.createdAt - a.createdAt),
@@ -587,9 +587,9 @@ export const useOCRStore = create<OCRState>()(
         selectProject: (projectId) => {
           if (typeof window !== 'undefined') {
             if (projectId) {
-              localStorage.setItem(LAST_PROJECT_KEY, projectId);
+              localStorage.setItem(LAST_PROJECT_STORAGE_KEY, projectId);
             } else {
-              localStorage.removeItem(LAST_PROJECT_KEY);
+              localStorage.removeItem(LAST_PROJECT_STORAGE_KEY);
             }
           }
           set({ currentProjectId: projectId });
