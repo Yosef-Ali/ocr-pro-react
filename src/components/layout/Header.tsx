@@ -48,7 +48,7 @@ export const Header: React.FC = () => {
       const stored = typeof window !== 'undefined' ? localStorage.getItem(LAST_PROJECT_STORAGE_KEY) : null;
       const fallback = stored && projects.some((p) => p.id === stored) ? stored : projects[0]?.id;
       if (fallback) {
-        selectProject(fallback);
+        void selectProject(fallback);
         hasAutoSelectedRef.current = true;
       }
     }
@@ -119,7 +119,9 @@ export const Header: React.FC = () => {
             <div className="flex items-center gap-2 bg-white/10 rounded-lg px-2 py-1">
               <select
                 value={currentProjectId ?? ''}
-                onChange={(e) => selectProject(e.target.value || null)}
+                onChange={(e) => {
+                  void selectProject(e.target.value || null);
+                }}
                 className="bg-transparent text-white text-sm outline-none"
               >
                 <option value="" className="text-black">All Projects</option>

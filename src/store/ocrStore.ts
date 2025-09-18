@@ -70,7 +70,7 @@ interface OCRState {
 
   // Project actions
   createProject: (name: string, description?: string) => Promise<string>;
-  selectProject: (projectId: string | null) => void;
+  selectProject: (projectId: string | null) => Promise<void>;
   assignFilesToProject: (fileIds: string[], projectId: string | null) => Promise<void>;
   setProjectSummary: (summary: ProjectSummary) => Promise<void>;
   clearProjectSummary: (projectId: string) => Promise<void>;
@@ -211,8 +211,8 @@ export const useOCRStore = create<OCRState>()(
               createdAt: p.created_at,
             }));
 
-            const files = remoteFiles.map((f) => mapRemoteFile(f));
-            const results = remoteResults.map((r) => mapRemoteResult(r));
+            const allFiles = remoteFiles.map((f) => mapRemoteFile(f));
+            const allResults = remoteResults.map((r) => mapRemoteResult(r));
 
             // Claim legacy records (created before auth) by setting user_id
             // This runs in background and does not block UI hydration
@@ -277,18 +277,23 @@ export const useOCRStore = create<OCRState>()(
                 }
               }
 
-              const currentFile = files[state.currentFileIndex] ?? files[0];
-              const currentResult = currentFile ? results.find((r) => r.fileId === currentFile.id) || null : results[0] || null;
+              const scopedFiles = nextProjectId ? allFiles.filter((file) => file.projectId === nextProjectId) : allFiles;
+              const scopedResults = nextProjectId ? allResults.filter((result) => result.projectId === nextProjectId) : allResults;
+
+              const currentFile = scopedFiles[0] ?? null;
+              const currentResult = currentFile
+                ? scopedResults.find((r) => r.fileId === currentFile.id) || null
+                : scopedResults[0] || null;
 
               return {
                 projects: sortedProjects,
-                files,
-                results,
+                files: scopedFiles,
+                results: scopedResults,
                 projectSummaries,
                 isRemoteHydrated: true,
                 hydrateError: undefined,
                 currentResult,
-                currentFileIndex: currentFile ? files.findIndex((f) => f.id === currentFile.id) : 0,
+                currentFileIndex: 0,
                 currentProjectId: nextProjectId,
               };
             });
@@ -574,17 +579,16 @@ export const useOCRStore = create<OCRState>()(
             description: remote.description ?? undefined,
             createdAt: remote.created_at,
           };
-          if (typeof window !== 'undefined') {
-            localStorage.setItem(LAST_PROJECT_STORAGE_KEY, project.id);
-          }
+
           set((state) => ({
             projects: [project, ...state.projects.filter((p) => p.id !== project.id)].sort((a, b) => b.createdAt - a.createdAt),
-            currentProjectId: project.id,
           }));
+
+          await useOCRStore.getState().selectProject(project.id);
           return project.id;
         },
 
-        selectProject: (projectId) => {
+        selectProject: async (projectId) => {
           if (typeof window !== 'undefined') {
             if (projectId) {
               localStorage.setItem(LAST_PROJECT_STORAGE_KEY, projectId);
@@ -592,7 +596,45 @@ export const useOCRStore = create<OCRState>()(
               localStorage.removeItem(LAST_PROJECT_STORAGE_KEY);
             }
           }
-          set({ currentProjectId: projectId });
+
+          set({
+            currentProjectId: projectId,
+            currentFileIndex: 0,
+            currentResult: null,
+            isProcessing: false,
+            processingStatus: 'idle',
+            progress: 0,
+            files: [],
+            results: [],
+          });
+
+          try {
+            const [remoteFiles, remoteResults] = await Promise.all([
+              fetchFiles(projectId ?? undefined),
+              fetchResults({ projectId: projectId ?? undefined }),
+            ]);
+
+            const files = remoteFiles.map((f) => mapRemoteFile(f));
+            const results = remoteResults.map((r) => mapRemoteResult(r));
+
+            set(() => {
+              const firstFile = files[0];
+              const firstResult = firstFile
+                ? results.find((result) => result.fileId === firstFile.id) ?? null
+                : results[0] ?? null;
+
+              return {
+                files,
+                results,
+                currentFileIndex: 0,
+                currentResult: firstResult,
+                hydrateError: undefined,
+              };
+            });
+          } catch (error) {
+            console.error('Failed to load project data', error);
+            set(() => ({ hydrateError: 'Failed to load project data' }));
+          }
         },
 
         assignFilesToProject: async (fileIds, projectId) => {
