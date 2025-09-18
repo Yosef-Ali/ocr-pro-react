@@ -76,7 +76,7 @@ export const SettingsModal: React.FC = () => {
     const current = (localSettings as any).openRouterModel;
     if (current && /&#x2F;|&#47;|&frasl;/.test(current)) {
       const decoded = decodeHtmlEntities(current);
-      setLocalSettings(ls => ({ ...ls, openRouterModel: decoded }));
+      setLocalSettings((ls: any) => ({ ...ls, openRouterModel: decoded }));
       updateSettings({ ...settings, openRouterModel: decoded });
       console.log('🔄 Migrated encoded OpenRouter model to decoded form:', decoded);
     }
@@ -98,7 +98,7 @@ export const SettingsModal: React.FC = () => {
 
   useEffect(() => {
     if (isProd && (localSettings as any).edgeLLMProvider === 'ollama') {
-      setLocalSettings((ls) => ({ ...ls, edgeLLMProvider: 'webllm' as any }));
+      setLocalSettings((ls: any) => ({ ...ls, edgeLLMProvider: 'webllm' as any }));
     }
   }, [isProd]);
 

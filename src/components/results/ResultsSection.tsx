@@ -199,6 +199,7 @@ export const ResultsSection: React.FC = () => {
               title="Re-run all (layout only)"
               aria-label="Re-run all with Tesseract only"
               className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+              type="button"
             >
               <Download className="w-4 h-4 rotate-180" />
             </motion.button>

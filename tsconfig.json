@@ -21,6 +21,9 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,
     "baseUrl": ".",
+    "types": [
+      "vite/client"
+    ],
     "paths": {
       "@/*": [
         "src/*"
