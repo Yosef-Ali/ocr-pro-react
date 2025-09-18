@@ -82,13 +82,12 @@ export const OCRTableTab: React.FC = () => {
         );
     }, [baseResults, query]);
     const allSelected = useMemo(() => filteredResults.length > 0 && filteredResults.every(r => selected[r.fileId]), [filteredResults, selected]);
-    const countSelected = useMemo(() => filteredResults.filter(r => selected[r.fileId]).length, [filteredResults, selected]);
+    const selectedResults = useMemo(() => filteredResults.filter(r => selected[r.fileId]), [filteredResults, selected]);
+    const countSelected = selectedResults.length;
 
     if (!loading && filteredResults.length === 0) {
         return <p className="text-sm text-gray-500">No OCR results yet.</p>;
     }
-
-    const selectedResults = useMemo(() => filteredResults.filter(r => selected[r.fileId]), [filteredResults, selected]);
 
     const handleExportXlsx = async () => {
         try {
