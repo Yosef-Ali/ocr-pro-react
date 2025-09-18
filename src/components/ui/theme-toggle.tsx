@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Moon, Sun, Monitor } from 'lucide-react';
+import { Moon, Sun } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeProvider';
 import { Button } from './button';
 
@@ -22,14 +22,6 @@ export const ThemeToggle: React.FC = () => {
                 onClick={() => setTheme('dark')}
             >
                 <Moon className="h-5 w-5" />
-            </Button>
-            <Button
-                variant={theme === 'system' ? 'default' : 'ghost'}
-                size="icon"
-                aria-label="System theme"
-                onClick={() => setTheme('system')}
-            >
-                <Monitor className="h-5 w-5" />
             </Button>
         </div>
     );

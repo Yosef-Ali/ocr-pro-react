@@ -572,6 +572,11 @@ export const useOCRStore = create<OCRState>()(
 
         // Project actions
         createProject: async (name, description) => {
+          const { currentUser } = useOCRStore.getState();
+          if (!currentUser) {
+            throw new Error('Sign in to create projects');
+          }
+
           const remote = await apiCreateProject({ name, description });
           const project: Project = {
             id: remote.id,
@@ -589,6 +594,7 @@ export const useOCRStore = create<OCRState>()(
         },
 
         selectProject: async (projectId) => {
+          const state = useOCRStore.getState();
           if (typeof window !== 'undefined') {
             if (projectId) {
               localStorage.setItem(LAST_PROJECT_STORAGE_KEY, projectId);
@@ -607,6 +613,10 @@ export const useOCRStore = create<OCRState>()(
             files: [],
             results: [],
           });
+
+          if (!state.currentUser) {
+            return;
+          }
 
           try {
             const [remoteFiles, remoteResults] = await Promise.all([
@@ -631,7 +641,12 @@ export const useOCRStore = create<OCRState>()(
                 hydrateError: undefined,
               };
             });
-          } catch (error) {
+          } catch (error: any) {
+            const status = typeof error?.status === 'number' ? error.status : error?.response?.status;
+            if (status === 401 || status === 403) {
+              console.warn('Skipping remote project load due to missing authentication');
+              return;
+            }
             console.error('Failed to load project data', error);
             set(() => ({ hydrateError: 'Failed to load project data' }));
           }

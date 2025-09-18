@@ -470,7 +470,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
               </span>
             )}
           </div>
-          <div className={`flex flex-wrap gap-1.5 items-center mb-4 rounded-2xl border px-3 py-2 ${showAiOverlay ? 'bg-accent/60 border-accent' : 'bg-muted border-border'}`}>
+          <div className={`flex flex-wrap gap-1.5 items-center mb-4 rounded-2xl border px-3 py-2 ${showAiOverlay ? 'bg-accent/60 border-accent' : 'bg-muted/70 border-border'}`}>
             <ToolbarButton title={getAiTitle()} onClick={runUnifiedAIFix} disabled={disableEditorInteractions}>
               {showAiOverlay ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
             </ToolbarButton>
@@ -633,7 +633,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                   applyWrap('*', '*');
                 }
               }}
-              className={`w-full h-full min-h-[18rem] p-3 md:p-3.5 border border-input rounded-2xl font-mono bg-muted shadow-inner resize-none overflow-auto transition focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring ${wrapEditor ? 'whitespace-pre-wrap break-words' : 'overflow-x-auto whitespace-pre'} ${showAiOverlay ? 'opacity-60' : ''}`}
+              className={`w-full h-full min-h-[18rem] p-3 md:p-3.5 border border-input rounded-2xl font-mono bg-muted text-foreground placeholder:text-muted-foreground shadow-inner resize-none overflow-auto transition focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring ${wrapEditor ? 'whitespace-pre-wrap break-words' : 'overflow-x-auto whitespace-pre'} ${showAiOverlay ? 'opacity-60' : ''}`}
               style={{ fontSize: `${Math.round(14 * fontScale)}px`, lineHeight: 1.6 }}
               disabled={showAiOverlay}
             />
@@ -804,7 +804,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
           )}
 
           {hasProposal && previewMode === 'text' ? (
-            <div className={`prose prose-slate max-w-none w-full px-5 pb-5 text-[15px] leading-7 overflow-auto flex-1 ${isEthiopic ? 'font-ethiopic' : ''}`} style={{ fontSize: `${Math.round(15 * fontScale)}px`, lineHeight: 1.7 }}>
+            <div className={`prose prose-slate dark:prose-invert max-w-none w-full px-5 pb-5 text-[15px] leading-7 overflow-auto flex-1 ${isEthiopic ? 'font-ethiopic' : ''}`} style={{ fontSize: `${Math.round(15 * fontScale)}px`, lineHeight: 1.7 }}>
               <DiffView
                 original={comparisonBase || draft}
                 current={pendingProposal!}
