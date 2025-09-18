@@ -1,35 +1,16 @@
 import React from 'react';
-import { FileText, Settings, HelpCircle, Moon, Sun } from 'lucide-react';
+import { FileText, Settings, HelpCircle } from 'lucide-react';
 import { useOCRStore } from '@/store/ocrStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoginButton, UserProfile } from '@/components/auth';
 import { motion } from 'framer-motion';
+const MotionDiv = motion.div as any;
+const MotionButton = motion.button as any;
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 export const Header: React.FC = () => {
   const { toggleSettings, toggleHelp, projects, currentProjectId, selectProject, createProject } = useOCRStore();
   const { user } = useAuth();
-  const [dark, setDark] = React.useState(false);
-
-  React.useEffect(() => {
-    try {
-      const stored = localStorage.getItem('theme');
-      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const initialDark = stored ? stored === 'dark' : prefersDark;
-      setDark(initialDark);
-      const root = document.documentElement;
-      if (initialDark) root.classList.add('dark');
-      else root.classList.remove('dark');
-    } catch { }
-  }, []);
-
-  const toggleTheme = () => {
-    const next = !dark;
-    setDark(next);
-    const root = document.documentElement;
-    if (next) root.classList.add('dark');
-    else root.classList.remove('dark');
-    try { localStorage.setItem('theme', next ? 'dark' : 'light'); } catch { }
-  };
 
   React.useEffect(() => {
     if (projects.length === 0) return;
@@ -48,21 +29,21 @@ export const Header: React.FC = () => {
 
 
   return (
-    <motion.header
+    <MotionDiv
       initial={{ y: -100 }}
       animate={{ y: 0 }}
-      className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white shadow-lg dark:from-slate-900 dark:via-indigo-900 dark:to-purple-900"
+      className="bg-primary text-primary-foreground shadow-lg"
     >
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <motion.div
+            <MotionDiv
               whileHover={{ rotate: 360 }}
               transition={{ duration: 0.5 }}
               className="w-10 h-10 bg-white rounded-lg flex items-center justify-center"
             >
               <FileText className="w-6 h-6 text-blue-600" />
-            </motion.div>
+            </MotionDiv>
             <div>
               <h1 className="text-2xl font-bold">OCR Pro</h1>
               <p className="text-blue-100 text-sm">Powered by OCR engines</p>
@@ -95,32 +76,24 @@ export const Header: React.FC = () => {
                 New
               </button>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={toggleTheme}
-              className="p-2 rounded-lg bg-white/10 backdrop-blur hover:bg-white/20 transition-all"
-              title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {dark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </motion.button>
-            <motion.button
+            <ThemeToggle />
+            <MotionButton
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={toggleSettings}
               className="p-2 rounded-lg bg-white/10 backdrop-blur hover:bg-white/20 transition-all"
             >
               <Settings className="w-5 h-5" />
-            </motion.button>
+            </MotionButton>
 
-            <motion.button
+            <MotionButton
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={toggleHelp}
               className="p-2 rounded-lg bg-white/10 backdrop-blur hover:bg-white/20 transition-all"
             >
               <HelpCircle className="w-5 h-5" />
-            </motion.button>
+            </MotionButton>
 
             {/* Authentication Section */}
             <div className="ml-4 pl-4 border-l border-white/20">
@@ -129,6 +102,6 @@ export const Header: React.FC = () => {
           </div>
         </div>
       </div>
-    </motion.header>
+    </MotionDiv>
   );
 };

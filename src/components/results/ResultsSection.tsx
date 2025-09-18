@@ -174,14 +174,14 @@ export const ResultsSection: React.FC = () => {
     <MotionDiv
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
-      className="bg-white rounded-xl shadow-lg p-6 relative overflow-visible"
+      className="bg-card text-card-foreground border border-border rounded-xl shadow-lg p-6 relative overflow-visible"
     >
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold flex items-center">
           <FileText className="w-5 h-5 mr-2 text-green-600" />
           OCR Results
           {currentResult?.metadata?.engine && (
-            <span className="ml-3 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border">
+            <span className="ml-3 text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
               Engine: {currentResult.metadata.engine === 'tesseract' ? 'Tesseract' : 'Gemini'}
             </span>
           )}
@@ -228,7 +228,7 @@ export const ResultsSection: React.FC = () => {
                 id="file-selector"
                 value={currentFileIndex}
                 onChange={(e) => setCurrentFileIndex(Number(e.target.value))}
-                className="px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-2 py-1 border border-input bg-background text-foreground rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 aria-label="Select file to view results"
               >
                 {files.map((f, idx) => (
@@ -247,7 +247,7 @@ export const ResultsSection: React.FC = () => {
             disabled={!currentResult}
             title="Copy extracted text"
             aria-label="Copy extracted text to clipboard"
-            className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            className="p-2 bg-muted text-foreground rounded-lg hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           >
             <Copy className="w-4 h-4" aria-hidden="true" />
           </MotionButton>
@@ -259,7 +259,7 @@ export const ResultsSection: React.FC = () => {
             disabled={!currentResult}
             title="Download as .txt"
             aria-label="Download extracted text as TXT file"
-            className="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="p-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           >
             <Download className="w-4 h-4" aria-hidden="true" />
           </MotionButton>
@@ -267,32 +267,32 @@ export const ResultsSection: React.FC = () => {
       </div>
 
       {settings.endUserMode && (
-        <div className="mb-5 border rounded-lg p-4 bg-gray-50">
+        <div className="mb-5 border border-border rounded-lg p-4 bg-muted">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-800">Export & Print</h3>
+            <h3 className="font-semibold text-foreground">Export & Print</h3>
             <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Export options">
-              <button onClick={exportBookPDF} className="px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Export PDF (text)">Export PDF</button>
-              <button onClick={exportBookDOCX} className="px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Export DOCX (text)">Export DOCX</button>
-              <button onClick={exportOriginalsPDF} className="px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Export Originals PDF (images)">Originals PDF</button>
+              <button onClick={exportBookPDF} className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring" aria-label="Export PDF (text)">Export PDF</button>
+              <button onClick={exportBookDOCX} className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring" aria-label="Export DOCX (text)">Export DOCX</button>
+              <button onClick={exportOriginalsPDF} className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring" aria-label="Export Originals PDF (images)">Originals PDF</button>
             </div>
           </div>
         </div>
       )}
 
       {!settings.endUserMode && activeSummary && activeResults.length > 0 && (
-        <div className="mb-5 border rounded-lg p-4 bg-purple-50/40">
+        <div className="mb-5 border border-border rounded-lg p-4 bg-accent/10">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="font-semibold text-purple-800">Project Summary</h3>
+            <h3 className="font-semibold">Project Summary</h3>
             <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Export options">
-              <button onClick={exportSummaryTXT} aria-label="Export project summary as TXT file" className="px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">Export TXT</button>
-              <button onClick={exportSummaryDOCX} aria-label="Export project summary as DOCX file" className="px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">Export DOCX</button>
-              <button onClick={exportSummaryJSON} aria-label="Export project summary as JSON file" className="px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">Export JSON</button>
-              <button onClick={copyTocMarkdown} aria-label="Copy table of contents as Markdown" className="px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">Copy TOC (MD)</button>
+              <button onClick={exportSummaryTXT} aria-label="Export project summary as TXT file" className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring">Export TXT</button>
+              <button onClick={exportSummaryDOCX} aria-label="Export project summary as DOCX file" className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring">Export DOCX</button>
+              <button onClick={exportSummaryJSON} aria-label="Export project summary as JSON file" className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring">Export JSON</button>
+              <button onClick={copyTocMarkdown} aria-label="Copy table of contents as Markdown" className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring">Copy TOC (MD)</button>
               <div className="w-px h-4 bg-gray-200 mx-1" aria-hidden="true" />
-              <button onClick={exportBookDOCX} aria-label="Export project as DOCX book" className="px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">Book DOCX</button>
-              <button onClick={exportBookPDF} aria-label="Export project as PDF book" className="px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">Book PDF</button>
+              <button onClick={exportBookDOCX} aria-label="Export project as DOCX book" className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring">Book DOCX</button>
+              <button onClick={exportBookPDF} aria-label="Export project as PDF book" className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring">Book PDF</button>
               <div className="w-px h-4 bg-gray-200 mx-1" aria-hidden="true" />
-              <button onClick={rerunAllLayoutOnly} aria-label="Re-run all with Tesseract only (preserve layout)" className="px-2 py-1 text-xs bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500">Re-run All (Layout only)</button>
+              <button onClick={rerunAllLayoutOnly} aria-label="Re-run all with Tesseract only (preserve layout)" className="px-2 py-1 text-xs bg-primary/10 text-primary border border-primary/30 rounded hover:bg-primary/20 focus:outline-none focus:ring-2 focus:ring-ring">Re-run All (Layout only)</button>
               <button
                 onClick={() => {
                   const pid = currentProjectId || 'all';
@@ -300,7 +300,7 @@ export const ResultsSection: React.FC = () => {
                   toast.success('Project summary cleared');
                 }}
                 aria-label="Clear project summary"
-                className="ml-2 px-2 py-1 text-xs bg-white border rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="ml-2 px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-destructive"
               >
                 Clear Summary
               </button>

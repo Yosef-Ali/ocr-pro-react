@@ -13,9 +13,9 @@ const sizeMap = {
 } as const;
 
 const colorMap = {
-    default: 'text-gray-700',
-    muted: 'text-gray-400',
-    primary: 'text-blue-600',
+    default: 'text-foreground',
+    muted: 'text-muted-foreground',
+    primary: 'text-primary',
 } as const;
 
 export const Spinner = React.forwardRef<HTMLDivElement, SpinnerProps>(

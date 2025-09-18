@@ -1,6 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+const MotionDiv = motion.div as any;
 
 interface ModalProps {
     isOpen: boolean;
@@ -22,26 +23,26 @@ export const Modal: React.FC<ModalProps> = ({
     return (
         <AnimatePresence>
             {isOpen && (
-                <motion.div
+                <MotionDiv
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
                     onClick={onClose}
                 >
-                    <motion.div
+                    <MotionDiv
                         initial={{ scale: 0.9, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0.9, opacity: 0 }}
-                        onClick={(e) => e.stopPropagation()}
-                        className={`bg-white rounded-xl w-full ${maxWidth} mx-4 shadow-xl`}
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                        className={`bg-card text-card-foreground rounded-xl w-full ${maxWidth} mx-4 shadow-xl border border-border`}
                     >
                         {/* Header */}
                         <div className="flex justify-between items-center px-6 pt-6 pb-3">
-                            <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
+                            <h2 className="text-2xl font-bold">{title}</h2>
                             <button
                                 onClick={onClose}
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                className="p-2 hover:bg-accent rounded-lg transition-colors"
                                 aria-label="Close modal"
                             >
                                 <X className="w-5 h-5" />
@@ -55,12 +56,12 @@ export const Modal: React.FC<ModalProps> = ({
 
                         {/* Footer */}
                         {footer && (
-                            <div className="px-6 py-4 border-t flex justify-end gap-3">
+                            <div className="px-6 py-4 border-t border-border flex justify-end gap-3">
                                 {footer}
                             </div>
                         )}
-                    </motion.div>
-                </motion.div>
+                    </MotionDiv>
+                </MotionDiv>
             )}
         </AnimatePresence>
     );

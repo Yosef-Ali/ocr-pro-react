@@ -404,11 +404,11 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
+  <div className="bg-card text-card-foreground border border-border rounded-2xl shadow-sm p-5">
           <div className="flex flex-wrap items-center gap-2 mb-2">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
               Layout-preserved editor
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-100">Focus mode</span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-primary/10 text-primary border border-primary/20">Focus mode</span>
             </h3>
             {hasProposal && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -416,50 +416,50 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
               </span>
             )}
           </div>
-          <p className="text-sm text-gray-500 max-w-2xl">
+          <p className="text-sm text-muted-foreground max-w-2xl">
             Refine structured Amharic output with live AI proofreading. Accept, adjust, or dismiss changes while keeping the original layout intact.
           </p>
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             {currentFile?.name && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-foreground">
                 <Type className="w-3 h-3" />
                 {currentFile.name}
               </span>
             )}
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-foreground">
               <span className="block w-2 h-2 rounded-full bg-emerald-500" />
               Engine: {engine}
             </span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">Routing: {routingMode}</span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">Language: {result.detectedLanguage || 'unknown'}</span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-foreground">Routing: {routingMode}</span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-foreground">Language: {result.detectedLanguage || 'unknown'}</span>
             {edgeEnabled && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-foreground">
                 <Loader2 className={`w-3 h-3 ${edgeProgress > 0 && edgeProgress < 100 ? 'animate-spin text-blue-500' : 'text-emerald-500'}`} />
                 Edge LLM {edgeProgress > 0 && edgeProgress < 100 ? `loading ${edgeProgress}%` : 'ready'}
               </span>
             )}
           </div>
         </div>
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 flex flex-wrap gap-2 items-center justify-between">
+  <div className="bg-card text-card-foreground border border-border rounded-2xl shadow-sm p-4 flex flex-wrap gap-2 items-center justify-between">
           {statPills.map(({ label, value, tooltip }) => (
-            <div key={label} className="flex flex-col items-start px-3 py-2 rounded-xl border border-gray-100 bg-gray-50 text-[11px] min-w-[88px]" title={tooltip}>
-              <span className="uppercase tracking-wide text-[10px] text-gray-500">{label}</span>
-              <span className="text-sm font-semibold text-gray-900">{value}</span>
+            <div key={label} className="flex flex-col items-start px-3 py-2 rounded-xl border border-border bg-muted text-[11px] min-w-[88px]" title={tooltip}>
+              <span className="uppercase tracking-wide text-[10px] text-muted-foreground">{label}</span>
+              <span className="text-sm font-semibold text-foreground">{value}</span>
             </div>
           ))}
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 h-[72vh] min-h-[24rem]">
-        <div className="bg-white border border-gray-200 rounded-3xl shadow-sm p-5 overflow-hidden flex flex-col h-full min-h-0">
-          <div className="flex items-start justify-between mb-4 border-b border-gray-100 pb-3">
+  <div className="bg-card text-card-foreground border border-border rounded-3xl shadow-sm p-5 overflow-hidden flex flex-col h-full min-h-0">
+          <div className="flex items-start justify-between mb-4 border-b border-border pb-3">
             <div className="flex items-start gap-3">
-              <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100">
+              <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-primary/10 text-primary border border-primary/20">
                 <Code className="w-5 h-5" />
               </span>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Markdown editor</p>
-                <p className="text-sm text-gray-600">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Markdown editor</p>
+                <p className="text-sm text-muted-foreground">
                   Polish the OCR draft before exporting or sharing. Keyboard shortcuts stay active for bold/italic.
                 </p>
               </div>
@@ -470,7 +470,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
               </span>
             )}
           </div>
-          <div className={`flex flex-wrap gap-1.5 items-center mb-4 rounded-2xl border px-3 py-2 ${showAiOverlay ? 'bg-blue-50/70 border-blue-100' : 'bg-gray-50 border-gray-200'}`}>
+          <div className={`flex flex-wrap gap-1.5 items-center mb-4 rounded-2xl border px-3 py-2 ${showAiOverlay ? 'bg-accent/60 border-accent' : 'bg-muted border-border'}`}>
             <ToolbarButton title={getAiTitle()} onClick={runUnifiedAIFix} disabled={disableEditorInteractions}>
               {showAiOverlay ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
             </ToolbarButton>
@@ -510,7 +510,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
             <ToolbarButton title="Link" onClick={insertLink} disabled={disableEditorInteractions}><LinkIcon className="w-4 h-4" /></ToolbarButton>
             <button
               type="button"
-              className={`px-2 py-1 text-[11px] rounded border ${disableEditorInteractions ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-50'}`}
+              className={`px-2 py-1 text-[11px] rounded border ${disableEditorInteractions ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-background hover:bg-accent'} border-border`}
               title="Zen mode (fullscreen)"
               onClick={() => {
                 if (disableEditorInteractions) return;
@@ -523,7 +523,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
             <div className="ml-auto inline-flex items-center gap-1">
               <button
                 type="button"
-                className={`px-2 py-1 text-[11px] rounded border ${disableEditorInteractions ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-50'}`}
+                className={`px-2 py-1 text-[11px] rounded border ${disableEditorInteractions ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-background hover:bg-accent'} border-border`}
                 title="Smaller text"
                 onClick={() => {
                   if (disableEditorInteractions) return;
@@ -535,7 +535,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
               </button>
               <button
                 type="button"
-                className={`px-2 py-1 text-[11px] rounded border ${disableEditorInteractions ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-50'}`}
+                className={`px-2 py-1 text-[11px] rounded border ${disableEditorInteractions ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-background hover:bg-accent'} border-border`}
                 title="Larger text"
                 onClick={() => {
                   if (disableEditorInteractions) return;
@@ -545,7 +545,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
               >A+</button>
               <button
                 type="button"
-                className={`px-2 py-1 text-[11px] rounded border ${wrapEditor ? 'bg-gray-900 text-white border-gray-900' : disableEditorInteractions ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-50'}`}
+                className={`px-2 py-1 text-[11px] rounded border ${wrapEditor ? 'bg-foreground text-background border-foreground' : disableEditorInteractions ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-background hover:bg-accent border-border'}`}
                 title="Toggle line wrap"
                 onClick={() => {
                   if (disableEditorInteractions) return;
@@ -555,7 +555,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
               >Wrap</button>
               <button
                 type="button"
-                className={`px-2 py-1 text-[11px] rounded border ${disableEditorInteractions ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-50'}`}
+                className={`px-2 py-1 text-[11px] rounded border ${disableEditorInteractions ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-background hover:bg-accent'} border-border`}
                 title="Reset font & wrap"
                 onClick={() => {
                   if (disableEditorInteractions) return;
@@ -579,7 +579,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                     setTipsLoading(false);
                   }
                 }}
-                className={`ml-1 inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded border ${disableEditorInteractions ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                className={`ml-1 inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded border ${disableEditorInteractions ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-background text-foreground hover:bg-accent'} border-border`}
                 disabled={disableEditorInteractions}
               >
                 {tipsLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} Tips
@@ -587,8 +587,8 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
             )}
           </div>
           {quickTips && quickTips.length > 0 && (
-            <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-xs text-gray-700">
-              <div className="flex items-center gap-1 text-emerald-800 font-semibold text-[11px] uppercase tracking-wide"><Sparkles className="w-3 h-3" /> Quick guidance</div>
+            <div className="mb-4 rounded-2xl border border-border bg-muted px-4 py-3 text-xs text-foreground">
+              <div className="flex items-center gap-1 text-foreground font-semibold text-[11px] uppercase tracking-wide"><Sparkles className="w-3 h-3" /> Quick guidance</div>
               <ul className="list-disc pl-4 mt-1 space-y-1">
                 {quickTips.map((t, i) => (<li key={i}>{t}</li>))}
               </ul>
@@ -596,7 +596,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
           )}
 
           {hasProposal && (
-            <div className="flex flex-wrap gap-2 items-center text-[11px] text-gray-600 mb-3">
+            <div className="flex flex-wrap gap-2 items-center text-[11px] text-muted-foreground mb-3">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50 text-amber-700">
                 <Sparkles className="w-3 h-3" />
                 Right-click highlighted words in the preview to accept or ignore.
@@ -608,11 +608,11 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
             </div>
           )}
 
-          <div className={`relative flex-1 min-h-0 ${appliedPulse ? 'ring-4 ring-emerald-200 rounded-2xl' : ''}`}>
+          <div className={`relative flex-1 min-h-0 ${appliedPulse ? 'ring-4 ring-emerald-500/30 rounded-2xl' : ''}`}>
             {showAiOverlay && (
-              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gray-100 rounded-t z-30 overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-0.5 bg-muted rounded-t z-30 overflow-hidden">
                 <div
-                  className={`h-full transition-[width] duration-200 ease-linear ${isCorrectingWithVision ? 'bg-blue-500' : 'bg-purple-500'}`}
+                  className={`h-full transition-[width] duration-200 ease-linear ${isCorrectingWithVision ? 'bg-primary' : 'bg-accent'}`}
                   style={{ width: `${pfProgress}%` }}
                 />
               </div>
@@ -633,21 +633,21 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                   applyWrap('*', '*');
                 }
               }}
-              className={`w-full h-full min-h-[18rem] p-3 md:p-3.5 border border-gray-200 rounded-2xl font-mono bg-gray-50/90 shadow-inner resize-none overflow-auto transition focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 ${wrapEditor ? 'whitespace-pre-wrap break-words' : 'overflow-x-auto whitespace-pre'} ${showAiOverlay ? 'opacity-60' : ''}`}
+              className={`w-full h-full min-h-[18rem] p-3 md:p-3.5 border border-input rounded-2xl font-mono bg-muted shadow-inner resize-none overflow-auto transition focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring ${wrapEditor ? 'whitespace-pre-wrap break-words' : 'overflow-x-auto whitespace-pre'} ${showAiOverlay ? 'opacity-60' : ''}`}
               style={{ fontSize: `${Math.round(14 * fontScale)}px`, lineHeight: 1.6 }}
               disabled={showAiOverlay}
             />
 
             {showAiOverlay && (
-              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-2xl bg-white/80 backdrop-blur-sm text-sm text-gray-700">
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-2xl bg-background/80 backdrop-blur-sm text-sm text-foreground">
                 <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-blue-700">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   {aiStateBadge}
                 </span>
-                <p className="text-xs text-gray-600 text-center max-w-[220px]">{aiStateLabel} the document to build cleaner suggestions. You can cancel anytime.</p>
+                <p className="text-xs text-muted-foreground text-center max-w-[220px]">{aiStateLabel} the document to build cleaner suggestions. You can cancel anytime.</p>
                 <button
                   type="button"
-                  className="px-3 py-1 text-xs rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-gray-700"
+                  className="px-3 py-1 text-xs rounded-full border border-border bg-background hover:bg-accent"
                   onClick={() => {
                     setIsProofreading(false);
                     setIsAnalyzing(false);
@@ -662,15 +662,15 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-3xl shadow-sm overflow-hidden flex flex-col h-full min-h-0">
-          <div className="sticky top-0 z-20 bg-white/95 backdrop-blur px-5 py-3 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-card text-card-foreground border border-border rounded-3xl shadow-sm overflow-hidden flex flex-col h-full min-h-0">
+              <div className="sticky top-0 z-20 bg-card/95 backdrop-blur px-5 py-3 border-b border-border flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-gray-900 text-white">
+              <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-foreground text-background">
                 {previewMode === 'text' ? <Sparkles className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </span>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{previewMode === 'text' ? 'Smart preview' : 'Original snapshot'}</p>
-                <p className="text-sm text-gray-600">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{previewMode === 'text' ? 'Smart preview' : 'Original snapshot'}</p>
+                <p className="text-sm text-muted-foreground">
                   {previewMode === 'text'
                     ? hasProposal
                       ? 'Review highlighted diffs and right-click to accept or ignore.'
@@ -680,19 +680,19 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
               </div>
             </div>
             <div className="flex items-center gap-2" ref={actionsContainerRef}>
-              <div className="relative inline-flex bg-gray-100 rounded-xl p-0.5 text-xs" role="tablist" aria-label="Preview mode">
+              <div className="relative inline-flex bg-muted rounded-xl p-0.5 text-xs" role="tablist" aria-label="Preview mode">
                 <button
                   type="button"
                   role="tab"
                   aria-selected={previewMode === 'text'}
-                  className={`px-2.5 py-1 rounded-lg outline-none focus:ring-2 focus:ring-blue-400 transition ${previewMode === 'text' ? 'bg-white shadow border border-gray-200 text-gray-900' : 'text-gray-600 hover:text-gray-800'}`}
+                  className={`px-2.5 py-1 rounded-lg outline-none focus:ring-2 focus:ring-ring transition ${previewMode === 'text' ? 'bg-background shadow border border-border text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                   onClick={() => setPreviewMode('text')}
                 >Text</button>
                 <button
                   type="button"
                   role="tab"
                   aria-selected={previewMode === 'original'}
-                  className={`px-2.5 py-1 rounded-lg outline-none focus:ring-2 focus:ring-blue-400 transition ${previewMode === 'original' ? 'bg-white shadow border border-gray-200 text-gray-900' : currentFile?.preview ? 'text-gray-600 hover:text-gray-800' : 'text-gray-400 cursor-not-allowed'}`}
+                  className={`px-2.5 py-1 rounded-lg outline-none focus:ring-2 focus:ring-ring transition ${previewMode === 'original' ? 'bg-background shadow border border-border text-foreground' : currentFile?.preview ? 'text-muted-foreground hover:text-foreground' : 'text-muted-foreground/50 cursor-not-allowed'}`}
                   onClick={() => currentFile?.preview && setPreviewMode('original')}
                   disabled={!currentFile?.preview}
                   title={currentFile?.preview ? 'View original layout' : 'No original preview available'}
@@ -709,17 +709,17 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                   title="AI actions"
                   aria-haspopup="menu"
                   aria-expanded={actionsOpen}
-                  className={`inline-flex items-center justify-center w-8 h-8 rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400 ${applyPulse ? 'ring-2 ring-green-300 shadow' : ''}`}
+                  className={`inline-flex items-center justify-center w-8 h-8 rounded-xl border border-border bg-background text-foreground hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring ${applyPulse ? 'ring-2 ring-green-300 shadow' : ''}`}
                   onClick={() => setActionsOpen(v => !v)}
                 >
                   <MoreVertical className="w-4 h-4" />
                 </button>
               )}
               {actionsOpen && (
-                <div role="menu" className="absolute right-0 top-full mt-2 z-30 min-w-[220px] rounded-2xl border border-gray-200 bg-white shadow-xl">
+                <div role="menu" className="absolute right-0 top-full mt-2 z-30 min-w-[220px] rounded-2xl border border-border bg-card shadow-xl">
                   <button
                     role="menuitem"
-                    className="w-full flex items-center gap-2 px-3.5 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-50"
+                    className="w-full flex items-center gap-2 px-3.5 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
                     onClick={() => {
                       let proposed = pendingProposalExact ?? pendingProposalRaw ?? pendingProposal ?? draft;
                       try {
@@ -756,7 +756,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                   </button>
                   <button
                     role="menuitem"
-                    className="w-full flex items-center gap-2 px-3.5 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                    className="w-full flex items-center gap-2 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted"
                     onClick={() => {
                       setPendingProposal(null);
                       setPendingProposalRaw(null);
@@ -770,10 +770,10 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
                     <XCircle className="w-4 h-4 text-gray-500" />
                     <span>Discard suggestions</span>
                   </button>
-                  <div className="my-1 border-t border-gray-100" />
+                  <div className="my-1 border-t border-border" />
                   <button
                     role="menuitem"
-                    className="w-full flex items-center gap-2 px-3.5 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                    className="w-full flex items-center gap-2 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted"
                     onClick={async () => {
                       try {
                         const base = pendingProposalRaw ?? pendingProposal ?? draft;
@@ -799,7 +799,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
 
           {showAiOverlay && previewMode === 'text' && (
             <div className="px-5 pt-4">
-              <div className="h-3 w-52 bg-gray-200/70 rounded-full animate-pulse" />
+              <div className="h-3 w-52 bg-muted rounded-full animate-pulse" />
             </div>
           )}
 
@@ -838,7 +838,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
             </div>
           ) : previewMode === 'text' ? (
             <div
-              className={`prose prose-slate max-w-none w-full px-5 pb-5 text-[15px] leading-7 prose-headings:font-semibold prose-h1:text-2xl prose-h1:leading-tight prose-h1:mb-3 prose-h2:text-xl prose-h2:mt-4 prose-h2:mb-2 prose-p:my-2 prose-p:text-justify prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-pre:bg-gray-100 prose-pre:rounded prose-pre:p-3 prose-blockquote:italic prose-blockquote:border-l-4 prose-blockquote:border-gray-300 text-gray-900 overflow-auto flex-1 ${isEthiopic ? 'font-ethiopic leading-8 tracking-normal' : ''}`}
+              className={`prose prose-slate dark:prose-invert max-w-none w-full px-5 pb-5 text-[15px] leading-7 prose-headings:font-semibold prose-h1:text-2xl prose-h1:leading-tight prose-h1:mb-3 prose-h2:text-xl prose-h2:mt-4 prose-h2:mb-2 prose-p:my-2 prose-p:text-justify prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-pre:bg-muted prose-pre:rounded prose-pre:p-3 prose-blockquote:italic prose-blockquote:border-l-4 prose-blockquote:border-border text-foreground overflow-auto flex-1 ${isEthiopic ? 'font-ethiopic leading-8 tracking-normal' : ''}`}
               style={{ fontSize: `${Math.round(15 * fontScale)}px`, lineHeight: 1.7 }}
               lang={result.detectedLanguage || 'am'}
               dir="auto"
@@ -851,16 +851,16 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
         </div>
       </div>
       {zen && (
-        <div className="fixed inset-0 z-[9998] bg-white/95 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[9998] bg-background/95 backdrop-blur-sm">
           <div className="absolute top-2 right-2 flex items-center gap-2">
-            <button type="button" className="px-2 py-1 text-xs rounded border bg-white hover:bg-gray-50" onClick={() => setZen(false)}>Exit</button>
+            <button type="button" className="px-2 py-1 text-xs rounded border border-border bg-background hover:bg-accent" onClick={() => setZen(false)}>Exit</button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full p-4">
             <div className="h-full">
-              <textarea value={draft} onChange={(e) => setDraft(e.target.value)} className={`w-full h-full p-3 border rounded-xl font-mono bg-gray-50 ${wrapEditor ? 'whitespace-pre-wrap break-words' : 'overflow-x-auto whitespace-pre'}`} style={{ fontSize: `${Math.round(14 * fontScale)}px`, lineHeight: 1.6 }} />
+              <textarea value={draft} onChange={(e) => setDraft(e.target.value)} className={`w-full h-full p-3 border border-input rounded-xl font-mono bg-muted ${wrapEditor ? 'whitespace-pre-wrap break-words' : 'overflow-x-auto whitespace-pre'}`} style={{ fontSize: `${Math.round(14 * fontScale)}px`, lineHeight: 1.6 }} />
             </div>
             <div className="h-full">
-              <div className={`prose prose-slate max-w-none w-full h-full px-3 overflow-auto ${isEthiopic ? 'font-ethiopic' : ''}`} style={{ fontSize: `${Math.round(15 * fontScale)}px`, lineHeight: 1.7 }}>
+              <div className={`prose prose-slate dark:prose-invert max-w-none w-full h-full px-3 overflow-auto ${isEthiopic ? 'font-ethiopic' : ''}`} style={{ fontSize: `${Math.round(15 * fontScale)}px`, lineHeight: 1.7 }}>
                 <SafeMarkdown content={preview} />
               </div>
             </div>
@@ -979,24 +979,24 @@ const OriginalLayoutPanel: React.FC<{ fileName?: string; dataUrl: string }> = ({
 
   if (!displayUrl) {
     return (
-      <div className="flex-1 flex items-center justify-center text-sm text-gray-500 bg-gray-50 rounded-lg border">
+      <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground bg-muted rounded-lg border border-border">
         No original preview available
       </div>
     );
   }
 
   return (
-    <div ref={containerRef} className="relative flex-1 min-h-0 overflow-auto rounded-lg border bg-gray-50">
+    <div ref={containerRef} className="relative flex-1 min-h-0 overflow-auto rounded-lg border border-border bg-muted">
       <div className="absolute top-2 right-2 z-10 flex items-center gap-2">
         <button
           type="button"
-          className="px-2 py-1 text-xs rounded border bg-white hover:bg-gray-50"
+          className="px-2 py-1 text-xs rounded border border-border bg-background hover:bg-accent"
           onClick={exportPdf}
           title="Export original as PDF"
         >Export PDF</button>
         <button
           type="button"
-          className="px-2 py-1 text-xs rounded border bg-white hover:bg-gray-50"
+          className="px-2 py-1 text-xs rounded border border-border bg-background hover:bg-accent"
           onClick={printImage}
           title="Print original"
         >Print</button>

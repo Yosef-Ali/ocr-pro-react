@@ -95,21 +95,21 @@ export const BatchProcessingDashboard: React.FC<Props> = ({
 
   const getGradeColor = (grade: string) => {
     switch (grade) {
-      case 'A': return 'text-green-600 bg-green-100';
-      case 'B': return 'text-blue-600 bg-blue-100';
+  case 'A': return 'text-emerald-500 bg-emerald-500/10';
+  case 'B': return 'text-primary bg-primary/10';
       case 'C': return 'text-yellow-600 bg-yellow-100';
       case 'D': return 'text-orange-600 bg-orange-100';
       case 'F': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
+  default: return 'text-muted-foreground bg-muted';
     }
   };
 
   const getCorruptionColor = (level: string) => {
     switch (level) {
-      case 'low': return 'text-green-600 bg-green-100';
+  case 'low': return 'text-emerald-500 bg-emerald-500/10';
       case 'medium': return 'text-yellow-600 bg-yellow-100';
       case 'high': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
+  default: return 'text-muted-foreground bg-muted';
     }
   };
 
@@ -117,17 +117,17 @@ export const BatchProcessingDashboard: React.FC<Props> = ({
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
+  <div className="bg-card text-card-foreground p-6 rounded-lg shadow-sm border border-border">
           <div className="flex items-center">
             <FileText className="h-8 w-8 text-blue-600" />
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Documents</p>
-              <p className="text-2xl font-bold text-gray-900">{batchResult.summary.totalDocuments}</p>
+              <p className="text-sm font-medium text-muted-foreground">Total Documents</p>
+              <p className="text-2xl font-bold">{batchResult.summary.totalDocuments}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
+  <div className="bg-card text-card-foreground p-6 rounded-lg shadow-sm border border-border">
           <div className="flex items-center">
             <TrendingUp className="h-8 w-8 text-green-600" />
             <div className="ml-4">

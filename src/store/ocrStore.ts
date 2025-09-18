@@ -14,6 +14,8 @@ import { fetchFiles, upsertFiles as apiUpsertFiles, deleteFile as apiDeleteFile 
 import { fetchResults, upsertResults as apiUpsertResults, deleteResult as apiDeleteResult } from '@/services/api/results';
 import { mapRemoteFile, mapRemoteResult, mapRemoteSummary } from '@/services/api/transformers';
 
+const LAST_PROJECT_KEY = 'ocr:lastProjectId';
+
 interface OCRState {
   // User state
   currentUser: User | null;
@@ -87,7 +89,7 @@ export const useOCRStore = create<OCRState>()(
         // Initial state
         currentUser: null,
         projects: [],
-        currentProjectId: null,
+        currentProjectId: (typeof window !== 'undefined' ? localStorage.getItem(LAST_PROJECT_KEY) : null) || null,
         projectSummaries: {},
         files: [],
         currentFileIndex: 0,
@@ -142,6 +144,9 @@ export const useOCRStore = create<OCRState>()(
 
           // Clear all data when user changes/logs out
           if (!user) {
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem(LAST_PROJECT_KEY);
+            }
             set({
               projects: [],
               currentProjectId: null,
@@ -250,11 +255,33 @@ export const useOCRStore = create<OCRState>()(
               console.warn('Failed to adopt legacy records', claimErr);
             }
 
+            const sortedProjects = [...projects].sort((a, b) => b.createdAt - a.createdAt);
+            const storedProjectId = typeof window !== 'undefined' ? localStorage.getItem(LAST_PROJECT_KEY) : null;
+
             set((state) => {
+              let nextProjectId = state.currentProjectId;
+              const hasExisting = nextProjectId ? sortedProjects.some((p) => p.id === nextProjectId) : false;
+
+              if (!hasExisting) {
+                const fallback = storedProjectId && sortedProjects.some((p) => p.id === storedProjectId)
+                  ? storedProjectId
+                  : sortedProjects[0]?.id ?? null;
+                nextProjectId = fallback ?? null;
+
+                if (typeof window !== 'undefined') {
+                  if (nextProjectId) {
+                    localStorage.setItem(LAST_PROJECT_KEY, nextProjectId);
+                  } else {
+                    localStorage.removeItem(LAST_PROJECT_KEY);
+                  }
+                }
+              }
+
               const currentFile = files[state.currentFileIndex] ?? files[0];
               const currentResult = currentFile ? results.find((r) => r.fileId === currentFile.id) || null : results[0] || null;
+
               return {
-                projects,
+                projects: sortedProjects,
                 files,
                 results,
                 projectSummaries,
@@ -262,9 +289,17 @@ export const useOCRStore = create<OCRState>()(
                 hydrateError: undefined,
                 currentResult,
                 currentFileIndex: currentFile ? files.findIndex((f) => f.id === currentFile.id) : 0,
+                currentProjectId: nextProjectId,
               };
             });
           } catch (error: any) {
+            const status = typeof error?.status === 'number' ? error.status : undefined;
+            if (status === 401 || status === 403) {
+              // Expected when the backend requires auth but the user is not signed in yet.
+              set({ isRemoteHydrated: true, hydrateError: undefined });
+              return;
+            }
+
             console.error('Failed to hydrate remote state', error);
             set({ isRemoteHydrated: true, hydrateError: error?.message || 'Failed to load remote data' });
           }
@@ -539,11 +574,24 @@ export const useOCRStore = create<OCRState>()(
             description: remote.description ?? undefined,
             createdAt: remote.created_at,
           };
-          set((state) => ({ projects: [...state.projects, project], currentProjectId: project.id }));
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(LAST_PROJECT_KEY, project.id);
+          }
+          set((state) => ({
+            projects: [project, ...state.projects.filter((p) => p.id !== project.id)].sort((a, b) => b.createdAt - a.createdAt),
+            currentProjectId: project.id,
+          }));
           return project.id;
         },
 
         selectProject: (projectId) => {
+          if (typeof window !== 'undefined') {
+            if (projectId) {
+              localStorage.setItem(LAST_PROJECT_KEY, projectId);
+            } else {
+              localStorage.removeItem(LAST_PROJECT_KEY);
+            }
+          }
           set({ currentProjectId: projectId });
         },
 

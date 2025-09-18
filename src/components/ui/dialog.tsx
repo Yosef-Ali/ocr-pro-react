@@ -27,7 +27,7 @@ export const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children }) 
 };
 
 export const DialogContent: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = '', ...props }) => (
-    <div className={`rounded-xl bg-white shadow-xl border ${className}`} {...props} />
+    <div className={`rounded-xl bg-card text-card-foreground shadow-xl border border-border ${className}`} {...props} />
 );
 
 export const DialogHeader: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = '', ...props }) => (
@@ -35,15 +35,15 @@ export const DialogHeader: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ c
 );
 
 export const DialogTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = ({ className = '', ...props }) => (
-    <h2 className={`text-2xl font-bold text-gray-800 ${className}`} {...props} />
+    <h2 className={`text-2xl font-bold ${className}`} {...props} />
 );
 
 export const DialogDescription: React.FC<React.HTMLAttributes<HTMLParagraphElement>> = ({ className = '', ...props }) => (
-    <p className={`text-sm text-gray-600 ${className}`} {...props} />
+    <p className={`text-sm text-muted-foreground ${className}`} {...props} />
 );
 
 export const DialogFooter: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = '', ...props }) => (
-    <div className={`px-6 py-4 border-t flex justify-end gap-3 ${className}`} {...props} />
+    <div className={`px-6 py-4 border-t border-border flex justify-end gap-3 ${className}`} {...props} />
 );
 
 export const DialogBody: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = '', ...props }) => (
@@ -51,7 +51,7 @@ export const DialogBody: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ cla
 );
 
 export const DialogClose: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = ({ className = '', ...props }) => (
-    <button className={`p-2 hover:bg-gray-100 rounded-lg transition-colors ${className}`} {...props} />
+    <button className={`p-2 hover:bg-accent rounded-lg transition-colors ${className}`} {...props} />
 );
 
 export default Dialog;

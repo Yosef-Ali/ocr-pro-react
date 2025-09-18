@@ -59,7 +59,7 @@ export const onRequest: LocalPagesFunction<Env> = async (context) => {
 
 async function listProjects(env: Env, userId: string): Promise<Response> {
   const result = await env.DB.prepare(
-    'SELECT id, name, description, user_id, created_at, updated_at FROM projects WHERE (user_id = ?1 OR user_id IS NULL) ORDER BY created_at ASC'
+    'SELECT id, name, description, user_id, created_at, updated_at FROM projects WHERE (user_id = ?1 OR user_id IS NULL) ORDER BY updated_at DESC'
   ).bind(userId).all();
   return jsonResponse({ projects: result.results ?? [] });
 }
