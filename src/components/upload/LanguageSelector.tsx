@@ -34,7 +34,7 @@ export const LanguageSelector: React.FC = () => {
         className="w-full p-3 border border-input bg-background text-foreground rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
       >
         {languages.map(({ value, label }) => (
-          <option key={value} value={value}>
+          <option key={value} value={value} className="text-foreground bg-background">
             {label}
           </option>
         ))}

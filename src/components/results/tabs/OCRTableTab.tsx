@@ -292,7 +292,12 @@ export const OCRTableTab: React.FC = () => {
                     )}
                 </div>
                 <div className="flex items-center gap-2">
-                    <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search…" className="px-2 py-1 text-sm border rounded" />
+                    <input
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Search…"
+                        className="px-2 py-1 text-sm border border-input rounded bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
                 </div>
                 <BulkActions
                     disabled={countSelected === 0}
