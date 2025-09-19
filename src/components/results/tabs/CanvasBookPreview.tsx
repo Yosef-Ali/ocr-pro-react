@@ -77,7 +77,7 @@ export function flowChaptersToLines(
     _baseLineHeight: number,
     titleScale: number,
     hyphenateFn: (w: string) => string[] = hyphenateWord,
-    lang?: string
+    _lang?: string
 ): FlowLine[] {
     const lines: FlowLine[] = [];
     const wrap = (raw: string, isTitle = false) => {
