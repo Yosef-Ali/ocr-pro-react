@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FileText, Loader2, Sparkles, RefreshCcw, AlertTriangle, Monitor, LayoutGrid, CloudDownload } from 'lucide-react';
+import { FileText, Loader2, Sparkles, RefreshCcw, AlertTriangle, Monitor, LayoutGrid, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { useOCRStore } from '@/store/ocrStore';
@@ -363,7 +363,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
 
       {remoteError && (
         <p className="flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
-          <CloudDownload className="mt-0.5 h-4 w-4" />
+          <Download className="mt-0.5 h-4 w-4" />
           {remoteError}
         </p>
       )}
