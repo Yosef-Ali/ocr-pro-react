@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FileText, Loader2, Sparkles, RefreshCcw, AlertTriangle, Monitor } from 'lucide-react';
+import { FileText, Loader2, Sparkles, RefreshCcw, AlertTriangle, Monitor, LayoutGrid } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { useOCRStore } from '@/store/ocrStore';
 import { ProjectSummary, OCRResult } from '@/types';
 import { buildFallbackSummary, createBookPdfBlob } from '@/services/export/projectExportService';
+import { cn } from '@/utils/cn';
 
 const MIN_RESULTS_FOR_BOOK = 1;
 
@@ -26,6 +27,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [viewMode, setViewMode] = useState<'pdf' | 'pages'>('pdf');
 
   const scopedProjectId = currentProjectId || result.projectId || 'all';
 
@@ -40,6 +42,42 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
     const summary = currentProjectId ? projectSummaries[currentProjectId] : projectSummaries['all'];
     return summary;
   }, [projectSummaries, currentProjectId]);
+
+  const summaryForPages = useMemo(() => {
+    if (activeSummary) return activeSummary;
+    if (!projectResults.length) return undefined;
+    return buildFallbackSummary(scopedProjectId, projectResults);
+  }, [activeSummary, projectResults, scopedProjectId]);
+
+  const perPagePreviews = useMemo(() => {
+    if (!projectResults.length) return [] as Array<{
+      id: string;
+      title: string;
+      subtitle: string;
+      content: string;
+      language?: string;
+      confidence?: number;
+    }>;
+
+    return projectResults.map((res, idx) => {
+      const chapter = summaryForPages?.chapters?.[idx];
+      const title = chapter?.title || summaryForPages?.toc?.[idx]?.title || `Page ${idx + 1}`;
+      const content = (chapter?.content || res.layoutPreserved || res.extractedText || '').trim();
+      const subtitleParts: string[] = [];
+      if (res.documentType && res.documentType !== 'Unknown') subtitleParts.push(res.documentType);
+      if (res.metadata?.engine) subtitleParts.push(res.metadata.engine);
+      if (res.metadata?.pageCount) subtitleParts.push(`${res.metadata.pageCount} page${res.metadata.pageCount > 1 ? 's' : ''}`);
+
+      return {
+        id: res.id || res.fileId || `page-${idx}`,
+        title,
+        subtitle: subtitleParts.join(' • '),
+        content: content || 'No OCR output captured for this page yet.',
+        language: res.detectedLanguage || undefined,
+        confidence: typeof res.confidence === 'number' ? res.confidence : undefined,
+      };
+    });
+  }, [projectResults, summaryForPages]);
 
   const ensureSummary = useCallback(async () => {
     if (activeSummary) return activeSummary;
@@ -117,6 +155,45 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
 
   const needsMoreResults = projectResults.length < MIN_RESULTS_FOR_BOOK;
 
+  const renderPageMode = () => {
+    if (!projectResults.length) {
+      return (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted p-10 text-center text-sm text-muted-foreground">
+          <Monitor className="mb-3 h-8 w-8 text-primary" />
+          Upload additional pages or chapters, then run OCR to see the compiled preview.
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {perPagePreviews.map((page, idx) => (
+          <article
+            key={`${page.id}-${idx}`}
+            className="rounded-xl border border-border bg-background/60 p-4 shadow-sm transition hover:border-primary/60 hover:shadow-md"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h4 className="text-lg font-semibold text-foreground">{page.title}</h4>
+                {(page.subtitle || page.language || typeof page.confidence === 'number') && (
+                  <p className="mt-1 text-xs text-muted-foreground space-x-2">
+                    {page.subtitle && <span>{page.subtitle}</span>}
+                    {page.language && <span>Language: {page.language.toUpperCase()}</span>}
+                    {typeof page.confidence === 'number' && <span>Confidence: {(page.confidence * 100).toFixed(1)}%</span>}
+                  </p>
+                )}
+              </div>
+              <span className="rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground">Page {idx + 1}</span>
+            </div>
+            <div className="mt-4 rounded-lg border border-dashed border-border/60 bg-muted/40 p-4 text-left text-sm leading-relaxed whitespace-pre-wrap">
+              {page.content}
+            </div>
+          </article>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <section className="rounded-xl border border-border bg-muted p-4 sticky top-0 z-10">
@@ -131,6 +208,34 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-1">
+              <button
+                type="button"
+                onClick={() => setViewMode('pdf')}
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm transition',
+                  viewMode === 'pdf'
+                    ? 'bg-primary text-primary-foreground shadow'
+                    : 'text-muted-foreground hover:bg-accent'
+                )}
+              >
+                <FileText className="h-4 w-4" />
+                Combined PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('pages')}
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm transition',
+                  viewMode === 'pages'
+                    ? 'bg-primary text-primary-foreground shadow'
+                    : 'text-muted-foreground hover:bg-accent'
+                )}
+              >
+                <LayoutGrid className="h-4 w-4" />
+                Page Layout
+              </button>
+            </div>
             <button
               type="button"
               onClick={generatePreview}
@@ -177,57 +282,61 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
         </div>
       )}
 
-      {pdfUrl ? (
-        <div className="overflow-hidden rounded-xl border border-border">
-          <div className="flex items-center justify-between p-2 border-b bg-muted">
-            <div className="text-sm text-muted-foreground">PDF Preview</div>
-            <div className="flex items-center gap-2">
-              <a
-                href={pdfUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-2 py-1 text-xs rounded border border-border bg-background hover:bg-accent"
-              >Open in new tab</a>
-              <button
-                className="px-2 py-1 text-xs rounded border border-border bg-background hover:bg-accent disabled:opacity-50"
-                disabled={downloading}
-                onClick={async () => {
-                  try {
-                    setDownloading(true);
-                    const res = await fetch(pdfUrl);
-                    const blob = await res.blob();
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
-                    a.download = `project-preview-${scopedProjectId}.pdf`;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                  } finally {
-                    setDownloading(false);
-                  }
-                }}
-              >{downloading ? 'Downloading…' : 'Download'}</button>
+      {viewMode === 'pdf'
+        ? (
+          pdfUrl ? (
+            <div className="overflow-hidden rounded-xl border border-border">
+              <div className="flex items-center justify-between p-2 border-b bg-muted">
+                <div className="text-sm text-muted-foreground">PDF Preview</div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={pdfUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-2 py-1 text-xs rounded border border-border bg-background hover:bg-accent"
+                  >Open in new tab</a>
+                  <button
+                    className="px-2 py-1 text-xs rounded border border-border bg-background hover:bg-accent disabled:opacity-50"
+                    disabled={downloading}
+                    onClick={async () => {
+                      try {
+                        setDownloading(true);
+                        const res = await fetch(pdfUrl);
+                        const blob = await res.blob();
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = `project-preview-${scopedProjectId}.pdf`;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                      } finally {
+                        setDownloading(false);
+                      }
+                    }}
+                  >{downloading ? 'Downloading…' : 'Download'}</button>
+                </div>
+              </div>
+              <iframe title="Book Preview" src={pdfUrl} className="h-[70vh] w-full bg-background" />
             </div>
-          </div>
-          <iframe title="Book Preview" src={pdfUrl} className="h-[70vh] w-full bg-background" />
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted p-10 text-center text-sm text-muted-foreground">
-          {loading ? (
-            <>
-              <Loader2 className="mb-3 h-6 w-6 animate-spin text-primary" />
-              Generating book preview…
-            </>
           ) : (
-            <>
-              <Monitor className="mb-3 h-8 w-8 text-primary" />
-              {needsMoreResults
-                ? 'Upload additional pages or chapters, then run OCR to see the compiled preview.'
-                : 'Click “Generate Preview” to build a PDF using the layout-preserved results.'}
-            </>
-          )}
-        </div>
-      )}
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted p-10 text-center text-sm text-muted-foreground">
+              {loading ? (
+                <>
+                  <Loader2 className="mb-3 h-6 w-6 animate-spin text-primary" />
+                  Generating book preview…
+                </>
+              ) : (
+                <>
+                  <Monitor className="mb-3 h-8 w-8 text-primary" />
+                  {needsMoreResults
+                    ? 'Upload additional pages or chapters, then run OCR to see the compiled preview.'
+                    : 'Click “Generate Preview” to build a PDF using the layout-preserved results.'}
+                </>
+              )}
+            </div>
+          )
+        )
+        : renderPageMode()}
     </div>
   );
 };

@@ -3,7 +3,6 @@
  */
 import { ProjectSummary, Settings, OCRResult, OCRFile } from '@/types';
 import { downloadBlob } from '@/utils/validationUtils';
-import * as UTIF from 'utif';
 
 export const DEFAULT_PROJECT_ID = 'all';
 
@@ -206,13 +205,24 @@ export async function createBookPdfBlob(summary: ProjectSummary, settings: Setti
     let cursorY = margin;
     let currentPage = 1;
     const tocItems: Array<{ title: string; page: number }> = [];
-    const addTextBlock = async (text: string, fontSize = 12, bold = false) => {
-        if (needsEthiopicFont(text)) {
+    const setFontForText = async (text: string, bold = false) => {
+        if (text && needsEthiopicFont(text)) {
             await ensureEthiopicFont(doc);
-            doc.setFont('NotoSansEthiopic', bold ? 'bold' : 'normal');
-        } else {
-            doc.setFont('helvetica', bold ? 'bold' : 'normal');
+            const fontList = (doc.getFontList?.() as Record<string, Record<string, string>>) || {};
+            const ethiopicStyles = fontList.NotoSansEthiopic || {};
+            if (bold && ethiopicStyles.bold) {
+                doc.setFont('NotoSansEthiopic', 'bold');
+                return;
+            }
+            if (ethiopicStyles.normal) {
+                doc.setFont('NotoSansEthiopic', 'normal');
+                return;
+            }
         }
+        doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    };
+    const addTextBlock = async (text: string, fontSize = 12, bold = false) => {
+        await setFontForText(text, bold);
         doc.setFontSize(fontSize);
         const lines = doc.splitTextToSize(text, maxWidth) as string[];
         for (const line of lines) {
@@ -239,6 +249,11 @@ export async function createBookPdfBlob(summary: ProjectSummary, settings: Setti
     if (summary.chapters?.length) {
         for (let idx = 0; idx < summary.chapters.length; idx++) {
             const ch = summary.chapters[idx];
+            if (idx > 0) {
+                doc.addPage();
+                cursorY = margin;
+                currentPage += 1;
+            }
             tocItems.push({ title: `${idx + 1}. ${ch.title}`, page: currentPage });
             await addTextBlock(`${idx + 1}. ${ch.title}`, 14, true);
             await addTextBlock(ch.content || '', 12, false);
@@ -248,6 +263,11 @@ export async function createBookPdfBlob(summary: ProjectSummary, settings: Setti
         for (let idx = 0; idx < projectResults.length; idx++) {
             const r = projectResults[idx];
             const title = `${idx + 1}. ${r.documentType || 'Document'} — ${r.fileId}`;
+            if (idx > 0) {
+                doc.addPage();
+                cursorY = margin;
+                currentPage += 1;
+            }
             tocItems.push({ title, page: currentPage });
             await addTextBlock(title, 14, true);
             await addTextBlock((r.layoutPreserved || r.extractedText) || '', 12, false);
@@ -262,7 +282,7 @@ export async function createBookPdfBlob(summary: ProjectSummary, settings: Setti
             // Note: Page reordering is not supported here; TOC will render at end as a fallback.
             // jsPDF lacks safe page reordering in-browser without plugins; we keep TOC rendered at end.
         }
-        if (cursorY > doc.internal.pageSize.getHeight() - margin - 40) { doc.addPage(); cursorY = margin; currentPage += 1; }
+        if (cursorY > margin) { doc.addPage(); cursorY = margin; currentPage += 1; }
         await addTextBlock('Table of Contents', 16, true);
         for (const item of tocItems) {
             await addTextBlock(`${item.title} ..... ${item.page}`, 12, false);
@@ -290,91 +310,6 @@ export async function exportBookPDF(summary: ProjectSummary | undefined, setting
     saveAs(blob, `project-book-${effectiveSummary.projectId}-${Date.now()}.pdf`);
 }
 
-export async function exportOriginalsPDF(results: OCRResult[]): Promise<void> {
-    const { jsPDF } = await import('jspdf');
-    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-    const pageW = doc.internal.pageSize.getWidth();
-    const pageH = doc.internal.pageSize.getHeight();
-
-    const isTiff = (url?: string, name?: string) => {
-        if (!url) return false;
-        if (url.startsWith('data:image/tiff') || url.startsWith('data:image/tif')) return true;
-        if (name && /\.(tif|tiff)$/i.test(name)) return true;
-        return false;
-    };
-
-    const toArrayBuffer = async (url: string): Promise<ArrayBuffer> => {
-        if (url.startsWith('data:')) {
-            const base64 = url.split(',')[1] || '';
-            const binary = atob(base64);
-            const len = binary.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
-            return bytes.buffer;
-        } else {
-            const res = await fetch(url);
-            return res.arrayBuffer();
-        }
-    };
-
-    const convertTiffToPng = async (inputUrl: string): Promise<string | null> => {
-        try {
-            const buf = await toArrayBuffer(inputUrl);
-            const ifds = UTIF.decode(buf as any);
-            if (!ifds || ifds.length === 0) return null;
-            const first = ifds[0];
-            UTIF.decodeImage(buf as any, first);
-            const rgba = UTIF.toRGBA8(first);
-            const width = (first as any).width || (first as any).t256 || 0;
-            const height = (first as any).height || (first as any).t257 || 0;
-            if (!width || !height) return null;
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return null;
-            const imageData = new ImageData(new Uint8ClampedArray(rgba), width, height);
-            ctx.putImageData(imageData, 0, 0);
-            return canvas.toDataURL('image/png');
-        } catch {
-            return null;
-        }
-    };
-
-    let firstPage = true;
-    for (const r of results) {
-        const url = ((r as any).originalPreview || (r as any).preview) as string | undefined;
-        if (!url) continue;
-        const useUrl = isTiff(url, (r as any).name) ? (await convertTiffToPng(url)) || url : url;
-
-        const dim = await new Promise<{ w: number; h: number }>((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-            img.onerror = reject;
-            img.src = useUrl;
-        });
-        const imgRatio = dim.w / dim.h;
-        const pageRatio = pageW / pageH;
-        let renderW = pageW, renderH = pageH;
-        if (imgRatio > pageRatio) {
-            renderW = pageW;
-            renderH = pageW / imgRatio;
-        } else {
-            renderH = pageH;
-            renderW = pageH * imgRatio;
-        }
-        const x = (pageW - renderW) / 2;
-        const y = (pageH - renderH) / 2;
-        if (!firstPage) doc.addPage();
-        firstPage = false;
-        const fmt = useUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG';
-        doc.addImage(useUrl, fmt as any, x, y, renderW, renderH, undefined, 'FAST');
-    }
-
-    const { saveAs } = await import('file-saver');
-    const blob = doc.output('blob');
-    saveAs(blob, `project-originals-${Date.now()}.pdf`);
-}
 
 export async function exportProjectResultsTableXLSX(results: OCRResult[], files: OCRFile[], projectId: string | null): Promise<void> {
     if (!results.length) {

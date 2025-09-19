@@ -6,7 +6,7 @@ import { ProcessingStatus } from './ProcessingStatus';
 import { EmptyState } from './EmptyState';
 import { useExport } from '@/hooks/useExport';
 import toast from 'react-hot-toast';
-import { exportSummaryTXT as exportSummaryTXTService, exportSummaryDOCX as exportSummaryDOCXService, exportSummaryJSON as exportSummaryJSONService, copyTocMarkdown as copyTocMarkdownService, exportBookDOCX as exportBookDOCXService, exportBookPDF as exportBookPDFService, exportOriginalsPDF as exportOriginalsPDFService, exportProjectResultsTableXLSX } from '@/services/export/projectExportService';
+import { exportSummaryTXT as exportSummaryTXTService, exportSummaryDOCX as exportSummaryDOCXService, exportSummaryJSON as exportSummaryJSONService, copyTocMarkdown as copyTocMarkdownService, exportBookDOCX as exportBookDOCXService, exportBookPDF as exportBookPDFService, exportProjectResultsTableXLSX } from '@/services/export/projectExportService';
 import { lazy, Suspense } from 'react';
 import { processWithTesseractOnly } from '@/services/ocr/ocrProcessingService';
 
@@ -142,15 +142,7 @@ export const ResultsSection: React.FC = () => {
     }
   };
 
-  const exportOriginalsPDF = async () => {
-    try {
-      await exportOriginalsPDFService(getActiveProjectResults());
-      toast.success('Original pages PDF exported');
-    } catch (e) {
-      console.error('Originals PDF export failed', e);
-      toast.error('Failed to export originals PDF');
-    }
-  };
+  // Originals PDF export removed per request
 
   const rerunAllLayoutOnly = async () => {
     const { files, results, settings, startProcessing, updateProgress, completeProcessing } = useOCRStore.getState();
@@ -288,7 +280,6 @@ export const ResultsSection: React.FC = () => {
             <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Export options">
               <button onClick={exportBookPDF} className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring" aria-label="Export PDF (text)">Export PDF</button>
               <button onClick={exportBookDOCX} className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring" aria-label="Export DOCX (text)">Export DOCX</button>
-              <button onClick={exportOriginalsPDF} className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring" aria-label="Export Originals PDF (images)">Originals PDF</button>
               <button onClick={exportAllResultsTable} className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring" aria-label="Export All OCR table as XLSX">Export Table</button>
             </div>
           </div>
