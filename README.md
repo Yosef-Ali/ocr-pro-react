@@ -118,12 +118,10 @@ Client-side state is hydrated from these tables on load. Creating projects, assi
 
 ## Performance Optimizations
 
-- Lazy loading of components
-- Image compression before processing
-- Debounced API calls
-- Caching with React Query
-- Optimistic UI updates
-- Virtual scrolling for large results
+- Lazy loading of settings modals and result tabs with `React.lazy` keeps the initial bundle focused on the core upload flow.
+- Debounced autosave and proofreading requests in the layout editor prevent unnecessary API calls while editing results.
+- The Zustand store persists OCR state locally and applies optimistic updates before syncing to the Cloudflare D1 backend, so uploads and edits stay responsive during network calls.
+- TIFF uploads are normalized and scaled before previewing, reducing memory pressure when working with large scans.
 
 ## Browser Support
 
