@@ -17,8 +17,8 @@ export const useExport = () => {
           if (options.includeMetadata) {
             content = `Language: ${result.detectedLanguage}\n` +
               `Confidence: ${(result.confidence * 100).toFixed(1)}%\n` +
-              `Document Type: ${result.documentType}\n\n` +
-              content;
+              `Document Type: ${result.documentType}\n\n${ 
+              content}`;
           }
           filename += '.txt';
           break;
@@ -154,7 +154,7 @@ ${row.join(',')}
             (r.metadata?.characterCount ?? '').toString(),
           ].join(','));
         }
-        const blob = new Blob([lines.join('\n') + '\n'], { type: 'text/csv' });
+        const blob = new Blob([`${lines.join('\n')  }\n`], { type: 'text/csv' });
         downloadBlob(blob, `ocr-results-${Date.now()}.csv`);
         notifications.success('Exported CSV');
         return;

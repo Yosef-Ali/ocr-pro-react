@@ -31,22 +31,22 @@
   .dark {
     --background: 224 71.4% 4.1%;
     --foreground: 210 20% 98%;
-    --card: 224 71.4% 4.1%;
+    --card: 224 71.4% 6%;
     --card-foreground: 210 20% 98%;
     --popover: 224 71.4% 4.1%;
     --popover-foreground: 210 20% 98%;
     --primary: 217.2 91.2% 59.8%;
     --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 222.2 47.4% 11.2%;
+    --secondary: 222.2 47.4% 15%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 222.2 47.4% 11.2%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 222.2 47.4% 11.2%;
+    --muted: 222.2 47.4% 15%;
+    --muted-foreground: 215 20.2% 70%;
+    --accent: 222.2 47.4% 15%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    --border: 217.2 32.6% 20%;
+    --input: 217.2 32.6% 20%;
     --ring: 224.3 76.3% 48%;
   }
 
@@ -59,6 +59,23 @@
 @layer components {
   .font-ethiopic {
     font-family: 'Noto Sans Ethiopic', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  }
+
+  /* Word highlight underline styles (confidence-based) */
+  /* Unified problem underline (single color) */
+  .highlight-high,
+  .highlight-medium,
+  .highlight-low,
+  .highlight-problem {
+    text-decoration: underline 2px wavy theme('colors.red.500');
+    text-underline-offset: 3px;
+  }
+
+  .dark .highlight-high,
+  .dark .highlight-medium,
+  .dark .highlight-low,
+  .dark .highlight-problem {
+    text-decoration-color: theme('colors.red.400');
   }
 
   /* Slightly stronger italics visibility for Ethiopic content */
@@ -75,6 +92,11 @@
     background: #f3f4f6;
     padding: 0 3px;
     border-radius: 3px;
+  }
+
+  .dark .font-ethiopic code {
+    background: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
   }
 
   .fade-in {
@@ -114,6 +136,25 @@
   .prose a {
     color: hsl(var(--primary));
     text-decoration: underline;
+  }
+
+  /* Improved text selection visibility in dark mode */
+  ::selection {
+    background-color: hsl(var(--primary) / 0.3);
+    color: hsl(var(--foreground));
+  }
+
+  .dark ::selection {
+    background-color: hsl(var(--primary) / 0.4);
+    color: hsl(var(--foreground));
+  }
+
+  /* Improved input focus styles for dark mode */
+  .dark input:focus,
+  .dark textarea:focus,
+  .dark select:focus {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
   }
 }
 

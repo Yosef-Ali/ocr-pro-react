@@ -684,8 +684,8 @@ export const useOCRStore = create<OCRState>()(
 
         assignFilesToProject: async (fileIds, projectId) => {
           const nextProjectId = projectId ?? null;
-          let affectedFiles: OCRFile[] = [];
-          let affectedResults: OCRResult[] = [];
+          const affectedFiles: OCRFile[] = [];
+          const affectedResults: OCRResult[] = [];
           set((state) => {
             const files = state.files.map(f => {
               if (!fileIds.includes(f.id)) return f;

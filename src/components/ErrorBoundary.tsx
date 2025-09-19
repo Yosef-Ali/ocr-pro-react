@@ -52,7 +52,7 @@ class ErrorBoundary extends Component<Props, State> {
                 </summary>
                 <pre className="mt-2 text-xs text-muted-foreground overflow-auto max-h-32">
                   {this.state.error.message}
-                  {this.state.error.stack && '\n\n' + this.state.error.stack}
+                  {this.state.error.stack && `\n\n${  this.state.error.stack}`}
                 </pre>
               </details>
             )}

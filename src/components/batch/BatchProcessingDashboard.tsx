@@ -35,7 +35,7 @@ export const BatchProcessingDashboard: React.FC<Props> = ({
 
   // Filter and sort documents
   const filteredDocuments = useMemo(() => {
-    let docs = batchResult.documents.filter(doc => {
+    const docs = batchResult.documents.filter(doc => {
       const matchesSearch = doc.fileName.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesGrade = filterGrade === 'all' || doc.grade === filterGrade;
       return matchesSearch && matchesGrade;

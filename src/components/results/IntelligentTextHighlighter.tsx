@@ -84,16 +84,8 @@ export const IntelligentTextHighlighter: React.FC<Props> = ({
     setMousePosition({ x: e.clientX, y: e.clientY });
   };
 
-  // Function to get confidence level styling
-  const getConfidenceStyle = (confidence: number) => {
-    if (confidence >= 0.8) {
-      return 'bg-green-100 border-green-300 text-green-800'; // High confidence - green
-    } else if (confidence >= 0.6) {
-      return 'bg-yellow-100 border-yellow-300 text-yellow-800'; // Medium confidence - yellow
-    } else {
-      return 'bg-red-100 border-red-300 text-red-800'; // Low confidence - red
-    }
-  };
+  // Map confidence to underline style classes
+  const getConfidenceStyle = () => 'highlight-problem';
 
   const getConfidenceIcon = (confidence: number) => {
     if (confidence >= 0.8) {
@@ -135,10 +127,7 @@ export const IntelligentTextHighlighter: React.FC<Props> = ({
       segments.push(
         <span
           key={`word-${index}`}
-          className={`relative inline-block cursor-pointer transition-all duration-200 ${isProblematic
-              ? `border-b-2 ${getConfidenceStyle(confidence)} hover:shadow-sm`
-              : 'hover:bg-accent'
-            }`}
+          className={`relative inline-block cursor-pointer transition-colors duration-150 ${isProblematic ? getConfidenceStyle() : 'hover:bg-accent/40'} `}
           onMouseEnter={() => isProblematic && setHoveredWord(analysis)}
           onMouseLeave={() => setHoveredWord(null)}
           onMouseMove={handleMouseMove}

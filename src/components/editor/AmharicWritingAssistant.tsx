@@ -510,7 +510,7 @@ async function analyzeGrammarAndStyle(text: string): Promise<Suggestion[]> {
         type: 'punctuation',
         severity: 'warning',
         original: trimmed,
-        suggestion: trimmed + '።',
+        suggestion: `${trimmed  }።`,
         reason: 'Amharic sentences should end with proper punctuation (።)',
         confidence: 0.8,
         position: { start: position - 1, end: position },

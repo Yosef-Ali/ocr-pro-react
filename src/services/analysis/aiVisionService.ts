@@ -396,7 +396,7 @@ async function performIntelligentTextCorrection(text: string) {
 
   return {
     correctedText: corrected,
-    corrections: corrections,
+    corrections,
     source: 'local' as any
   };
 }

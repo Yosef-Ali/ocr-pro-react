@@ -66,12 +66,12 @@ export function smartFormatToMarkdown(input: string): string {
     const short = (s: string, n = 40) => s && s.length <= n;
     const alreadyHeading = /^#{1,6}\s/.test(first);
     if (!alreadyHeading && short(first, 42)) {
-      collapsed[firstIdx] = '# ' + first.replace(/^#+\s*/, '');
+      collapsed[firstIdx] = `# ${  first.replace(/^#+\s*/, '')}`;
       if (short(nextNonEmpty, 60) && nextNonEmptyIdx !== -1) {
         const listLike = /^[-*+]\s|^\d+\.|^>\s/.test(nextNonEmpty);
         const isHeading = /^#{1,6}\s/.test(nextNonEmpty);
         if (!listLike && !isHeading) {
-          collapsed[nextNonEmptyIdx] = '## ' + nextNonEmpty.replace(/^#+\s*/, '');
+          collapsed[nextNonEmptyIdx] = `## ${  nextNonEmpty.replace(/^#+\s*/, '')}`;
         }
       }
     }

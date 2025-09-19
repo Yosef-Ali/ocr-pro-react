@@ -9,6 +9,8 @@ import { checkAvailableApiKeys } from '@/utils/validationUtils';
 import { getEdgeProgress } from '@/services/edge/edgeLLMService';
 
 import { SafeMarkdown } from './layout/SafeMarkdown';
+import { IntelligentTextHighlighter } from '@/components/results/IntelligentTextHighlighter';
+import { analyzeWordsWithConfidence } from '@/services/geminiService';
 import { DiffView } from './layout/DiffView';
 import { ToolbarButton } from './layout/Controls';
 import {
@@ -65,6 +67,8 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
   const [fontScale, setFontScale] = useState<number>(1);
   const [wrapEditor, setWrapEditor] = useState<boolean>(false);
   const [zen, setZen] = useState(false);
+  const [wordAnalysis, setWordAnalysis] = useState<any[]>([]);
+  const [proofSuggestions, setProofSuggestions] = useState<any[]>([]);
 
   // Load persisted preferences
   useEffect(() => {
@@ -113,6 +117,34 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
   const disableEditorInteractions = showAiOverlay;
 
   const [edgeProgress, setEdgeProgress] = useState(0);
+  // Lightweight debounced word-level analysis for highlighting (Amharic focus)
+  useEffect(() => {
+    if (!preview || !isEthiopic) {
+      setWordAnalysis([]);
+      setProofSuggestions([]);
+      return;
+    }
+    if (!settings?.apiKey) {
+      // Cannot call remote model; keep previous or empty
+      return;
+    }
+    const controller = { canceled: false };
+    const run = async () => {
+      try {
+        // Simple debounce via timeout
+        await new Promise(r => setTimeout(r, 400));
+        if (controller.canceled) return;
+        const res = await analyzeWordsWithConfidence(preview, settings);
+        if (controller.canceled) return;
+        setWordAnalysis(res.wordAnalysis || []);
+        setProofSuggestions(res.suggestions || []);
+      } catch (e) {
+        console.warn('Word analysis highlight failed:', e);
+      }
+    };
+    run();
+    return () => { controller.canceled = true; };
+  }, [preview, isEthiopic, settings]);
   useEffect(() => {
     if (!edgeEnabled) {
       setEdgeProgress(0);
@@ -797,6 +829,15 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
               dir="auto"
             >
               <SafeMarkdown content={preview} />
+              {isEthiopic ? (
+                <IntelligentTextHighlighter
+                  text={preview}
+                  wordAnalysis={wordAnalysis}
+                  suggestions={proofSuggestions}
+                />
+              ) : (
+                <SafeMarkdown content={preview} />
+              )}
             </div>
           ) : (
             <OriginalLayoutPanel fileName={currentFile?.name} dataUrl={currentFile?.preview || ''} />
@@ -810,7 +851,7 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full p-4">
             <div className="h-full">
-              <textarea value={draft} onChange={(e) => setDraft(e.target.value)} className={`w-full h-full p-3 border border-input rounded-xl font-mono bg-muted ${wrapEditor ? 'whitespace-pre-wrap break-words' : 'overflow-x-auto whitespace-pre'}`} style={{ fontSize: `${Math.round(14 * fontScale)}px`, lineHeight: 1.6 }} />
+              <textarea value={draft} onChange={(e) => setDraft(e.target.value)} className={`w-full h-full p-3 border border-input rounded-xl font-mono bg-muted text-foreground placeholder:text-muted-foreground ${wrapEditor ? 'whitespace-pre-wrap break-words' : 'overflow-x-auto whitespace-pre'}`} style={{ fontSize: `${Math.round(14 * fontScale)}px`, lineHeight: 1.6 }} />
             </div>
             <div className="h-full">
               <div className={`prose prose-slate dark:prose-invert max-w-none w-full h-full px-3 overflow-auto ${isEthiopic ? 'font-ethiopic' : ''}`} style={{ fontSize: `${Math.round(15 * fontScale)}px`, lineHeight: 1.7 }}>
@@ -886,7 +927,7 @@ const OriginalLayoutPanel: React.FC<{ fileName?: string; dataUrl: string }> = ({
 
     convertTiffToPng();
     return () => { canceled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [dataUrl, fileName]);
 
   const exportPdf = async () => {
@@ -918,7 +959,7 @@ const OriginalLayoutPanel: React.FC<{ fileName?: string; dataUrl: string }> = ({
     const offsetY = (pageH - renderH) / 2;
     const imgFormat = displayUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG';
     doc.addImage(displayUrl, imgFormat as any, offsetX, offsetY, renderW, renderH, undefined, 'FAST');
-    const name = (fileName || 'document').replace(/\.\w+$/, '') + '-original.pdf';
+    const name = `${(fileName || 'document').replace(/\.\w+$/, '')  }-original.pdf`;
     doc.save(name);
   };
 

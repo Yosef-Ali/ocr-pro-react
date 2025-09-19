@@ -59,7 +59,7 @@ Combined content begins:\n${combined}`;
 
   const result = await model.generateContent([prompt]);
   const response = await result.response;
-  let text = response.text();
+  const text = response.text();
 
   try {
     let parsed: any | null = null;
