@@ -153,3 +153,7 @@ MIT License - see LICENSE file for details
 ## Support
 
 For issues and questions, please open an issue on GitHub.
+
+## Automatic Deployment ✨
+
+This project now includes automatic deployment to Cloudflare Pages via GitHub Actions!
