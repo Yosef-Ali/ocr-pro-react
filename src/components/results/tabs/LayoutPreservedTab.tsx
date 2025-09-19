@@ -99,7 +99,6 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
 
   const preview = useMemo(() => draft, [draft]);
-  // Removed doc statistics (words/characters/etc) per UX request.
 
   const ETH_RE = /[\u1200-\u137F\u1380-\u139F\u2D80-\u2DDF]/;
   const isEthiopic = (result.detectedLanguage === 'am') || ETH_RE.test(preview);
@@ -362,7 +361,6 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
     return `AI review with ${apiStatus.hasGemini ? 'Gemini' : 'OpenRouter'} — propose changes for approval`;
   };
 
-  // Removed stat pills config per UX request.
 
   return (
     <div className="space-y-6">
@@ -403,7 +401,6 @@ export const LayoutPreservedTab: React.FC<Props> = ({ result }) => {
             )}
           </div>
         </div>
-        {/* Removed secondary stats card */}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 h-[72vh] min-h-[24rem]">
