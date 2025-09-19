@@ -385,14 +385,44 @@ export const useOCRStore = create<OCRState>()(
 
         removeFile: async (index) => {
           let targetFile: OCRFile | undefined;
+          let relatedResultIds: string[] = [];
+
           set((state) => {
             targetFile = state.files[index];
+            if (targetFile) {
+              relatedResultIds = state.results
+                .filter((result) => result.fileId === targetFile!.id)
+                .map((result) => result.id);
+            }
+
             return {
               files: state.files.filter((_, i) => i !== index),
             };
           });
-          if (targetFile) {
-            try { await apiDeleteFile(targetFile.id); } catch (error) { console.error('Failed to delete remote file', error); }
+
+          if (!targetFile) {
+            return;
+          }
+
+          let fileDeleteFailed = false;
+
+          try {
+            await apiDeleteFile(targetFile.id);
+          } catch (error) {
+            fileDeleteFailed = true;
+            console.error('Failed to delete remote file', error);
+          }
+
+          if (!fileDeleteFailed || relatedResultIds.length === 0) {
+            return;
+          }
+
+          for (const resultId of relatedResultIds) {
+            try {
+              await apiDeleteResult(resultId);
+            } catch (error) {
+              console.error('Failed to delete remote result', error);
+            }
           }
         },
 
