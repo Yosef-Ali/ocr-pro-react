@@ -23,7 +23,7 @@
 4. **View Results**
    - **Extracted Text**: Plain text output
    - **Layout Preserved**: Formatted text maintaining original structure
-   - **Document Analysis**: Statistics, confidence scores, and structure analysis
+  - **Document Analysis**: Statistics, confidence scores, and structural analysis
 
 5. **Export Results**
    - Copy to clipboard
