@@ -4,22 +4,54 @@
 
 export type HyphenateFn = (word: string) => string[];
 
-// Basic Amharic syllabic boundary heuristic: split between base + diacritic forms
-// This is simplistic and should be replaced when a proper pattern set is available.
-const amharicBoundary = /(?=[ሀ-ቍቐ-ኰኲ-ዐዑ-ዕዠ-ፚ])/; // broad Ethiopic range split lookahead
+// Enhanced Amharic syllabic boundary detection with better text flow
+// Split at syllable boundaries and respect word-internal structure
+const amharicSyllableBoundary = /(?=[ሀሁሂሃሄህሆለሉሊላሌልሎመሙሚማሜምሞሠሡሢሣሤሥሦረሩሪራሬርሮሰሱሲሳሴስሶሸሹሺሻሼሽሾበቡቢባቤብቦተቱቲታቴትቶቸቹቺቻቼችቾኘኙኚኛኜኝኞየዩዪያዬይዮዘዙዚዛዜዝዞደዱዲዳዴድዶ])/;
 
 function hyphenateAm(word: string): string[] {
-    if (word.length < 8) return [word];
-    // Avoid splitting very short or numeric tokens
-    if (/^[0-9]+$/.test(word)) return [word];
-    const pieces = word.split(amharicBoundary).filter(Boolean);
+    if (word.length < 6) return [word];
+    // Avoid splitting very short, numeric, or punctuation-heavy tokens
+    if (/^[0-9፣፤፥፦፧፨፩-፱]+$/.test(word)) return [word];
+    if (/^[፡፣፤፥፦፧፨፡።]+$/.test(word)) return [word];
+    
+    // Split at syllable boundaries
+    const pieces = word.split(amharicSyllableBoundary).filter(Boolean);
     if (pieces.length <= 1) return [word];
-    const out: string[] = [];
+    
+    // Group short syllables together for better readability
+    const grouped: string[] = [];
+    let current = '';
+    
     for (let i = 0; i < pieces.length; i++) {
-        const seg = pieces[i];
-        if (i < pieces.length - 1) out.push(seg + '-'); else out.push(seg);
+        const piece = pieces[i];
+        const candidate = current + piece;
+        
+        // If current segment is getting too long, flush it
+        if (current && candidate.length > 8) {
+            grouped.push(current);
+            current = piece;
+        } else {
+            current = candidate;
+        }
     }
-    return out;
+    
+    // Add the final segment
+    if (current) {
+        grouped.push(current);
+    }
+    
+    // Add hyphens to all but the last segment
+    const out: string[] = [];
+    for (let i = 0; i < grouped.length; i++) {
+        const seg = grouped[i];
+        if (i < grouped.length - 1 && seg.length > 2) {
+            out.push(seg + '-');
+        } else {
+            out.push(seg);
+        }
+    }
+    
+    return out.length > 1 ? out : [word];
 }
 
 // Placeholder for future TeX pattern integration

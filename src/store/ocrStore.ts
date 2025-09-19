@@ -137,6 +137,10 @@ export const useOCRStore = create<OCRState>()(
           pdfIncludeFooter: true,
           pdfTocPosition: 'end',
           bookIncludeCover: true,
+          // Enhanced Amharic text handling
+          amharicTextSpacing: 1.1, // Slightly increased letter spacing for Amharic
+          amharicLineHeight: 1.6,   // Better line height for complex scripts
+          preferAmharicFonts: true, // Use Ethiopic-optimized fonts when available
         },
 
         setCurrentUser: (user) => {

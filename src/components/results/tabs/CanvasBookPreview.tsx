@@ -28,6 +28,33 @@ const PAGE_DIMENSIONS: Record<'A4' | 'A5', { w: number; h: number }> = {
     A5: { w: 559, h: 794 },  // approx 148mm x 210mm
 };
 
+// Enhanced font configuration for better Amharic rendering
+const AMHARIC_FONTS = [
+    'Noto Sans Ethiopic',
+    'Abyssinica SIL',
+    'Nyala',
+    'Ebrima',
+    'Kefa',
+    'system-ui',
+    'sans-serif'
+];
+
+function getOptimalFont(lang: string, baseFamily: string): string {
+    if (lang && (lang.toLowerCase().startsWith('am') || lang.toLowerCase().startsWith('amh'))) {
+        return `${AMHARIC_FONTS.join(', ')}, ${baseFamily}`;
+    }
+    return baseFamily;
+}
+
+// Enhanced text measurement for Amharic characters
+function measureAmharicText(ctx: CanvasRenderingContext2D, text: string): number {
+    const metrics = ctx.measureText(text);
+    // Amharic characters can have complex shapes that extend beyond the normal metrics
+    // Add a small buffer for more accurate rendering
+    const hasAmharic = /[ሀ-፿ᎀ-᎟ⶀ-⷟]/.test(text);
+    return hasAmharic ? metrics.width * 1.02 : metrics.width;
+}
+
 export interface FlowLine { text: string; isTitle?: boolean; forceBreakAfter?: boolean; }
 
 // Naive hyphenation: if a single word exceeds width, break at approximate syllable boundaries (vowel-consonant) or every 6 chars
@@ -49,7 +76,8 @@ export function flowChaptersToLines(
     maxWidth: number,
     _baseLineHeight: number,
     titleScale: number,
-    hyphenateFn: (w: string) => string[] = hyphenateWord
+    hyphenateFn: (w: string) => string[] = hyphenateWord,
+    lang?: string
 ): FlowLine[] {
     const lines: FlowLine[] = [];
     const wrap = (raw: string, isTitle = false) => {
@@ -57,19 +85,19 @@ export function flowChaptersToLines(
         let current = '';
         const flushCurrent = () => { if (current) { lines.push({ text: current, isTitle }); current = ''; } };
         words.forEach(word => {
-            // If word itself is too long, hyphenate
-            if (ctx.measureText(word).width > maxWidth) {
+            // If word itself is too long, hyphenate (use enhanced measurement for Amharic)
+            if (measureAmharicText(ctx, word) > maxWidth) {
                 flushCurrent();
                 const parts = hyphenateFn(word);
                 parts.forEach((part) => {
                     const w = part;
-                    if (ctx.measureText(w).width > maxWidth) {
+                    if (measureAmharicText(ctx, w) > maxWidth) {
                         // emergency hard slice
                         for (let start = 0; start < w.length; start += 12) {
                             lines.push({ text: w.slice(start, start + 12) + (start + 12 < w.length ? '-' : ''), isTitle });
                         }
                     } else {
-                        if (ctx.measureText(w).width > maxWidth) {
+                        if (measureAmharicText(ctx, w) > maxWidth) {
                             lines.push({ text: w, isTitle });
                         } else {
                             lines.push({ text: w, isTitle });
@@ -79,7 +107,7 @@ export function flowChaptersToLines(
                 return;
             }
             const candidate = current ? `${current  } ${  word}` : word;
-            if (ctx.measureText(candidate).width > maxWidth && current) {
+            if (measureAmharicText(ctx, candidate) > maxWidth && current) {
                 lines.push({ text: current, isTitle });
                 current = word;
             } else {
@@ -132,20 +160,21 @@ export const CanvasBookPreview: React.FC<CanvasBookPreviewProps> = ({ pages, pag
         const scratch = document.createElement('canvas');
         const sctx = scratch.getContext('2d');
         if (!sctx) return;
-        sctx.font = `${fontSize}px ${family}`;
+        const optimalFamily = getOptimalFont(hyphenLang || 'en', family);
+        sctx.font = `${fontSize}px ${optimalFamily}`;
         const baseLineHeight = Math.round(fontSize * lineHeight);
         const hyphenator = getHyphenator(hyphenLang || 'en', hyphenateWord);
         const trackingHyphenator = (w: string) => {
             const parts = hyphenator(w);
             // Detect unresolved overflow candidates: if single part still exceeds max width
             if (debugEnabled && parts.length === 1) {
-                if (sctx.measureText(w).width > perColumnWidth) {
+                if (measureAmharicText(sctx, w) > perColumnWidth) {
                     overflowWordsRef.current.add(w);
                 }
             }
             return parts;
         };
-        let lines = flowChaptersToLines(pages, sctx, perColumnWidth, baseLineHeight, 1.35, trackingHyphenator);
+        let lines = flowChaptersToLines(pages, sctx, perColumnWidth, baseLineHeight, 1.35, trackingHyphenator, hyphenLang);
         // Widow/Orphan control (simple): if last page would end with a single line of a chapter after a blank spacer, pull one line from previous
         // This naive approach will scan for isolated single non-empty lines between blank lines and attempt to merge with previous by joining with space
         const adjusted: FlowLine[] = [];
@@ -183,7 +212,26 @@ export const CanvasBookPreview: React.FC<CanvasBookPreviewProps> = ({ pages, pag
             ctx.strokeStyle = '#e5e7eb';
             ctx.strokeRect(0.5, 0.5, dims.w - 1, dims.h - 1);
             ctx.fillStyle = '#111827';
-            ctx.font = `${fontSize}px ${family}`;
+            ctx.font = `${fontSize}px ${optimalFamily}`;
+            
+            // Enhanced text rendering for Amharic
+            ctx.textBaseline = 'top';
+            ctx.textAlign = 'left';
+            
+            // Improve text quality for complex scripts
+            if (typeof (ctx as any).fontKerning !== 'undefined') {
+                (ctx as any).fontKerning = 'normal';
+            }
+            if (typeof (ctx as any).textRendering !== 'undefined') {
+                (ctx as any).textRendering = 'optimizeLegibility';
+            }
+            
+            // Enhanced letter spacing for Amharic text
+            const hasAmharicContent = pages.some(p => /[\u1200-\u137f\u1380-\u139f\u2d80-\u2ddf]/.test(p.content));
+            if (hasAmharicContent && typeof (ctx as any).letterSpacing !== 'undefined') {
+                (ctx as any).letterSpacing = '0.5px';
+            }
+            
             y = padding;
             pageIndex++;
             canvases.push(page);
@@ -195,10 +243,10 @@ export const CanvasBookPreview: React.FC<CanvasBookPreviewProps> = ({ pages, pag
             if (!includeTOC || !toc || !toc.length || !ctx) return;
             const c = ctx;
             c.fillStyle = '#111827';
-            c.font = `600 ${Math.round(fontSize * 1.5)}px ${family}`;
+            c.font = `600 ${Math.round(fontSize * 1.5)}px ${optimalFamily}`;
             c.fillText('Table of Contents', padding, y);
             y += Math.round(baseLineHeight * 1.5);
-            c.font = `${fontSize}px ${family}`;
+            c.font = `${fontSize}px ${optimalFamily}`;
             const useTwoColTOC = pageSize === 'A4' && toc.length > 18; // heuristic threshold
             const tocColGap = 48;
             const tocColWidth = useTwoColTOC ? Math.floor(((dims.w - padding * 2) - tocColGap) / 2) : (dims.w - padding * 2);
@@ -216,14 +264,14 @@ export const CanvasBookPreview: React.FC<CanvasBookPreviewProps> = ({ pages, pag
                 y += baseLineHeight;
                 if (y + baseLineHeight + footerSpace > dims.h) {
                     c.fillStyle = '#6b7280';
-                    c.font = `500 ${Math.round(fontSize * 0.8)}px ${family}`;
+                    c.font = `500 ${Math.round(fontSize * 0.8)}px ${optimalFamily}`;
                     c.textAlign = 'center';
                     c.fillText(String(pageIndex), dims.w / 2, dims.h - padding);
                     c.textAlign = 'left';
                     newPage();
                     if (!ctx) return;
                     c.fillStyle = '#111827';
-                    c.font = `${fontSize}px ${family}`;
+                    c.font = `${fontSize}px ${optimalFamily}`;
                     colX = padding; tocCol = 0; y = padding + Math.round(baseLineHeight * 1.5); // reset top area
                 }
                 if (useTwoColTOC && idx < toc.length - 1 && y + baseLineHeight + footerSpace > dims.h - (baseLineHeight * 6)) {
@@ -247,7 +295,7 @@ export const CanvasBookPreview: React.FC<CanvasBookPreviewProps> = ({ pages, pag
             if (y + needed + footerSpace > dims.h) {
                 // footer before new page
                 ctx.fillStyle = '#6b7280';
-                ctx.font = `500 ${Math.round(fontSize * 0.8)}px ${family}`;
+                ctx.font = `500 ${Math.round(fontSize * 0.8)}px ${optimalFamily}`;
                 ctx.textAlign = 'center';
                 ctx.fillText(String(pageIndex), dims.w / 2, dims.h - padding);
                 ctx.textAlign = 'left';
@@ -256,7 +304,7 @@ export const CanvasBookPreview: React.FC<CanvasBookPreviewProps> = ({ pages, pag
                 col = 0;
             }
             ctx.fillStyle = line.isTitle ? '#111827' : '#1f2937';
-            ctx.font = line.isTitle ? `600 ${Math.round(fontSize * 1.25)}px ${family}` : `${fontSize}px ${family}`;
+            ctx.font = line.isTitle ? `600 ${Math.round(fontSize * 1.25)}px ${optimalFamily}` : `${fontSize}px ${optimalFamily}`;
             if (line.text) {
                 // Justification: apply only if single column or within column and not a title and not blank
                 const isLastLineOnPage = y + needed + footerSpace > dims.h;
@@ -265,7 +313,7 @@ export const CanvasBookPreview: React.FC<CanvasBookPreviewProps> = ({ pages, pag
                     // Attempt simple justification by spreading spaces
                     const wordsInLine = line.text.split(/\s+/);
                     if (wordsInLine.length > 1 && !isLastLineOnPage) {
-                        const rawWidth = ctx.measureText(line.text).width;
+                        const rawWidth = measureAmharicText(ctx, line.text);
                         const gapCount = wordsInLine.length - 1;
                         const extra = perColumnWidth - rawWidth;
                         if (extra > 20) { // threshold to avoid over-stretch
@@ -275,7 +323,7 @@ export const CanvasBookPreview: React.FC<CanvasBookPreviewProps> = ({ pages, pag
                                 if (!ctx) return;
                                 ctx.fillText(w, xCursor, y);
                                 if (wi < wordsInLine.length - 1) {
-                                    xCursor += ctx.measureText(`${w  } `).width + gapAdd;
+                                    xCursor += measureAmharicText(ctx, `${w  } `) + gapAdd;
                                 }
                             });
                         } else {
@@ -304,7 +352,7 @@ export const CanvasBookPreview: React.FC<CanvasBookPreviewProps> = ({ pages, pag
         if (ctx && page) {
             const c: CanvasRenderingContext2D = ctx; // prevent TS narrowing
             c.fillStyle = '#6b7280';
-            c.font = `500 ${Math.round(fontSize * 0.8)}px ${family}`;
+            c.font = `500 ${Math.round(fontSize * 0.8)}px ${optimalFamily}`;
             c.textAlign = 'center';
             c.fillText(String(pageIndex), dims.w / 2, dims.h - padding);
             c.textAlign = 'left';

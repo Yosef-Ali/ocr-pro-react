@@ -143,6 +143,10 @@ export interface Settings {
   openRouterModel?: string; // e.g., 'google/gemini-1.5-flash' or 'openai/gpt-4o-mini'
   fallbackToOpenRouter?: boolean; // use on Gemini errors
   preferOpenRouterForProofreading?: boolean; // force OpenRouter for proofreading
+  // Enhanced Amharic text handling
+  amharicTextSpacing?: number; // Letter spacing multiplier for Amharic (default 1.1)
+  amharicLineHeight?: number;  // Line height multiplier for complex scripts (default 1.6)
+  preferAmharicFonts?: boolean; // Use Ethiopic-optimized fonts when available
 }
 
 export type ProcessingStatus =
