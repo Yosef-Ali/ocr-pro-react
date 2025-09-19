@@ -29,25 +29,25 @@ function makeResult(partial: Partial<OCRResult> = {}): OCRResult {
 }
 
 describe('BaseTab', () => {
-    it('shows low confidence warning when below FAIR', () => {
+    it('renders without confidence warning banner for fair scores', () => {
         const res = makeResult({ confidence: 0.55 }); // below FAIR=0.6
         render(
             <BaseTab result={res}>
                 <div>child</div>
             </BaseTab>
         );
-        expect(screen.getByText(/Low Confidence/i)).toBeInTheDocument();
-        expect(screen.getByText(/Confidence Level/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Low Confidence/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Confidence Level/i)).not.toBeInTheDocument();
     });
 
-    it('shows very low confidence warning when below LOW', () => {
+    it('does not show very low confidence banner for low scores', () => {
         const res = makeResult({ confidence: 0.4 }); // below LOW=0.5
         render(
             <BaseTab result={res}>
                 <div>child</div>
             </BaseTab>
         );
-        expect(screen.getByText(/Very Low Confidence/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Very Low Confidence/i)).not.toBeInTheDocument();
     });
 
     it('renders Amharic indicator when Ethiopic script detected', () => {
