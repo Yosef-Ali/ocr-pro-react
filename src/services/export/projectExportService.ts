@@ -208,7 +208,7 @@ export async function createBookPdfBlob(summary: ProjectSummary, settings: Setti
     const setFontForText = async (text: string, bold = false) => {
         if (text && needsEthiopicFont(text)) {
             await ensureEthiopicFont(doc);
-            const fontList = (doc.getFontList?.() as Record<string, Record<string, string>>) || {};
+            const fontList = (doc.getFontList?.() as unknown as Record<string, Record<string, string>>) || {};
             const ethiopicStyles = fontList.NotoSansEthiopic || {};
             if (bold && ethiopicStyles.bold) {
                 doc.setFont('NotoSansEthiopic', 'bold');
