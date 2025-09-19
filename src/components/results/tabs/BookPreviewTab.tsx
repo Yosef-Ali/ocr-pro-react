@@ -1,11 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FileText, Loader2, Sparkles, RefreshCcw, AlertTriangle, Monitor, LayoutGrid } from 'lucide-react';
+import { FileText, Loader2, Sparkles, RefreshCcw, AlertTriangle, Monitor, LayoutGrid, CloudDownload } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { useOCRStore } from '@/store/ocrStore';
 import { ProjectSummary, OCRResult } from '@/types';
 import { buildFallbackSummary, createBookPdfBlob } from '@/services/export/projectExportService';
 import { cn } from '@/utils/cn';
+import { fetchResults } from '@/services/api/results';
+import { fetchProjectSummary } from '@/services/api/projects';
+import { mapRemoteResult, mapRemoteSummary } from '@/services/api/transformers';
 
 const MIN_RESULTS_FOR_BOOK = 1;
 
@@ -21,6 +24,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
     settings,
     setProjectSummary,
     isProcessing,
+    currentUser,
   } = useOCRStore();
 
   const [loading, setLoading] = useState(false);
@@ -28,8 +32,19 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [viewMode, setViewMode] = useState<'pdf' | 'pages'>('pdf');
+  const [remoteResults, setRemoteResults] = useState<OCRResult[]>([]);
+  const [remoteSummary, setRemoteSummary] = useState<ProjectSummary | null>(null);
+  const [hydratingRemote, setHydratingRemote] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [remoteError, setRemoteError] = useState<string | null>(null);
 
   const scopedProjectId = currentProjectId || result.projectId || 'all';
+
+  useEffect(() => {
+    setRemoteResults((prev) => (prev.length ? [] : prev));
+    setRemoteSummary((prev) => (prev ? null : prev));
+    setRemoteError(null);
+  }, [scopedProjectId]);
 
   const projectResults = useMemo(() => {
     const scoped = currentProjectId
@@ -38,19 +53,29 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
     return scoped.length ? scoped : results;
   }, [results, currentProjectId]);
 
+  const effectiveResults = useMemo(() => {
+    const base = projectResults.length ? projectResults : remoteResults.length ? remoteResults : [];
+    if (!result) return base.length ? base : [];
+    if (base.length === 0) return [result];
+    const alreadyPresent = base.some((entry) => entry.id === result.id || entry.fileId === result.fileId);
+    return alreadyPresent ? base : [...base, result];
+  }, [projectResults, remoteResults, result]);
+
   const activeSummary: ProjectSummary | undefined = useMemo(() => {
     const summary = currentProjectId ? projectSummaries[currentProjectId] : projectSummaries['all'];
     return summary;
   }, [projectSummaries, currentProjectId]);
 
+  const effectiveSummary: ProjectSummary | undefined = activeSummary ?? remoteSummary ?? undefined;
+
   const summaryForPages = useMemo(() => {
-    if (activeSummary) return activeSummary;
-    if (!projectResults.length) return undefined;
-    return buildFallbackSummary(scopedProjectId, projectResults);
-  }, [activeSummary, projectResults, scopedProjectId]);
+    if (effectiveSummary) return effectiveSummary;
+    if (!effectiveResults.length) return undefined;
+    return buildFallbackSummary(scopedProjectId, effectiveResults);
+  }, [effectiveSummary, effectiveResults, scopedProjectId]);
 
   const perPagePreviews = useMemo(() => {
-    if (!projectResults.length) return [] as Array<{
+    if (!effectiveResults.length) return [] as Array<{
       id: string;
       title: string;
       subtitle: string;
@@ -59,7 +84,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
       confidence?: number;
     }>;
 
-    return projectResults.map((res, idx) => {
+    return effectiveResults.map((res, idx) => {
       const chapter = summaryForPages?.chapters?.[idx];
       const title = chapter?.title || summaryForPages?.toc?.[idx]?.title || `Page ${idx + 1}`;
       const content = (chapter?.content || res.layoutPreserved || res.extractedText || '').trim();
@@ -80,13 +105,14 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
   }, [projectResults, summaryForPages]);
 
   const ensureSummary = useCallback(async () => {
-    if (activeSummary) return activeSummary;
-    if (!projectResults.length) {
+    const existing = activeSummary ?? remoteSummary ?? undefined;
+    if (existing) return existing;
+    if (!effectiveResults.length) {
       toast('No OCR results available for preview');
       return undefined;
     }
 
-    const fallback = buildFallbackSummary(scopedProjectId, projectResults);
+    const fallback = buildFallbackSummary(scopedProjectId, effectiveResults);
 
     if (!settings.apiKey) {
       toast('Using layout-preserved text to build preview (no Gemini key found).');
@@ -97,7 +123,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
     try {
       toast.loading('Summarizing project for book preview…', { id: 'book-summary' });
       const { summarizeProject } = await import('@/services/geminiService');
-      const summary = await summarizeProject(projectResults, settings, {
+      const summary = await summarizeProject(effectiveResults, settings, {
         proofreadPageNumbers: true,
         projectId: scopedProjectId,
       });
@@ -110,7 +136,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
       await setProjectSummary(fallback);
       return fallback;
     }
-  }, [activeSummary, projectResults, settings, scopedProjectId, setProjectSummary]);
+  }, [activeSummary, effectiveResults, remoteSummary, settings, scopedProjectId, setProjectSummary]);
 
   useEffect(() => {
     return () => {
@@ -119,7 +145,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
   }, [pdfUrl]);
 
   const generatePreview = useCallback(async () => {
-    if (!projectResults.length) {
+    if (!effectiveResults.length) {
       setError('Run OCR on at least one document to generate a preview.');
       return;
     }
@@ -131,7 +157,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
     setLoading(true);
     setError(null);
     try {
-      const blob = await createBookPdfBlob(summary, settings, projectResults);
+      const blob = await createBookPdfBlob(summary, settings, effectiveResults);
       if (!blob) throw new Error('No PDF generated');
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
       const url = URL.createObjectURL(blob);
@@ -144,19 +170,69 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
     } finally {
       setLoading(false);
     }
-  }, [ensureSummary, pdfUrl, projectResults, settings]);
+  }, [effectiveResults, ensureSummary, pdfUrl, settings]);
 
   useEffect(() => {
-    if (!pdfUrl && projectResults.length >= MIN_RESULTS_FOR_BOOK && activeSummary && !isProcessing) {
+    if (!pdfUrl && effectiveResults.length >= MIN_RESULTS_FOR_BOOK && !isProcessing) {
       generatePreview().catch(() => { });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSummary, projectResults.length, isProcessing]);
+  }, [effectiveResults.length, isProcessing]);
 
-  const needsMoreResults = projectResults.length < MIN_RESULTS_FOR_BOOK;
+  useEffect(() => {
+    if (projectResults.length || remoteResults.length || hydratingRemote) return;
+    const projectIdForFetch = currentProjectId ?? result.projectId ?? null;
+    if (!projectIdForFetch) return;
+    if (!currentUser) return;
+
+    let keepAlive = true;
+    setHydratingRemote(true);
+    setRemoteError(null);
+    fetchResults({ projectId: projectIdForFetch }).then((remote) => {
+      if (!keepAlive) return;
+      const mapped = remote.map((item) => mapRemoteResult(item));
+      setRemoteResults(mapped);
+    }).catch((err: any) => {
+      console.error('Failed to hydrate project results for preview', err);
+      if (!keepAlive) return;
+      setRemoteError('Could not load project results from the server.');
+    }).finally(() => {
+      if (!keepAlive) return;
+      setHydratingRemote(false);
+    });
+
+    return () => { keepAlive = false; };
+  }, [currentProjectId, currentUser, hydratingRemote, projectResults.length, remoteResults.length, result.projectId]);
+
+  useEffect(() => {
+    if (effectiveSummary || summaryLoading) return;
+    const projectIdForSummary = currentProjectId ?? result.projectId ?? null;
+    if (!projectIdForSummary) return;
+    if (!currentUser) return;
+
+    let keepAlive = true;
+    setSummaryLoading(true);
+    fetchProjectSummary(projectIdForSummary)
+      .then((remote) => {
+        if (!keepAlive || !remote) return;
+        setRemoteSummary(mapRemoteSummary(remote));
+      })
+      .catch((err) => {
+        if (!keepAlive) return;
+        console.warn('Unable to hydrate project summary for preview', err);
+      })
+      .finally(() => {
+        if (!keepAlive) return;
+        setSummaryLoading(false);
+      });
+
+    return () => { keepAlive = false; };
+  }, [currentProjectId, currentUser, effectiveSummary, result.projectId, summaryLoading]);
+
+  const needsMoreResults = effectiveResults.length < MIN_RESULTS_FOR_BOOK;
 
   const renderPageMode = () => {
-    if (!projectResults.length) {
+    if (!effectiveResults.length) {
       return (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted p-10 text-center text-sm text-muted-foreground">
           <Monitor className="mb-3 h-8 w-8 text-primary" />
@@ -205,6 +281,16 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
               <p className="text-sm text-muted-foreground">
                 Review the compiled PDF using the layout preserved text for the current project.
               </p>
+              {hydratingRemote && (
+                <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Loading saved pages…
+                </p>
+              )}
+              {summaryLoading && !hydratingRemote && (
+                <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Loading saved summary…
+                </p>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -272,6 +358,13 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
         <p className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           <AlertTriangle className="mt-0.5 h-4 w-4" />
           {error}
+        </p>
+      )}
+
+      {remoteError && (
+        <p className="flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+          <CloudDownload className="mt-0.5 h-4 w-4" />
+          {remoteError}
         </p>
       )}
 
