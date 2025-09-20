@@ -238,31 +238,71 @@ export const CanvasBookPreview: React.FC<CanvasBookPreviewProps> = ({ pages, pag
             return true;
         };
 
-        // If including TOC, render it first
+        // Enhanced TOC rendering for mixed Amharic/English content
         const renderTOC = () => {
             if (!includeTOC || !toc || !toc.length || !ctx) return;
             const c = ctx;
             c.fillStyle = '#111827';
             c.font = `600 ${Math.round(fontSize * 1.5)}px ${optimalFamily}`;
+            
+            // Check if content has Amharic text
+            const hasAmharicInTOC = toc.some(entry => /[\u1200-\u137f\u1380-\u139f\u2d80-\u2ddf]/.test(entry.title));
+            const tocLineHeight = hasAmharicInTOC ? Math.round(baseLineHeight * 1.4) : baseLineHeight;
+            
             c.fillText('Table of Contents', padding, y);
-            y += Math.round(baseLineHeight * 1.5);
+            y += Math.round(baseLineHeight * 1.8); // Extra space after title
             c.font = `${fontSize}px ${optimalFamily}`;
-            const useTwoColTOC = pageSize === 'A4' && toc.length > 18; // heuristic threshold
+            
+            const useTwoColTOC = pageSize === 'A4' && toc.length > 18;
             const tocColGap = 48;
             const tocColWidth = useTwoColTOC ? Math.floor(((dims.w - padding * 2) - tocColGap) / 2) : (dims.w - padding * 2);
             let colX = padding;
             let tocCol = 0;
+            
             toc.forEach((entry, idx) => {
                 if (!c) return;
-                const label = entry.title.length > 80 ? `${entry.title.slice(0, 77)  }…` : entry.title;
+                
+                // Enhanced title truncation for mixed scripts
+                let label = entry.title;
+                if (label.length > 60) { // Shorter for better readability
+                    label = `${label.slice(0, 57)}…`;
+                }
+                
                 const pageStr = String(entry.page + 1);
-                const base = `${label  } `;
-                let dots = '';
-                const maxTextWidth = tocColWidth - 80;
-                while (c.measureText(base + dots + pageStr).width < maxTextWidth) dots += '.';
-                c.fillText(base + dots + pageStr, colX, y);
-                y += baseLineHeight;
-                if (y + baseLineHeight + footerSpace > dims.h) {
+                const hasAmharicInTitle = /[\u1200-\u137f\u1380-\u139f\u2d80-\u2ddf]/.test(label);
+                
+                // Better spacing and alignment for mixed content
+                const leftMargin = colX + (hasAmharicInTitle ? 8 : 0); // Extra margin for Amharic
+                
+                // Measure text with enhanced measurement for Amharic
+                const textWidth = measureAmharicText(c, label);
+                
+                // Position text and page number with better alignment
+                c.textAlign = 'left';
+                c.fillText(label, leftMargin, y);
+                
+                // Draw leader dots with appropriate spacing
+                const dotStart = leftMargin + textWidth + 8;
+                const dotEnd = colX + tocColWidth - measureAmharicText(c, pageStr) - 8;
+                const dotSpacing = hasAmharicInTitle ? 8 : 6; // More space for Amharic
+                
+                if (dotEnd > dotStart) {
+                    c.fillStyle = '#666666'; // Lighter dots
+                    for (let dotX = dotStart; dotX < dotEnd; dotX += dotSpacing) {
+                        c.fillText('·', dotX, y); // Use middle dot instead of period
+                    }
+                    c.fillStyle = '#111827'; // Reset to text color
+                }
+                
+                // Right-align page number
+                c.textAlign = 'right';
+                c.fillText(pageStr, colX + tocColWidth, y);
+                c.textAlign = 'left'; // Reset alignment
+                
+                y += tocLineHeight;
+                
+                // Enhanced page break and column handling
+                if (y + tocLineHeight + footerSpace > dims.h) {
                     c.fillStyle = '#6b7280';
                     c.font = `500 ${Math.round(fontSize * 0.8)}px ${optimalFamily}`;
                     c.textAlign = 'center';
@@ -272,25 +312,35 @@ export const CanvasBookPreview: React.FC<CanvasBookPreviewProps> = ({ pages, pag
                     if (!ctx) return;
                     c.fillStyle = '#111827';
                     c.font = `${fontSize}px ${optimalFamily}`;
-                    colX = padding; tocCol = 0; y = padding + Math.round(baseLineHeight * 1.5); // reset top area
+                    colX = padding; 
+                    tocCol = 0; 
+                    y = padding + Math.round(baseLineHeight * 1.8); // Extra space at top
                 }
-                if (useTwoColTOC && idx < toc.length - 1 && y + baseLineHeight + footerSpace > dims.h - (baseLineHeight * 6)) {
-                    // Switch column early to balance
+                
+                // Enhanced two-column layout with better spacing
+                if (useTwoColTOC && idx < toc.length - 1 && y + (tocLineHeight * 2) > dims.h - footerSpace) {
                     if (tocCol === 0) {
                         tocCol = 1;
                         colX = padding + tocColWidth + tocColGap;
-                        y = padding + Math.round(baseLineHeight * 1.5);
+                        y = padding + Math.round(baseLineHeight * 1.8);
                     }
                 }
             });
-            y += baseLineHeight;
+            
+            // Add extra spacing after TOC
+            y += Math.round(baseLineHeight * 1.2);
         };
 
         newPage();
         renderTOC();
         lines.forEach(line => {
             if (!ctx || !page) return;
-            const needed = baseLineHeight;
+            
+            // Enhanced line height calculation for Amharic content
+            const hasAmharicInLine = line.text && /[\u1200-\u137f\u1380-\u139f\u2d80-\u2ddf]/.test(line.text);
+            const needed = hasAmharicInLine ? Math.round(baseLineHeight * 1.3) : baseLineHeight;
+            const extraSpacing = line.isTitle && hasAmharicInLine ? Math.round(baseLineHeight * 0.2) : 0;
+            
             const colXBase = padding + (col * (perColumnWidth + (columns === 2 ? columnGap : 0)));
             if (y + needed + footerSpace > dims.h) {
                 // footer before new page
@@ -303,13 +353,24 @@ export const CanvasBookPreview: React.FC<CanvasBookPreviewProps> = ({ pages, pag
                 if (!ctx) return;
                 col = 0;
             }
+            
+            // Enhanced font and styling for Amharic content
             ctx.fillStyle = line.isTitle ? '#111827' : '#1f2937';
-            ctx.font = line.isTitle ? `600 ${Math.round(fontSize * 1.25)}px ${optimalFamily}` : `${fontSize}px ${optimalFamily}`;
+            const titleFont = line.isTitle ? `600 ${Math.round(fontSize * 1.25)}px ${optimalFamily}` : `${fontSize}px ${optimalFamily}`;
+            ctx.font = titleFont;
+            
+            // Add extra letter spacing for Amharic titles
+            if (line.isTitle && hasAmharicInLine && typeof (ctx as any).letterSpacing !== 'undefined') {
+                (ctx as any).letterSpacing = '1px';
+            }
+            
             if (line.text) {
-                // Justification: apply only if single column or within column and not a title and not blank
+                // Enhanced justification handling - avoid justification for Amharic text
                 const isLastLineOnPage = y + needed + footerSpace > dims.h;
                 const isParagraphBreak = line.text.trim() === '';
-                if (!line.isTitle && !isParagraphBreak && columns === 1 && ctx) {
+                const shouldJustify = !line.isTitle && !isParagraphBreak && columns === 1 && !hasAmharicInLine;
+                
+                if (shouldJustify && ctx) {
                     // Attempt simple justification by spreading spaces
                     const wordsInLine = line.text.split(/\s+/);
                     if (wordsInLine.length > 1 && !isLastLineOnPage) {
@@ -333,10 +394,18 @@ export const CanvasBookPreview: React.FC<CanvasBookPreviewProps> = ({ pages, pag
                         ctx.fillText(line.text, colXBase, y);
                     }
                 } else {
-                    ctx.fillText(line.text, colXBase, y);
+                    // Enhanced positioning for Amharic content
+                    const xPos = hasAmharicInLine ? colXBase + 2 : colXBase; // Slight offset for Amharic
+                    ctx.fillText(line.text, xPos, y);
+                }
+                
+                // Reset letter spacing after each line
+                if (typeof (ctx as any).letterSpacing !== 'undefined') {
+                    (ctx as any).letterSpacing = hasAmharicInLine ? '0.5px' : 'normal';
                 }
             }
-            y += needed;
+            
+            y += needed + extraSpacing;
 
             // Column flow
             if (columns === 2 && y + needed + footerSpace > dims.h) {
