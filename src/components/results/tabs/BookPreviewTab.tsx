@@ -1,5 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { FileText, Loader2, Sparkles, AlertTriangle, Monitor, Settings2 } from 'lucide-react';
+import { 
+  FileText, 
+  Loader2, 
+  Sparkles, 
+  AlertTriangle, 
+  Monitor, 
+  Settings2, 
+  Type, 
+  AlignLeft, 
+  AlignCenter, 
+  AlignRight, 
+  AlignJustify,
+  FileDown,
+  FileText as FileTextIcon,
+  File,
+  Globe
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -564,11 +580,14 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
             
             <DrawerBody>
               {/* Typography Controls */}
-              <div className="space-y-4 mb-6">
-                <h3 className="text-sm font-semibold text-foreground/80 border-b pb-2">Typography</h3>
+              <div className="space-y-3 mb-5">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground/80 border-b pb-2">
+                  <Type className="h-4 w-4" />
+                  Typography
+                </div>
                 
                 {/* Font Family */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="fontFamily">Font Family</Label>
                   <Select 
                     id="fontFamily"
@@ -582,7 +601,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                 </div>
                 
                 {/* Font Size */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="fontSize">Font Size: {fontSize}px</Label>
                   <div className="flex items-center gap-3">
                     <Slider
@@ -606,7 +625,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                 </div>
                 
                 {/* Line Height */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="lineHeight">Line Height: {lineHeight.toFixed(1)}</Label>
                   <Slider
                     id="lineHeight"
@@ -619,35 +638,43 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                 </div>
                 
                 {/* Text Alignment */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label>Text Alignment</Label>
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       variant={textAlign === 'left' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setTextAlign('left')}
+                      className="flex items-center gap-1.5"
                     >
+                      <AlignLeft className="h-3.5 w-3.5" />
                       Left
                     </Button>
                     <Button
                       variant={textAlign === 'center' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setTextAlign('center')}
+                      className="flex items-center gap-1.5"
                     >
+                      <AlignCenter className="h-3.5 w-3.5" />
                       Center
                     </Button>
                     <Button
                       variant={textAlign === 'right' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setTextAlign('right')}
+                      className="flex items-center gap-1.5"
                     >
+                      <AlignRight className="h-3.5 w-3.5" />
                       Right
                     </Button>
                     <Button
                       variant={textAlign === 'justify' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setTextAlign('justify')}
+                      className="flex items-center gap-1.5"
                     >
+                      <AlignJustify className="h-3.5 w-3.5" />
                       Justify
                     </Button>
                   </div>
@@ -655,11 +682,14 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
               </div>
               
               {/* Layout Options */}
-              <div className="space-y-4 mb-6">
-                <h3 className="text-sm font-semibold text-foreground/80 border-b pb-2">Layout</h3>
+              <div className="space-y-3 mb-5">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground/80 border-b pb-2">
+                  <FileText className="h-4 w-4" />
+                  Layout
+                </div>
                 
                 {/* Page Size */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="pageSize">Page Size</Label>
                   <Select 
                     id="pageSize"
@@ -672,7 +702,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                 </div>
                 
                 {/* Margin */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="margin">Page Margin: {margin}px</Label>
                   <Slider
                     id="margin"
@@ -687,19 +717,26 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
               
               {/* Export Options */}
               <div className="space-y-4 pt-4 border-t">
-                <h3 className="text-sm font-semibold text-foreground/80">Export Options</h3>
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground/80">
+                  <FileDown className="h-4 w-4" />
+                  Export Options
+                </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button onClick={handleExportPDF} size="sm" variant="outline">
-                    Export PDF
+                  <Button onClick={handleExportPDF} size="sm" variant="outline" className="flex items-center gap-1.5">
+                    <FileDown className="h-3.5 w-3.5" />
+                    PDF
                   </Button>
-                  <Button onClick={handleExportDOCX} size="sm" variant="outline">
-                    Export DOCX
+                  <Button onClick={handleExportDOCX} size="sm" variant="outline" className="flex items-center gap-1.5">
+                    <FileTextIcon className="h-3.5 w-3.5" />
+                    DOCX
                   </Button>
-                  <Button onClick={handleExportTXT} size="sm" variant="outline">
-                    Export TXT
+                  <Button onClick={handleExportTXT} size="sm" variant="outline" className="flex items-center gap-1.5">
+                    <File className="h-3.5 w-3.5" />
+                    TXT
                   </Button>
-                  <Button onClick={handleExportHTML} size="sm" variant="outline">
-                    Export HTML
+                  <Button onClick={handleExportHTML} size="sm" variant="outline" className="flex items-center gap-1.5">
+                    <Globe className="h-3.5 w-3.5" />
+                    HTML
                   </Button>
                 </div>
               </div>

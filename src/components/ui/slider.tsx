@@ -28,11 +28,11 @@ export const Slider = React.forwardRef<HTMLInputElement, SliderProps>(
           value={value[0]}
           onChange={handleChange}
           className={`
-            w-full h-2 appearance-none cursor-pointer bg-transparent
-            [&::-webkit-slider-track]:w-full [&::-webkit-slider-track]:h-2 [&::-webkit-slider-track]:rounded-full [&::-webkit-slider-track]:bg-secondary
-            [&::-moz-range-track]:w-full [&::-moz-range-track]:h-2 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-secondary
-            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:hover:scale-110
-            [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-sm [&::-moz-range-thumb]:transition-all [&::-moz-range-thumb]:hover:scale-110
+            w-full h-1 appearance-none cursor-pointer bg-transparent
+            [&::-webkit-slider-track]:w-full [&::-webkit-slider-track]:h-1 [&::-webkit-slider-track]:rounded-full [&::-webkit-slider-track]:bg-secondary/60
+            [&::-moz-range-track]:w-full [&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-secondary/60
+            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:hover:scale-125 [&::-webkit-slider-thumb]:hover:shadow-lg
+            [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:transition-all [&::-moz-range-thumb]:hover:scale-125 [&::-moz-range-thumb]:hover:shadow-lg
             focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background
             disabled:pointer-events-none disabled:opacity-50
             ${className}
@@ -41,7 +41,7 @@ export const Slider = React.forwardRef<HTMLInputElement, SliderProps>(
         />
         {/* Progress fill indicator */}
         <div
-          className="absolute left-0 top-1/2 h-2 -translate-y-1/2 rounded-l-full bg-primary pointer-events-none"
+          className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-l-full bg-primary pointer-events-none transition-all duration-200"
           style={{ width: `${percentage}%` }}
         />
       </div>
