@@ -525,12 +525,12 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
       )}
 
       {error && (
-        <Card className="border-red-200 bg-red-50 text-red-700">
+        <Card className="border-destructive/50 bg-destructive/10">
           <CardContent className="flex items-start gap-3 p-4">
-            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-destructive" />
             <div>
-              <p className="font-medium">Preview Error</p>
-              <p className="text-sm">{error}</p>
+              <p className="font-medium text-destructive">Preview Error</p>
+              <p className="text-sm text-destructive/80">{error}</p>
             </div>
           </CardContent>
         </Card>
@@ -580,19 +580,20 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
             
             <DrawerBody>
               {/* Typography Controls */}
-              <div className="space-y-3 mb-5">
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground/80 border-b pb-2">
+              <div className="space-y-4 mb-6">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground border-b border-border/40 pb-3">
                   <Type className="h-4 w-4" />
                   Typography
                 </div>
                 
                 {/* Font Family */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="fontFamily">Font Family</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="fontFamily" className="text-sm font-medium">Font Family</Label>
                   <Select 
                     id="fontFamily"
                     value={fontFamily} 
                     onChange={(e) => setFontFamily(e.target.value)}
+                    className="bg-background border-border/60"
                   >
                     <option value="sans-serif">Sans Serif</option>
                     <option value="serif">Serif</option>
@@ -601,8 +602,8 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                 </div>
                 
                 {/* Font Size */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="fontSize">Font Size: {fontSize}px</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="fontSize" className="text-sm font-medium">Font Size: {fontSize}px</Label>
                   <div className="flex items-center gap-3">
                     <Slider
                       id="fontSize"
@@ -619,14 +620,14 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                       max={32}
                       value={fontSize}
                       onChange={(e) => setFontSize(Number(e.target.value) || 14)}
-                      className="w-16"
+                      className="w-16 h-9 bg-background border-border/60"
                     />
                   </div>
                 </div>
                 
                 {/* Line Height */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="lineHeight">Line Height: {lineHeight.toFixed(1)}</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="lineHeight" className="text-sm font-medium">Line Height: {lineHeight.toFixed(1)}</Label>
                   <Slider
                     id="lineHeight"
                     min={1}
@@ -638,14 +639,14 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                 </div>
                 
                 {/* Text Alignment */}
-                <div className="space-y-1.5">
-                  <Label>Text Alignment</Label>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Text Alignment</Label>
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       variant={textAlign === 'left' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setTextAlign('left')}
-                      className="flex items-center gap-1.5"
+                      className="flex items-center gap-1.5 h-9"
                     >
                       <AlignLeft className="h-3.5 w-3.5" />
                       Left
@@ -654,7 +655,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                       variant={textAlign === 'center' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setTextAlign('center')}
-                      className="flex items-center gap-1.5"
+                      className="flex items-center gap-1.5 h-9"
                     >
                       <AlignCenter className="h-3.5 w-3.5" />
                       Center
@@ -663,7 +664,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                       variant={textAlign === 'right' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setTextAlign('right')}
-                      className="flex items-center gap-1.5"
+                      className="flex items-center gap-1.5 h-9"
                     >
                       <AlignRight className="h-3.5 w-3.5" />
                       Right
@@ -672,7 +673,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                       variant={textAlign === 'justify' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setTextAlign('justify')}
-                      className="flex items-center gap-1.5"
+                      className="flex items-center gap-1.5 h-9"
                     >
                       <AlignJustify className="h-3.5 w-3.5" />
                       Justify
@@ -682,19 +683,20 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
               </div>
               
               {/* Layout Options */}
-              <div className="space-y-3 mb-5">
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground/80 border-b pb-2">
+              <div className="space-y-4 mb-6">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground border-b border-border/40 pb-3">
                   <FileText className="h-4 w-4" />
                   Layout
                 </div>
                 
                 {/* Page Size */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="pageSize">Page Size</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="pageSize" className="text-sm font-medium">Page Size</Label>
                   <Select 
                     id="pageSize"
                     value={pageSize} 
                     onChange={(e) => setPageSize(e.target.value as 'A4' | 'A5')}
+                    className="bg-background border-border/60"
                   >
                     <option value="A4">A4 (210 × 297 mm)</option>
                     <option value="A5">A5 (148 × 210 mm)</option>
@@ -702,8 +704,8 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                 </div>
                 
                 {/* Margin */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="margin">Page Margin: {margin}px</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="margin" className="text-sm font-medium">Page Margin: {margin}px</Label>
                   <Slider
                     id="margin"
                     min={0}
@@ -716,25 +718,25 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
               </div>
               
               {/* Export Options */}
-              <div className="space-y-4 pt-4 border-t">
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground/80">
+              <div className="space-y-4 pt-4 border-t border-border/40">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                   <FileDown className="h-4 w-4" />
                   Export Options
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button onClick={handleExportPDF} size="sm" variant="outline" className="flex items-center gap-1.5">
+                  <Button onClick={handleExportPDF} size="sm" variant="outline" className="flex items-center gap-1.5 h-9">
                     <FileDown className="h-3.5 w-3.5" />
                     PDF
                   </Button>
-                  <Button onClick={handleExportDOCX} size="sm" variant="outline" className="flex items-center gap-1.5">
+                  <Button onClick={handleExportDOCX} size="sm" variant="outline" className="flex items-center gap-1.5 h-9">
                     <FileTextIcon className="h-3.5 w-3.5" />
                     DOCX
                   </Button>
-                  <Button onClick={handleExportTXT} size="sm" variant="outline" className="flex items-center gap-1.5">
+                  <Button onClick={handleExportTXT} size="sm" variant="outline" className="flex items-center gap-1.5 h-9">
                     <File className="h-3.5 w-3.5" />
                     TXT
                   </Button>
-                  <Button onClick={handleExportHTML} size="sm" variant="outline" className="flex items-center gap-1.5">
+                  <Button onClick={handleExportHTML} size="sm" variant="outline" className="flex items-center gap-1.5 h-9">
                     <Globe className="h-3.5 w-3.5" />
                     HTML
                   </Button>

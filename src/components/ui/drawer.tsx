@@ -43,7 +43,7 @@ export const Drawer: React.FC<DrawerProps> = ({
       
       {/* Drawer Panel */}
       <div 
-        className={`${positionClasses} ${sideClasses} top-0 h-full w-full max-w-sm bg-background/95 backdrop-blur-sm border-l border-border/50 shadow-xl transform transition-all duration-300 ease-out ${
+        className={`${positionClasses} ${sideClasses} top-0 h-full w-full max-w-sm bg-card/95 backdrop-blur-sm border-l border-border/40 shadow-xl transform transition-all duration-300 ease-out ${
           open ? 'translate-x-0' : side === 'left' ? '-translate-x-full' : 'translate-x-full'
         }`}
       >
@@ -76,7 +76,7 @@ export const DrawerHeader: React.FC<DrawerHeaderProps> = ({
   className = '', 
   ...props 
 }) => (
-  <div className={`px-4 py-3 border-b border-border ${className}`} {...props}>
+  <div className={`px-6 py-4 border-b border-border/40 bg-muted/30 ${className}`} {...props}>
     {children}
   </div>
 );
@@ -138,7 +138,7 @@ export const DrawerBody: React.FC<DrawerBodyProps> = ({
   className = '', 
   ...props 
 }) => (
-  <div className={`flex-1 overflow-y-auto px-4 py-3 ${className}`} {...props}>
+  <div className={`flex-1 overflow-y-auto px-6 py-4 ${className}`} {...props}>
     {children}
   </div>
 );
@@ -152,7 +152,7 @@ export const DrawerFooter: React.FC<DrawerFooterProps> = ({
   className = '', 
   ...props 
 }) => (
-  <div className={`px-4 py-3 border-t border-border ${className}`} {...props}>
+  <div className={`px-6 py-4 border-t border-border/40 bg-muted/30 ${className}`} {...props}>
     {children}
   </div>
 );
