@@ -43,7 +43,7 @@ export const Drawer: React.FC<DrawerProps> = ({
   const basePanelClasses = `${positionClasses} ${sideClasses} top-0 ${heightClasses} w-full max-w-sm transform transition-all duration-300 ease-out flex flex-col`;
   const visibilityClasses = open ? 'translate-x-0' : side === 'left' ? '-translate-x-full' : 'translate-x-full';
   const variantClasses = variant === 'card'
-    ? `bg-card text-card-foreground border border-border rounded-xl shadow-lg m-4 md:m-6 p-0 ${fullHeight ? 'overflow-hidden' : 'overflow-hidden'}`
+    ? `bg-card text-card-foreground border border-border rounded-xl shadow-lg m-4 md:m-6 p-0 ${fullHeight ? 'overflow-hidden' : 'overflow-visible'}`
     : 'bg-card/95 backdrop-blur-sm border-l border-border/40 shadow-xl';
 
   // For card variant use lighter backdrop similar subtle elevation
@@ -142,17 +142,31 @@ export const DrawerClose: React.FC<DrawerCloseProps> = ({
 
 interface DrawerBodyProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
+  fill?: boolean; // if true takes remaining height with scroll; if false height = content
+  maxHeight?: string; // optional max-height override
 }
 
 export const DrawerBody: React.FC<DrawerBodyProps> = ({
   children,
   className = '',
+  fill = true,
+  maxHeight,
   ...props
-}) => (
-  <div className={`px-6 pt-4 pb-8 overflow-y-auto overscroll-contain flex-1 ${className}`} {...props}>
-    {children}
-  </div>
-);
+}) => {
+  const style: React.CSSProperties = {};
+  if (!fill) {
+    if (maxHeight) style.maxHeight = maxHeight;
+  }
+  return (
+    <div
+      className={`px-6 pt-4 pb-6 ${fill ? 'flex-1 overflow-y-auto overscroll-contain' : 'overflow-visible'} ${className}`}
+      style={style}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+};
 
 interface DrawerFooterProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;

@@ -577,7 +577,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
               <DrawerClose onClose={() => setEditorDrawerOpen(false)} />
             </DrawerHeader>
 
-            <DrawerBody>
+            <DrawerBody fill={false}>
               {/* Typography Section */}
               <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2 pl-0.5">
                 <Type className="h-3.5 w-3.5 text-primary" />
