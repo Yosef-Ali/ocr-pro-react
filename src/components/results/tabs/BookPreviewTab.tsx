@@ -570,7 +570,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
         </Card>
 
         {/* Document Editor Drawer */}
-        <Drawer open={editorDrawerOpen} onOpenChange={setEditorDrawerOpen} side="right" container variant="card" fullHeight={false}>
+        <Drawer open={editorDrawerOpen} onOpenChange={setEditorDrawerOpen} side="right" variant="card" fullHeight>
           <DrawerContent>
             <DrawerHeader>
               <DrawerTitle>Document Editor</DrawerTitle>
@@ -727,27 +727,27 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
               </div>
 
             </DrawerBody>
-            <DrawerFooter className="bg-background/60 backdrop-blur-sm border-t border-border/40">
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3 pl-0.5">
+            <DrawerFooter className="bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t border-border/40 sticky bottom-0">
+              <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-2 pl-0.5">
                 <FileDown className="h-3.5 w-3.5 text-primary" />
-                <span>Export</span>
+                <span className={compactMode ? 'hidden md:inline' : ''}>Export</span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button onClick={handleExportPDF} size="sm" variant="outline" className="flex items-center gap-1.5 h-9">
-                  <FileDown className="h-3.5 w-3.5" />
-                  PDF
+              <div className="grid grid-cols-4 gap-2">
+                <Button onClick={handleExportPDF} size="sm" variant="outline" className="h-9 flex items-center justify-center gap-1.5" title="Export PDF">
+                  <FileDown className="h-4 w-4" />
+                  <span className={compactMode ? 'sr-only md:not-sr-only md:inline text-xs' : 'text-xs'}>PDF</span>
                 </Button>
-                <Button onClick={handleExportDOCX} size="sm" variant="outline" className="flex items-center gap-1.5 h-9">
-                  <FileTextIcon className="h-3.5 w-3.5" />
-                  DOCX
+                <Button onClick={handleExportDOCX} size="sm" variant="outline" className="h-9 flex items-center justify-center gap-1.5" title="Export DOCX">
+                  <FileTextIcon className="h-4 w-4" />
+                  <span className={compactMode ? 'sr-only md:not-sr-only md:inline text-xs' : 'text-xs'}>DOCX</span>
                 </Button>
-                <Button onClick={handleExportTXT} size="sm" variant="outline" className="flex items-center gap-1.5 h-9">
-                  <File className="h-3.5 w-3.5" />
-                  TXT
+                <Button onClick={handleExportTXT} size="sm" variant="outline" className="h-9 flex items-center justify-center gap-1.5" title="Export TXT">
+                  <File className="h-4 w-4" />
+                  <span className={compactMode ? 'sr-only md:not-sr-only md:inline text-xs' : 'text-xs'}>TXT</span>
                 </Button>
-                <Button onClick={handleExportHTML} size="sm" variant="outline" className="flex items-center gap-1.5 h-9">
-                  <Globe className="h-3.5 w-3.5" />
-                  HTML
+                <Button onClick={handleExportHTML} size="sm" variant="outline" className="h-9 flex items-center justify-center gap-1.5" title="Export HTML">
+                  <Globe className="h-4 w-4" />
+                  <span className={compactMode ? 'sr-only md:not-sr-only md:inline text-xs' : 'text-xs'}>HTML</span>
                 </Button>
               </div>
             </DrawerFooter>
