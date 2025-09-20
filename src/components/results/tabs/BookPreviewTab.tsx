@@ -646,42 +646,46 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                 {/* Text Alignment */}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Text Alignment</Label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       variant={textAlign === 'left' ? 'default' : 'outline'}
                       size="sm"
+                      title="Align Left"
                       onClick={() => updatePreviewPreferences({ textAlign: 'left' })}
-                      className="flex items-center gap-1.5 h-9"
+                      className="h-9 flex items-center gap-1.5 px-3"
                     >
-                      <AlignLeft className="h-3.5 w-3.5" />
-                      Left
+                      <AlignLeft className="h-4 w-4" />
+                      <span className={compactMode ? 'sr-only md:not-sr-only md:inline text-xs' : 'text-xs'}>Left</span>
                     </Button>
                     <Button
                       variant={textAlign === 'center' ? 'default' : 'outline'}
                       size="sm"
+                      title="Align Center"
                       onClick={() => updatePreviewPreferences({ textAlign: 'center' })}
-                      className="flex items-center gap-1.5 h-9"
+                      className="h-9 flex items-center gap-1.5 px-3"
                     >
-                      <AlignCenter className="h-3.5 w-3.5" />
-                      Center
+                      <AlignCenter className="h-4 w-4" />
+                      <span className={compactMode ? 'sr-only md:not-sr-only md:inline text-xs' : 'text-xs'}>Center</span>
                     </Button>
                     <Button
                       variant={textAlign === 'right' ? 'default' : 'outline'}
                       size="sm"
+                      title="Align Right"
                       onClick={() => updatePreviewPreferences({ textAlign: 'right' })}
-                      className="flex items-center gap-1.5 h-9"
+                      className="h-9 flex items-center gap-1.5 px-3"
                     >
-                      <AlignRight className="h-3.5 w-3.5" />
-                      Right
+                      <AlignRight className="h-4 w-4" />
+                      <span className={compactMode ? 'sr-only md:not-sr-only md:inline text-xs' : 'text-xs'}>Right</span>
                     </Button>
                     <Button
                       variant={textAlign === 'justify' ? 'default' : 'outline'}
                       size="sm"
+                      title="Justify"
                       onClick={() => updatePreviewPreferences({ textAlign: 'justify' })}
-                      className="flex items-center gap-1.5 h-9"
+                      className="h-9 flex items-center gap-1.5 px-3"
                     >
-                      <AlignJustify className="h-3.5 w-3.5" />
-                      Justify
+                      <AlignJustify className="h-4 w-4" />
+                      <span className={compactMode ? 'sr-only md:not-sr-only md:inline text-xs' : 'text-xs'}>Justify</span>
                     </Button>
                   </div>
                 </div>
