@@ -1,19 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FileText, Loader2, Sparkles, AlertTriangle, Monitor, LayoutGrid, Settings, Download } from 'lucide-react';
+import { FileText, Loader2, Sparkles, AlertTriangle, Monitor } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { useOCRStore } from '@/store/ocrStore';
 import { ProjectSummary, OCRResult } from '@/types';
 import { buildFallbackSummary } from '@/services/export/projectExportService';
-import { CanvasBookPreview, flowChaptersToLines, FlowLine, hyphenateWord } from './CanvasBookPreview';
-import { getHyphenator } from '@/utils/hyphenation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { fetchResults } from '@/services/api/results';
 import { fetchProjectSummary } from '@/services/api/projects';
 import { mapRemoteResult, mapRemoteSummary } from '@/services/api/transformers';
@@ -37,56 +31,11 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'pages' | 'live'>('live');
-  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
-
-  // Persisted preview settings
-  const [pageSize, setPageSize] = useState<'A4' | 'A5'>(() => {
-    if (typeof window === 'undefined') return 'A5';
-    const v = window.localStorage.getItem('bookPreview.pageSize');
-    return (v === 'A4' || v === 'A5') ? v : 'A5';
-  });
-  const [liveFont, setLiveFont] = useState<number>(() => {
-    if (typeof window === 'undefined') return 14;
-    const v = parseInt(window.localStorage.getItem('bookPreview.font') || '14', 10);
-    return isNaN(v) ? 14 : Math.min(22, Math.max(10, v));
-  });
-  const [liveLH, setLiveLH] = useState<number>(() => {
-    if (typeof window === 'undefined') return 1.5;
-    const v = parseFloat(window.localStorage.getItem('bookPreview.lh') || '1.5');
-    return isNaN(v) ? 1.5 : Math.min(2.0, Math.max(1.2, v));
-  });
   const [remoteResults, setRemoteResults] = useState<OCRResult[]>([]);
-  const [liveColumns, setLiveColumns] = useState<1 | 2>(() => {
-    if (typeof window === 'undefined') return 1;
-    const v = window.localStorage.getItem('bookPreview.columns');
-    return v === '2' ? 2 : 1;
-  });
-  const liveCanvasesRef = React.useRef<HTMLCanvasElement[]>([]);
   const [remoteSummary, setRemoteSummary] = useState<ProjectSummary | null>(null);
   const [hydratingRemote, setHydratingRemote] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [remoteError, setRemoteError] = useState<string | null>(null);
-  const [hyphenLang, setHyphenLang] = useState<string>(() => {
-    if (typeof window === 'undefined') return 'en';
-    return window.localStorage.getItem('bookPreview.hyphenLang') || 'en';
-  });
-  // Feature toggles (persisted)
-  const [includeTOC, setIncludeTOC] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return true;
-    const v = window.localStorage.getItem('bookPreview.includeTOC');
-    return v === null ? true : v === '1';
-  });
-  const [includeFrontMatter, setIncludeFrontMatter] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    const v = window.localStorage.getItem('bookPreview.frontMatter');
-    return v === '1';
-  });
-  const [forceSingleColumn, setForceSingleColumn] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    const v = window.localStorage.getItem('bookPreview.forceSingleCol');
-    return v === '1';
-  });
 
   const scopedProjectId = currentProjectId || result.projectId || 'all';
 
@@ -152,7 +101,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
         confidence: typeof res.confidence === 'number' ? res.confidence : undefined,
       };
     });
-  }, [projectResults, summaryForPages]);
+  }, [effectiveResults, summaryForPages]);
 
   const ensureSummary = useCallback(async () => {
     const existing = activeSummary ?? remoteSummary ?? undefined;
@@ -322,141 +271,9 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
     );
   };
 
-  const exportCanvasPDF = async () => {
-    try {
-      const { jsPDF } = await import('jspdf');
-      const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: pageSize === 'A4' ? 'a4' : 'a5' });
-      const canvases = liveCanvasesRef.current;
-      canvases.forEach((cv, idx) => {
-        if (idx > 0) doc.addPage();
-        const img = cv.toDataURL('image/jpeg', 0.85);
-        const pageW = doc.internal.pageSize.getWidth();
-        const pageH = doc.internal.pageSize.getHeight();
-        doc.addImage(img, 'JPEG', 0, 0, pageW, pageH, undefined, 'FAST');
-      });
-      doc.save(`book-preview-${scopedProjectId}.pdf`);
-      toast.success('Canvas PDF exported successfully');
-    } catch (e) {
-      console.error(e);
-      toast.error('PDF export failed');
-    }
-  };
-
-  const exportVectorPDF = async () => {
-    try {
-      const { jsPDF } = await import('jspdf');
-      const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: pageSize === 'A4' ? 'a4' : 'a5' });
-      const pageW = doc.internal.pageSize.getWidth();
-      const pageH = doc.internal.pageSize.getHeight();
-      const padding = 48;
-      const baseFont = liveFont;
-      const lhPx = Math.round(baseFont * liveLH);
-      const effectiveWidth = pageW - padding * 2;
-      const useColumns = forceSingleColumn ? 1 : (pageSize === 'A4' ? (liveColumns) : 1) as 1 | 2;
-      const colGap = 40;
-      const perColWidth = useColumns === 1 ? effectiveWidth : Math.floor((effectiveWidth - colGap) / 2);
-      
-      const chapters = perPagePreviews.map(p => ({ title: p.title, content: p.content }));
-      const scratch = document.createElement('canvas').getContext('2d');
-      if (!scratch) throw new Error('No canvas context');
-      scratch.font = `${baseFont}px Inter, system-ui, sans-serif`;
-      const hyphenator = getHyphenator(hyphenLang || 'en', hyphenateWord);
-      const lines = flowChaptersToLines(chapters, scratch as any, perColWidth, lhPx, 1.35, hyphenator);
-      
-      const adjusted: FlowLine[] = [];
-      for (let i = 0; i < lines.length; i++) {
-        const prev = lines[i - 1];
-        const curr = lines[i];
-        const next = lines[i + 1];
-        if (curr && curr.text && (!prev || prev.text === '') && next && next.text === '') {
-          if (adjusted.length && adjusted[adjusted.length - 1].text) {
-            adjusted[adjusted.length - 1].text += ` ${  curr.text}`;
-            continue;
-          }
-        }
-        adjusted.push(curr);
-      }
-      
-      let pageNum = 0;
-      const addFooter = () => {
-        doc.setFontSize(Math.round(baseFont * 0.8));
-        doc.setTextColor(107, 114, 128);
-        doc.text(String(pageNum), pageW / 2, pageH - padding, { align: 'center' });
-      };
-      const newPage = () => {
-        if (pageNum > 0) doc.addPage();
-        pageNum++;
-        doc.setFont('helvetica', '');
-        doc.setFontSize(baseFont);
-        doc.setTextColor(17, 24, 39);
-      };
-      
-      newPage();
-      let y = padding;
-      if (includeFrontMatter) {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(Math.round(baseFont * 1.8));
-        doc.text('Project Preview', padding, y); y += lhPx * 2;
-        doc.setFont('helvetica', ''); doc.setFontSize(baseFont);
-        doc.text(`Pages: ${perPagePreviews.length}`, padding, y); y += lhPx;
-        doc.text(`Generated: ${new Date().toLocaleString()}`, padding, y); y += lhPx;
-        addFooter(); newPage(); y = padding;
-      }
-      if (includeTOC) {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(Math.round(baseFont * 1.5));
-        doc.text('Table of Contents', padding, y); y += Math.round(lhPx * 1.5);
-        doc.setFont('helvetica', '');
-        const tocEntries = chapters.map((c, i) => ({ title: c.title, page: i + 1 }));
-        tocEntries.forEach(entry => {
-          if (y + lhPx > pageH - padding * 2) { addFooter(); newPage(); y = padding; doc.setFont('helvetica', ''); }
-          const label = entry.title.length > 80 ? `${entry.title.slice(0, 77)  }…` : entry.title;
-          const pageStr = String(entry.page + (includeFrontMatter ? 2 : 1));
-          const base = `${label  } `;
-          let dots = '';
-          while (doc.getTextWidth(base + dots + pageStr) < (effectiveWidth - 80)) dots += '.';
-          doc.text(base + dots + pageStr, padding, y);
-          y += lhPx;
-        });
-        addFooter(); newPage(); y = padding;
-      }
-      
-      let col = 0;
-      doc.setFontSize(baseFont);
-      adjusted.forEach(line => {
-        if (y + lhPx > pageH - padding * 2) {
-          if (useColumns === 2 && col === 0) {
-            col = 1; y = padding; return;
-          } else {
-            addFooter();
-            doc.addPage(); pageNum++; col = 0; y = padding; doc.setFontSize(baseFont);
-          }
-        }
-        if (line.isTitle) {
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(Math.round(baseFont * 1.25));
-        } else {
-          doc.setFont('helvetica', '');
-          doc.setFontSize(baseFont);
-        }
-        if (line.text) {
-          const xBase = padding + (useColumns === 2 ? (col * (perColWidth + colGap)) : 0);
-          doc.text(line.text, xBase, y, { baseline: 'top' });
-        }
-        y += lhPx;
-      });
-      addFooter();
-      doc.save(`book-preview-vector-${scopedProjectId}.pdf`);
-      toast.success('Vector PDF exported successfully');
-    } catch (err) {
-      console.error(err);
-      toast.error('Vector export failed');
-    }
-  };
-
   return (
     <div className="space-y-4">
-      {/* Clean, Professional Header */}
+      {/* Simple, Clean Header */}
       <Card className="sticky top-0 z-10">
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
@@ -466,7 +283,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
               </div>
               <div>
                 <CardTitle className="text-sm font-semibold">Book Preview</CardTitle>
-                <CardDescription className="mt-0.5">Professional layout with hyphenation, columns, and TOC</CardDescription>
+                <CardDescription className="mt-0.5">Simple page-by-page document preview</CardDescription>
                 {(hydratingRemote || (summaryLoading && !hydratingRemote)) && (
                   <div className="flex items-center gap-1 mt-1 text-[11px] text-muted-foreground">
                     <Loader2 className="h-3 w-3 animate-spin" />
@@ -476,200 +293,21 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
               </div>
             </div>
 
-          <div className="flex items-center gap-3">
-            {/* Primary View Mode Toggle */}
-            <div className="flex rounded-lg border border-border bg-muted overflow-hidden">
+            <div className="flex items-center gap-3">
+              {/* Simple Refresh Button */}
               <Button
                 type="button"
-                variant={viewMode === 'live' ? 'default' : 'ghost'}
                 size="sm"
-                className="rounded-none border-none h-8"
-                onClick={() => setViewMode('live')}
+                onClick={generatePreview}
+                disabled={loading || isProcessing || needsMoreResults}
+                className="shadow-sm h-8"
               >
-                <FileText className="h-4 w-4 mr-1" /> Live
-              </Button>
-              <Button
-                type="button"
-                variant={viewMode === 'pages' ? 'default' : 'ghost'}
-                size="sm"
-                className="rounded-none border-none h-8"
-                onClick={() => setViewMode('pages')}
-              >
-                <LayoutGrid className="h-4 w-4 mr-1" /> Pages
+                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Sparkles className="w-4 h-4 mr-1" />}
+                {loading ? 'Loading' : 'Refresh'}
               </Button>
             </div>
-
-            {/* Essential Quick Controls for Live Mode */}
-            {viewMode === 'live' && (
-              <div className="flex items-center gap-2">
-                {/* Quick Size Control */}
-                <Select
-                  value={pageSize}
-                  onChange={(e) => {
-                    const val = e.target.value as 'A4' | 'A5';
-                    setPageSize(val);
-                    try { window.localStorage.setItem('bookPreview.pageSize', val); } catch { }
-                  }}
-                  className="h-8 text-xs w-20"
-                >
-                  <option value="A5">A5</option>
-                  <option value="A4">A4</option>
-                </Select>
-              </div>
-            )}
-
-            {/* Advanced Settings Toggle */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8"
-              onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-
-            {/* Primary Action Button */}
-            <Button
-              type="button"
-              size="sm"
-              onClick={generatePreview}
-              disabled={loading || isProcessing || needsMoreResults}
-              className="shadow-sm h-8"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Sparkles className="w-4 h-4 mr-1" />}
-              {loading ? 'Preparing' : 'Refresh'}
-            </Button>
           </div>
-        </div>
         </CardHeader>
-
-        {/* Advanced Settings Panel */}
-        {showAdvancedSettings && viewMode === 'live' && (
-          <CardContent className="mt-4 p-6 rounded-lg border border-border bg-muted/50">
-            {/* Typography Controls */}
-            <div className="space-y-6">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-sm font-medium text-foreground">Typography & Layout</h4>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                  <div>
-                    <Label className="text-xs text-muted-foreground mb-2 block">Font Size</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="range"
-                        min={10}
-                        max={22}
-                        value={liveFont}
-                        onChange={(e) => {
-                          const v = parseInt(e.target.value, 10);
-                          setLiveFont(v);
-                          try { window.localStorage.setItem('bookPreview.font', String(v)); } catch { }
-                        }}
-                        className="flex-1 h-10"
-                      />
-                      <Badge variant="outline" className="w-12 text-xs justify-center">{liveFont}pt</Badge>
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground mb-2 block">Line Height</Label>
-                    <Input
-                      type="number"
-                      step={0.1}
-                      min={1.2}
-                      max={2.0}
-                      value={liveLH}
-                      onChange={(e) => {
-                        const v = parseFloat(e.target.value);
-                        const clamped = isNaN(v) ? 1.5 : Math.min(2.0, Math.max(1.2, v));
-                        setLiveLH(clamped);
-                        try { window.localStorage.setItem('bookPreview.lh', String(clamped)); } catch { }
-                      }}
-                      className="h-10 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground mb-2 block">Columns</Label>
-                    <Select
-                      value={liveColumns}
-                      disabled={pageSize === 'A5'}
-                      onChange={(e) => {
-                        const v = (e.target.value === '2') ? 2 : 1;
-                        setLiveColumns(v);
-                        try { window.localStorage.setItem('bookPreview.columns', String(v)); } catch { }
-                      }}
-                      className="h-10 text-sm disabled:opacity-40"
-                    >
-                      <option value={1}>Single</option>
-                      <option value={2}>Double</option>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground mb-2 block">Hyphenation</Label>
-                    <Select
-                      value={hyphenLang}
-                      onChange={(e) => { const v = e.target.value; setHyphenLang(v); try { localStorage.setItem('bookPreview.hyphenLang', v); } catch { } }}
-                      className="h-10 text-sm"
-                    >
-                      <option value="en">English</option>
-                      <option value="am">Amharic</option>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Content Options */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-sm font-medium text-foreground">Content Options</h4>
-                  {/* Export Options moved to the right */}
-                  <div className="flex items-center gap-3">
-                    <Button
-                      size="sm"
-                      variant="default"
-                      disabled={!liveCanvasesRef.current.length}
-                      onClick={exportCanvasPDF}
-                      className="text-sm h-9"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Export PDF
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={!perPagePreviews.length}
-                      onClick={exportVectorPDF}
-                      className="text-sm h-9"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Export Vector
-                    </Button>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Switch
-                    checked={includeTOC}
-                    onChange={(e) => { setIncludeTOC(e.target.checked); try { localStorage.setItem('bookPreview.includeTOC', e.target.checked ? '1' : '0'); } catch { } }}
-                    label="Include Table of Contents"
-                    className="p-3 rounded-lg border border-border/40 hover:bg-muted/30"
-                  />
-                  <Switch
-                    checked={includeFrontMatter}
-                    onChange={(e) => { setIncludeFrontMatter(e.target.checked); try { localStorage.setItem('bookPreview.frontMatter', e.target.checked ? '1' : '0'); } catch { } }}
-                    label="Include Front Matter"
-                    className="p-3 rounded-lg border border-border/40 hover:bg-muted/30"
-                  />
-                  <Switch
-                    checked={forceSingleColumn}
-                    onChange={(e) => { setForceSingleColumn(e.target.checked); try { localStorage.setItem('bookPreview.forceSingleCol', e.target.checked ? '1' : '0'); } catch { } }}
-                    label="Force Single Column"
-                    className="p-3 rounded-lg border border-border/40 hover:bg-muted/30"
-                  />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        )}
       </Card>
 
       {/* Status Messages */}
@@ -679,7 +317,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
             <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
             <div>
               <p className="font-medium">Ready to Preview</p>
-              <p className="text-sm">Run OCR on a document to build a professional book-style preview.</p>
+              <p className="text-sm">Run OCR on a document to see page previews.</p>
             </div>
           </CardContent>
         </Card>
@@ -724,23 +362,9 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
         </Card>
       )}
 
-      {/* Main Content Area */}
+      {/* Main Content Area - Simple Pages View */}
       <Card className="bg-background/50 backdrop-blur-sm overflow-hidden">
-        {viewMode === 'pages' ? renderPageMode() : (
-          <CardContent className="p-4">
-            <CanvasBookPreview
-              pages={perPagePreviews.map(p => ({ title: p.title, content: p.content }))}
-              pageSize={pageSize}
-              fontSize={liveFont}
-              lineHeight={liveLH}
-              columns={pageSize === 'A4' ? liveColumns : 1}
-              hyphenLang={hyphenLang}
-              toc={perPagePreviews.map((p, i) => ({ title: p.title, page: i + 1 }))}
-              includeTOC={true}
-              onRender={(cvs) => { liveCanvasesRef.current = cvs; }}
-            />
-          </CardContent>
-        )}
+        {renderPageMode()}
       </Card>
     </div>
   );
