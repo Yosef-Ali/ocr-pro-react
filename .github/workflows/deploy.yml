@@ -33,27 +33,20 @@ jobs:
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_FIREBASE_CONFIG: ${{ secrets.VITE_FIREBASE_CONFIG }}
 
-      - name: Verify Cloudflare Configuration
+      - name: Verify Build Output
         run: |
-          echo "Account ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
-          echo "Project: ocr-pro-react"
-          echo "Build directory: dist"
+          echo "Build directory contents:"
           ls -la dist/ || echo "Dist directory not found"
+          echo "Project: ocr-pro-react"
 
       - name: Deploy to Cloudflare Pages
-        run: |
-          echo "Starting deployment..."
-          npx wrangler pages deploy dist --project-name=ocr-pro-react
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: ocr-pro-react
+          directory: dist
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Deployment Status
-        if: always()
-        run: |
-          if [ $? -eq 0 ]; then
-            echo "✅ Deployment successful!"
-          else
-            echo "❌ Deployment failed!"
-            echo "Check logs above for details"
-          fi
+      - name: Deployment Success
+        run: echo "✅ Deployment completed successfully!"
