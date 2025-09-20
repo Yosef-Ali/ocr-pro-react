@@ -4,14 +4,15 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
+  # Remove pull_request trigger to prevent unnecessary deployments
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     name: Deploy
+    # Only deploy on main branch pushes
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,8 +33,29 @@ jobs:
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_FIREBASE_CONFIG: ${{ secrets.VITE_FIREBASE_CONFIG }}
 
+      - name: Verify Cloudflare Configuration
+        run: |
+          echo "Account ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          echo "Project: ocr-pro-react"
+          echo "Build directory: dist"
+          ls -la dist/ || echo "Dist directory not found"
+
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler pages deploy dist --project-name=ocr-pro-react
+        run: |
+          echo "Starting deployment..."
+          npx wrangler@3 pages deploy dist \
+            --project-name=ocr-pro-react \
+            --compatibility-date=2024-11-20
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deployment Status
+        if: always()
+        run: |
+          if [ $? -eq 0 ]; then
+            echo "✅ Deployment successful!"
+          else
+            echo "❌ Deployment failed!"
+            echo "Check logs above for details"
+          fi
