@@ -43,7 +43,7 @@ export const Drawer: React.FC<DrawerProps> = ({
   const basePanelClasses = `${positionClasses} ${sideClasses} top-0 ${heightClasses} w-full max-w-sm transform transition-all duration-300 ease-out flex flex-col`;
   const visibilityClasses = open ? 'translate-x-0' : side === 'left' ? '-translate-x-full' : 'translate-x-full';
   const variantClasses = variant === 'card'
-    ? `bg-card text-card-foreground border border-border rounded-xl shadow-lg m-4 md:m-6 p-0 ${fullHeight ? 'overflow-hidden' : 'overflow-visible'}`
+    ? `bg-card text-card-foreground border border-border rounded-xl shadow-lg m-4 md:m-6 p-0 overflow-hidden`
     : 'bg-card/95 backdrop-blur-sm border-l border-border/40 shadow-xl';
 
   // For card variant use lighter backdrop similar subtle elevation

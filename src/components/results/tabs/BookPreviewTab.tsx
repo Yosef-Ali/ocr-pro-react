@@ -36,6 +36,7 @@ import {
   DrawerTitle,
   DrawerDescription,
   DrawerBody,
+  DrawerFooter,
   DrawerClose
 } from '@/components/ui/drawer';
 import { fetchResults } from '@/services/api/results';
@@ -577,7 +578,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
               <DrawerClose onClose={() => setEditorDrawerOpen(false)} />
             </DrawerHeader>
 
-            <DrawerBody fill={false}>
+            <DrawerBody>
               {/* Typography Section */}
               <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2 pl-0.5">
                 <Type className="h-3.5 w-3.5 text-primary" />
@@ -725,32 +726,31 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                 </div>
               </div>
 
-              {/* Export Section */}
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2 pl-0.5">
+            </DrawerBody>
+            <DrawerFooter className="bg-background/60 backdrop-blur-sm border-t border-border/40">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3 pl-0.5">
                 <FileDown className="h-3.5 w-3.5 text-primary" />
                 <span>Export</span>
               </div>
-              <div className="space-y-4 rounded-lg border border-border/60 bg-muted/40 p-4">
-                <div className="grid grid-cols-2 gap-2">
-                  <Button onClick={handleExportPDF} size="sm" variant="outline" className="flex items-center gap-1.5 h-9">
-                    <FileDown className="h-3.5 w-3.5" />
-                    PDF
-                  </Button>
-                  <Button onClick={handleExportDOCX} size="sm" variant="outline" className="flex items-center gap-1.5 h-9">
-                    <FileTextIcon className="h-3.5 w-3.5" />
-                    DOCX
-                  </Button>
-                  <Button onClick={handleExportTXT} size="sm" variant="outline" className="flex items-center gap-1.5 h-9">
-                    <File className="h-3.5 w-3.5" />
-                    TXT
-                  </Button>
-                  <Button onClick={handleExportHTML} size="sm" variant="outline" className="flex items-center gap-1.5 h-9">
-                    <Globe className="h-3.5 w-3.5" />
-                    HTML
-                  </Button>
-                </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button onClick={handleExportPDF} size="sm" variant="outline" className="flex items-center gap-1.5 h-9">
+                  <FileDown className="h-3.5 w-3.5" />
+                  PDF
+                </Button>
+                <Button onClick={handleExportDOCX} size="sm" variant="outline" className="flex items-center gap-1.5 h-9">
+                  <FileTextIcon className="h-3.5 w-3.5" />
+                  DOCX
+                </Button>
+                <Button onClick={handleExportTXT} size="sm" variant="outline" className="flex items-center gap-1.5 h-9">
+                  <File className="h-3.5 w-3.5" />
+                  TXT
+                </Button>
+                <Button onClick={handleExportHTML} size="sm" variant="outline" className="flex items-center gap-1.5 h-9">
+                  <Globe className="h-3.5 w-3.5" />
+                  HTML
+                </Button>
               </div>
-            </DrawerBody>
+            </DrawerFooter>
           </DrawerContent>
         </Drawer>
       </div>
