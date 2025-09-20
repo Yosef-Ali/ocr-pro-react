@@ -28,6 +28,8 @@ const PAGE_DIMENSIONS: Record<'A4' | 'A5', { w: number; h: number }> = {
     A5: { w: 559, h: 794 },  // approx 148mm x 210mm
 };
 
+const AMHARIC_SCRIPT_REGEX = /[\u1200-\u137f\u1380-\u139f\u2d80-\u2ddf]/;
+
 // Enhanced font configuration for better Amharic rendering
 const AMHARIC_FONTS = [
     'Noto Sans Ethiopic',
@@ -163,6 +165,8 @@ export const CanvasBookPreview: React.FC<CanvasBookPreviewProps> = ({ pages, pag
         const optimalFamily = getOptimalFont(hyphenLang || 'en', family);
         sctx.font = `${fontSize}px ${optimalFamily}`;
         const baseLineHeight = Math.round(fontSize * lineHeight);
+        const hasAmharicContent = pages.some(p => AMHARIC_SCRIPT_REGEX.test(p.content));
+        const preferLeftAlignedBody = hasAmharicContent || (hyphenLang || '').toLowerCase().startsWith('am');
         const hyphenator = getHyphenator(hyphenLang || 'en', hyphenateWord);
         const trackingHyphenator = (w: string) => {
             const parts = hyphenator(w);
@@ -227,7 +231,6 @@ export const CanvasBookPreview: React.FC<CanvasBookPreviewProps> = ({ pages, pag
             }
             
             // Enhanced letter spacing for Amharic text
-            const hasAmharicContent = pages.some(p => /[\u1200-\u137f\u1380-\u139f\u2d80-\u2ddf]/.test(p.content));
             if (hasAmharicContent && typeof (ctx as any).letterSpacing !== 'undefined') {
                 (ctx as any).letterSpacing = '0.5px';
             }
@@ -309,7 +312,7 @@ export const CanvasBookPreview: React.FC<CanvasBookPreviewProps> = ({ pages, pag
                 // Justification: apply only if single column or within column and not a title and not blank
                 const isLastLineOnPage = y + needed + footerSpace > dims.h;
                 const isParagraphBreak = line.text.trim() === '';
-                if (!line.isTitle && !isParagraphBreak && columns === 1 && ctx) {
+                if (!line.isTitle && !isParagraphBreak && columns === 1 && ctx && !preferLeftAlignedBody && !AMHARIC_SCRIPT_REGEX.test(line.text)) {
                     // Attempt simple justification by spreading spaces
                     const wordsInLine = line.text.split(/\s+/);
                     if (wordsInLine.length > 1 && !isLastLineOnPage) {
