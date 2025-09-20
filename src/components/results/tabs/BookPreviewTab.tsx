@@ -651,41 +651,45 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                       variant={textAlign === 'left' ? 'default' : 'outline'}
                       size="sm"
                       title="Align Left"
+                      aria-label="Align Left"
                       onClick={() => updatePreviewPreferences({ textAlign: 'left' })}
-                      className="h-9 flex items-center gap-1.5 px-3"
+                      className="h-9 flex items-center justify-center px-2 w-9"
                     >
                       <AlignLeft className="h-4 w-4" />
-                      <span className={compactMode ? 'sr-only md:not-sr-only md:inline text-xs' : 'text-xs'}>Left</span>
+                      <span className="sr-only">Left</span>
                     </Button>
                     <Button
                       variant={textAlign === 'center' ? 'default' : 'outline'}
                       size="sm"
                       title="Align Center"
+                      aria-label="Align Center"
                       onClick={() => updatePreviewPreferences({ textAlign: 'center' })}
-                      className="h-9 flex items-center gap-1.5 px-3"
+                      className="h-9 flex items-center justify-center px-2 w-9"
                     >
                       <AlignCenter className="h-4 w-4" />
-                      <span className={compactMode ? 'sr-only md:not-sr-only md:inline text-xs' : 'text-xs'}>Center</span>
+                      <span className="sr-only">Center</span>
                     </Button>
                     <Button
                       variant={textAlign === 'right' ? 'default' : 'outline'}
                       size="sm"
                       title="Align Right"
+                      aria-label="Align Right"
                       onClick={() => updatePreviewPreferences({ textAlign: 'right' })}
-                      className="h-9 flex items-center gap-1.5 px-3"
+                      className="h-9 flex items-center justify-center px-2 w-9"
                     >
                       <AlignRight className="h-4 w-4" />
-                      <span className={compactMode ? 'sr-only md:not-sr-only md:inline text-xs' : 'text-xs'}>Right</span>
+                      <span className="sr-only">Right</span>
                     </Button>
                     <Button
                       variant={textAlign === 'justify' ? 'default' : 'outline'}
                       size="sm"
                       title="Justify"
+                      aria-label="Justify"
                       onClick={() => updatePreviewPreferences({ textAlign: 'justify' })}
-                      className="h-9 flex items-center gap-1.5 px-3"
+                      className="h-9 flex items-center justify-center px-2 w-9"
                     >
                       <AlignJustify className="h-4 w-4" />
-                      <span className={compactMode ? 'sr-only md:not-sr-only md:inline text-xs' : 'text-xs'}>Justify</span>
+                      <span className="sr-only">Justify</span>
                     </Button>
                   </div>
                 </div>
