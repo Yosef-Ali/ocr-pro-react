@@ -70,18 +70,16 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [remoteError, setRemoteError] = useState<string | null>(null);
 
-  // Editor panel state
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  // Editor drawer persistent state
+  const { editorDrawerOpen, setEditorDrawerOpen } = useOCRStore();
 
-  // Typography states
-  const [fontFamily, setFontFamily] = useState('sans-serif');
-  const [fontSize, setFontSize] = useState(14);
-  const [lineHeight, setLineHeight] = useState(1.5);
-  const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right' | 'justify'>('left');
-
-  // Layout states
-  const [pageSize, setPageSize] = useState<'A4' | 'A5'>('A4');
-  const [margin, setMargin] = useState(40);
+  // Preview preferences from store
+  const {
+    previewPreferences: { fontFamily, fontSize, lineHeight, textAlign, pageSize, margin, compactMode },
+    updatePreviewPreferences,
+    resetTypographyPreferences,
+    resetLayoutPreferences,
+  } = useOCRStore();
 
   // Ref for preview container (for export)
   const previewContainerRef = useRef<HTMLDivElement>(null);
@@ -402,7 +400,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
     }
 
     return (
-      <div className="space-y-6 p-6">
+      <div className={`space-y-${compactMode ? '4' : '6'} p-${compactMode ? '4' : '6'}`}>
         {perPagePreviews.map((page, idx) => (
           <Card
             key={`${page.id}-${idx}`}
@@ -486,7 +484,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
               <Button
                 type="button"
                 size="sm"
-                onClick={() => setIsEditorOpen(true)}
+                onClick={() => setEditorDrawerOpen(true)}
                 disabled={!effectiveResults.length}
                 className="shadow-sm h-8"
                 variant="outline"
@@ -570,21 +568,25 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
         </Card>
 
         {/* Document Editor Drawer */}
-        <Drawer open={isEditorOpen} onOpenChange={setIsEditorOpen} side="right" container variant="card" fullHeight={false}>
+        <Drawer open={editorDrawerOpen} onOpenChange={setEditorDrawerOpen} side="right" container variant="card" fullHeight={false}>
           <DrawerContent>
             <DrawerHeader>
               <DrawerTitle>Document Editor</DrawerTitle>
               <DrawerDescription>Customize typography and layout settings</DrawerDescription>
-              <DrawerClose onClose={() => setIsEditorOpen(false)} />
+              <DrawerClose onClose={() => setEditorDrawerOpen(false)} />
             </DrawerHeader>
 
             <DrawerBody>
-              {/* Typography Controls */}
-              <div className="space-y-4 mb-6 rounded-lg border border-border/60 bg-muted/40 p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground border-b border-border/40 pb-3">
-                  <Type className="h-4 w-4" />
-                  Typography
+              {/* Typography Section */}
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2 pl-0.5">
+                <Type className="h-3.5 w-3.5 text-primary" />
+                <span>Typography</span>
+                <div className="ml-auto flex items-center gap-2">
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]" onClick={() => resetTypographyPreferences()}>Reset</Button>
+                  <Button variant={compactMode ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-[11px]" onClick={() => updatePreviewPreferences({ compactMode: !compactMode })}>{compactMode ? 'Compact' : 'Standard'}</Button>
                 </div>
+              </div>
+              <div className="space-y-4 mb-6 rounded-lg border border-border/60 bg-muted/40 p-4">
 
                 {/* Font Family */}
                 <div className="space-y-2">
@@ -592,7 +594,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                   <Select
                     id="fontFamily"
                     value={fontFamily}
-                    onChange={(e) => setFontFamily(e.target.value)}
+                    onChange={(e) => updatePreviewPreferences({ fontFamily: e.target.value })}
                     className="bg-background border-border/60"
                   >
                     <option value="sans-serif">Sans Serif</option>
@@ -611,7 +613,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                       max={32}
                       step={1}
                       value={[fontSize]}
-                      onValueChange={([val]) => setFontSize(val)}
+                      onValueChange={([val]) => updatePreviewPreferences({ fontSize: val })}
                       className="flex-1"
                     />
                     <Input
@@ -619,7 +621,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                       min={8}
                       max={32}
                       value={fontSize}
-                      onChange={(e) => setFontSize(Number(e.target.value) || 14)}
+                      onChange={(e) => updatePreviewPreferences({ fontSize: Number(e.target.value) || 14 })}
                       className="w-16 h-9 bg-background border-border/60"
                     />
                   </div>
@@ -634,7 +636,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                     max={2.5}
                     step={0.1}
                     value={[lineHeight]}
-                    onValueChange={([val]) => setLineHeight(val)}
+                    onValueChange={([val]) => updatePreviewPreferences({ lineHeight: val })}
                   />
                 </div>
 
@@ -645,7 +647,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                     <Button
                       variant={textAlign === 'left' ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setTextAlign('left')}
+                      onClick={() => updatePreviewPreferences({ textAlign: 'left' })}
                       className="flex items-center gap-1.5 h-9"
                     >
                       <AlignLeft className="h-3.5 w-3.5" />
@@ -654,7 +656,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                     <Button
                       variant={textAlign === 'center' ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setTextAlign('center')}
+                      onClick={() => updatePreviewPreferences({ textAlign: 'center' })}
                       className="flex items-center gap-1.5 h-9"
                     >
                       <AlignCenter className="h-3.5 w-3.5" />
@@ -663,7 +665,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                     <Button
                       variant={textAlign === 'right' ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setTextAlign('right')}
+                      onClick={() => updatePreviewPreferences({ textAlign: 'right' })}
                       className="flex items-center gap-1.5 h-9"
                     >
                       <AlignRight className="h-3.5 w-3.5" />
@@ -672,7 +674,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                     <Button
                       variant={textAlign === 'justify' ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setTextAlign('justify')}
+                      onClick={() => updatePreviewPreferences({ textAlign: 'justify' })}
                       className="flex items-center gap-1.5 h-9"
                     >
                       <AlignJustify className="h-3.5 w-3.5" />
@@ -682,12 +684,15 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                 </div>
               </div>
 
-              {/* Layout Options */}
-              <div className="space-y-4 mb-6 rounded-lg border border-border/60 bg-muted/40 p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground border-b border-border/40 pb-3">
-                  <FileText className="h-4 w-4" />
-                  Layout
+              {/* Layout Section */}
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2 pl-0.5">
+                <FileText className="h-3.5 w-3.5 text-primary" />
+                <span>Layout</span>
+                <div className="ml-auto flex items-center gap-2">
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]" onClick={() => resetLayoutPreferences()}>Reset</Button>
                 </div>
+              </div>
+              <div className="space-y-4 mb-6 rounded-lg border border-border/60 bg-muted/40 p-4">
 
                 {/* Page Size */}
                 <div className="space-y-2">
@@ -695,7 +700,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                   <Select
                     id="pageSize"
                     value={pageSize}
-                    onChange={(e) => setPageSize(e.target.value as 'A4' | 'A5')}
+                    onChange={(e) => updatePreviewPreferences({ pageSize: e.target.value as 'A4' | 'A5' })}
                     className="bg-background border-border/60"
                   >
                     <option value="A4">A4 (210 × 297 mm)</option>
@@ -712,17 +717,17 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                     max={100}
                     step={5}
                     value={[margin]}
-                    onValueChange={([val]) => setMargin(val)}
+                    onValueChange={([val]) => updatePreviewPreferences({ margin: val })}
                   />
                 </div>
               </div>
 
-              {/* Export Options */}
+              {/* Export Section */}
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2 pl-0.5">
+                <FileDown className="h-3.5 w-3.5 text-primary" />
+                <span>Export</span>
+              </div>
               <div className="space-y-4 rounded-lg border border-border/60 bg-muted/40 p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <FileDown className="h-4 w-4" />
-                  Export Options
-                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Button onClick={handleExportPDF} size="sm" variant="outline" className="flex items-center gap-1.5 h-9">
                     <FileDown className="h-3.5 w-3.5" />

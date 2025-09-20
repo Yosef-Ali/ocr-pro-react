@@ -46,6 +46,7 @@ interface OCRState {
   isSettingsOpen: boolean;
   isHelpOpen: boolean;
   activeTab: 'extracted' | 'layout' | 'analysis';
+  editorDrawerOpen: boolean;
 
   // Settings
   settings: Settings;
@@ -66,6 +67,7 @@ interface OCRState {
   setActiveTab: (tab: 'extracted' | 'layout' | 'analysis') => void;
   toggleSettings: () => void;
   toggleHelp: () => void;
+  setEditorDrawerOpen: (open: boolean) => void;
   updateSettings: (settings: Partial<Settings>) => void;
 
   // Project actions
@@ -80,6 +82,20 @@ interface OCRState {
   ensureOriginalSnapshots: () => void;
 
   hydrateFromRemote: () => Promise<void>;
+
+  // Book preview / document editor preferences
+  previewPreferences: {
+    fontFamily: string;
+    fontSize: number;
+    lineHeight: number;
+    textAlign: 'left' | 'center' | 'right' | 'justify';
+    pageSize: 'A4' | 'A5';
+    margin: number;
+    compactMode: boolean;
+  };
+  updatePreviewPreferences: (patch: Partial<OCRState['previewPreferences']>) => void;
+  resetTypographyPreferences: () => void;
+  resetLayoutPreferences: () => void;
 }
 
 export const useOCRStore = create<OCRState>()(
@@ -103,6 +119,7 @@ export const useOCRStore = create<OCRState>()(
         isSettingsOpen: false,
         isHelpOpen: false,
         activeTab: 'extracted',
+        editorDrawerOpen: false,
         settings: {
           apiKey: '',
           model: 'gemini-2.5-pro',
@@ -141,6 +158,17 @@ export const useOCRStore = create<OCRState>()(
           amharicTextSpacing: 1.1, // Slightly increased letter spacing for Amharic
           amharicLineHeight: 1.6,   // Better line height for complex scripts
           preferAmharicFonts: true, // Use Ethiopic-optimized fonts when available
+        },
+
+        // Preview / document editor preferences (persisted)
+        previewPreferences: {
+          fontFamily: 'sans-serif',
+          fontSize: 14,
+          lineHeight: 1.5,
+          textAlign: 'left',
+          pageSize: 'A4',
+          margin: 40,
+          compactMode: false,
         },
 
         setCurrentUser: (user) => {
@@ -312,6 +340,32 @@ export const useOCRStore = create<OCRState>()(
             console.error('Failed to hydrate remote state', error);
             set({ isRemoteHydrated: true, hydrateError: error?.message || 'Failed to load remote data' });
           }
+        },
+
+        updatePreviewPreferences: (patch) => {
+          set((state) => ({
+            previewPreferences: { ...state.previewPreferences, ...patch },
+          }));
+        },
+        resetTypographyPreferences: () => {
+          set((state) => ({
+            previewPreferences: {
+              ...state.previewPreferences,
+              fontFamily: 'sans-serif',
+              fontSize: 14,
+              lineHeight: 1.5,
+              textAlign: 'left',
+            },
+          }));
+        },
+        resetLayoutPreferences: () => {
+          set((state) => ({
+            previewPreferences: {
+              ...state.previewPreferences,
+              pageSize: 'A4',
+              margin: 40,
+            },
+          }));
         },
 
         // File actions
@@ -573,6 +627,7 @@ export const useOCRStore = create<OCRState>()(
         toggleHelp: () => {
           set((state) => ({ isHelpOpen: !state.isHelpOpen }));
         },
+        setEditorDrawerOpen: (open: boolean) => set({ editorDrawerOpen: open }),
 
         updateSettings: (newSettings) => {
           set((state) => {
