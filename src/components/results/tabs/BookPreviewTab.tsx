@@ -615,7 +615,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                       step={1}
                       value={[fontSize]}
                       onValueChange={([val]) => updatePreviewPreferences({ fontSize: val })}
-                      className="flex-1"
+                      className="flex-1 min-w-[140px]"
                     />
                     <Input
                       type="number"
@@ -638,6 +638,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                     step={0.1}
                     value={[lineHeight]}
                     onValueChange={([val]) => updatePreviewPreferences({ lineHeight: val })}
+                    className="min-w-[160px]"
                   />
                 </div>
 
@@ -719,6 +720,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                     step={5}
                     value={[margin]}
                     onValueChange={([val]) => updatePreviewPreferences({ margin: val })}
+                    className="min-w-[160px]"
                   />
                 </div>
               </div>

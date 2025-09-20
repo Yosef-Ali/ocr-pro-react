@@ -149,7 +149,7 @@ export const DrawerBody: React.FC<DrawerBodyProps> = ({
   className = '',
   ...props
 }) => (
-  <div className={`px-6 py-4 overflow-y-auto flex-1 ${className}`} {...props}>
+  <div className={`px-6 pt-4 pb-8 overflow-y-auto overscroll-contain flex-1 ${className}`} {...props}>
     {children}
   </div>
 );
