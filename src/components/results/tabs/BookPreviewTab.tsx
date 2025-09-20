@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { 
-  FileText, 
-  Loader2, 
-  Sparkles, 
-  AlertTriangle, 
-  Monitor, 
-  Settings2, 
-  Type, 
-  AlignLeft, 
-  AlignCenter, 
-  AlignRight, 
+import {
+  FileText,
+  Loader2,
+  Sparkles,
+  AlertTriangle,
+  Monitor,
+  Settings2,
+  Type,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
   AlignJustify,
   FileDown,
   FileText as FileTextIcon,
@@ -32,14 +32,14 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { 
-  Drawer, 
-  DrawerContent, 
-  DrawerHeader, 
-  DrawerTitle, 
-  DrawerDescription, 
-  DrawerBody, 
-  DrawerClose 
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerBody,
+  DrawerClose
 } from '@/components/ui/drawer';
 import { fetchResults } from '@/services/api/results';
 import { fetchProjectSummary } from '@/services/api/projects';
@@ -69,20 +69,20 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
   const [hydratingRemote, setHydratingRemote] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [remoteError, setRemoteError] = useState<string | null>(null);
-  
+
   // Editor panel state
   const [isEditorOpen, setIsEditorOpen] = useState(false);
-  
+
   // Typography states
   const [fontFamily, setFontFamily] = useState('sans-serif');
   const [fontSize, setFontSize] = useState(14);
   const [lineHeight, setLineHeight] = useState(1.5);
   const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right' | 'justify'>('left');
-  
+
   // Layout states
   const [pageSize, setPageSize] = useState<'A4' | 'A5'>('A4');
   const [margin, setMargin] = useState(40);
-  
+
   // Ref for preview container (for export)
   const previewContainerRef = useRef<HTMLDivElement>(null);
 
@@ -264,28 +264,28 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
   // Export functions
   const handleExportPDF = useCallback(async () => {
     if (!previewContainerRef.current) return;
-    
+
     try {
       toast.loading('Generating PDF...', { id: 'pdf-export' });
-      
-      const canvas = await html2canvas(previewContainerRef.current, { 
+
+      const canvas = await html2canvas(previewContainerRef.current, {
         scale: 2,
         backgroundColor: '#ffffff'
       });
-      
+
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ 
-        unit: 'mm', 
-        format: pageSize.toLowerCase() as 'a4' | 'a5' 
+      const pdf = new jsPDF({
+        unit: 'mm',
+        format: pageSize.toLowerCase() as 'a4' | 'a5'
       });
-      
+
       const pageWidth = pdf.internal.pageSize.getWidth();
       const imgWidth = pageWidth - (margin * 2 / 3.78); // Convert px to mm
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
+
       pdf.addImage(imgData, 'PNG', margin / 3.78, margin / 3.78, imgWidth, imgHeight);
       pdf.save('document-preview.pdf');
-      
+
       toast.success('PDF exported successfully!', { id: 'pdf-export' });
     } catch (error) {
       console.error('PDF export failed:', error);
@@ -296,11 +296,11 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
   const handleExportDOCX = useCallback(async () => {
     try {
       toast.loading('Generating DOCX...', { id: 'docx-export' });
-      
+
       const doc = new Document({
         sections: [{
           properties: {},
-          children: perPagePreviews.map(page => 
+          children: perPagePreviews.map(page =>
             new Paragraph({
               children: [
                 new TextRun({
@@ -321,10 +321,10 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
           ),
         }],
       });
-      
+
       const blob = await Packer.toBlob(doc);
       saveAs(blob, 'document-preview.docx');
-      
+
       toast.success('DOCX exported successfully!', { id: 'docx-export' });
     } catch (error) {
       console.error('DOCX export failed:', error);
@@ -336,7 +336,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
     const textContent = perPagePreviews
       .map(page => `${page.title}\n\n${page.content}\n\n`)
       .join('\n---\n\n');
-    
+
     const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
     saveAs(blob, 'document-preview.txt');
     toast.success('TXT exported successfully!');
@@ -380,7 +380,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
   `).join('\n')}
 </body>
 </html>`;
-    
+
     const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
     saveAs(blob, 'document-preview.html');
     toast.success('HTML exported successfully!');
@@ -438,7 +438,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
               </div>
             </CardHeader>
             <CardContent>
-              <div 
+              <div
                 className="rounded-lg border border-dashed border-border/40 bg-white p-4"
                 style={{
                   fontFamily: fontFamily === 'serif' ? 'Georgia, serif' : fontFamily === 'monospace' ? 'Consolas, monospace' : 'system-ui, sans-serif',
@@ -494,7 +494,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                 <Settings2 className="w-4 h-4 mr-1" />
                 Edit Layout
               </Button>
-              
+
               {/* Simple Refresh Button */}
               <Button
                 type="button"
@@ -568,16 +568,16 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
         <Card className="bg-background/50 backdrop-blur-sm overflow-hidden" ref={previewContainerRef}>
           {renderPageMode()}
         </Card>
-        
+
         {/* Document Editor Drawer */}
-        <Drawer open={isEditorOpen} onOpenChange={setIsEditorOpen} side="right" container>
+        <Drawer open={isEditorOpen} onOpenChange={setIsEditorOpen} side="right" container variant="card">
           <DrawerContent>
             <DrawerHeader>
               <DrawerTitle>Document Editor</DrawerTitle>
               <DrawerDescription>Customize typography and layout settings</DrawerDescription>
               <DrawerClose onClose={() => setIsEditorOpen(false)} />
             </DrawerHeader>
-            
+
             <DrawerBody>
               {/* Typography Controls */}
               <div className="space-y-4 mb-6">
@@ -585,13 +585,13 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                   <Type className="h-4 w-4" />
                   Typography
                 </div>
-                
+
                 {/* Font Family */}
                 <div className="space-y-2">
                   <Label htmlFor="fontFamily" className="text-sm font-medium">Font Family</Label>
-                  <Select 
+                  <Select
                     id="fontFamily"
-                    value={fontFamily} 
+                    value={fontFamily}
                     onChange={(e) => setFontFamily(e.target.value)}
                     className="bg-background border-border/60"
                   >
@@ -600,7 +600,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                     <option value="monospace">Monospace</option>
                   </Select>
                 </div>
-                
+
                 {/* Font Size */}
                 <div className="space-y-2">
                   <Label htmlFor="fontSize" className="text-sm font-medium">Font Size: {fontSize}px</Label>
@@ -624,7 +624,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                     />
                   </div>
                 </div>
-                
+
                 {/* Line Height */}
                 <div className="space-y-2">
                   <Label htmlFor="lineHeight" className="text-sm font-medium">Line Height: {lineHeight.toFixed(1)}</Label>
@@ -637,7 +637,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                     onValueChange={([val]) => setLineHeight(val)}
                   />
                 </div>
-                
+
                 {/* Text Alignment */}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Text Alignment</Label>
@@ -681,20 +681,20 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                   </div>
                 </div>
               </div>
-              
+
               {/* Layout Options */}
               <div className="space-y-4 mb-6">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground border-b border-border/40 pb-3">
                   <FileText className="h-4 w-4" />
                   Layout
                 </div>
-                
+
                 {/* Page Size */}
                 <div className="space-y-2">
                   <Label htmlFor="pageSize" className="text-sm font-medium">Page Size</Label>
-                  <Select 
+                  <Select
                     id="pageSize"
-                    value={pageSize} 
+                    value={pageSize}
                     onChange={(e) => setPageSize(e.target.value as 'A4' | 'A5')}
                     className="bg-background border-border/60"
                   >
@@ -702,7 +702,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                     <option value="A5">A5 (148 × 210 mm)</option>
                   </Select>
                 </div>
-                
+
                 {/* Margin */}
                 <div className="space-y-2">
                   <Label htmlFor="margin" className="text-sm font-medium">Page Margin: {margin}px</Label>
@@ -716,7 +716,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
                   />
                 </div>
               </div>
-              
+
               {/* Export Options */}
               <div className="space-y-4 pt-4 border-t border-border/40">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
