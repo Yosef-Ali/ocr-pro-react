@@ -1,6 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FileText, Loader2, Sparkles, AlertTriangle, Monitor } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { FileText, Loader2, Sparkles, AlertTriangle, Monitor, Settings2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+import { Document, Packer, Paragraph, TextRun } from 'docx';
+import { saveAs } from 'file-saver';
 
 import { useOCRStore } from '@/store/ocrStore';
 import { ProjectSummary, OCRResult } from '@/types';
@@ -8,6 +12,19 @@ import { buildFallbackSummary } from '@/services/export/projectExportService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { 
+  Drawer, 
+  DrawerContent, 
+  DrawerHeader, 
+  DrawerTitle, 
+  DrawerDescription, 
+  DrawerBody, 
+  DrawerClose 
+} from '@/components/ui/drawer';
 import { fetchResults } from '@/services/api/results';
 import { fetchProjectSummary } from '@/services/api/projects';
 import { mapRemoteResult, mapRemoteSummary } from '@/services/api/transformers';
@@ -36,6 +53,22 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
   const [hydratingRemote, setHydratingRemote] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [remoteError, setRemoteError] = useState<string | null>(null);
+  
+  // Editor panel state
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  
+  // Typography states
+  const [fontFamily, setFontFamily] = useState('sans-serif');
+  const [fontSize, setFontSize] = useState(14);
+  const [lineHeight, setLineHeight] = useState(1.5);
+  const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right' | 'justify'>('left');
+  
+  // Layout states
+  const [pageSize, setPageSize] = useState<'A4' | 'A5'>('A4');
+  const [margin, setMargin] = useState(40);
+  
+  // Ref for preview container (for export)
+  const previewContainerRef = useRef<HTMLDivElement>(null);
 
   const scopedProjectId = currentProjectId || result.projectId || 'all';
 
@@ -212,6 +245,131 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
 
   const needsMoreResults = effectiveResults.length < MIN_RESULTS_FOR_BOOK;
 
+  // Export functions
+  const handleExportPDF = useCallback(async () => {
+    if (!previewContainerRef.current) return;
+    
+    try {
+      toast.loading('Generating PDF...', { id: 'pdf-export' });
+      
+      const canvas = await html2canvas(previewContainerRef.current, { 
+        scale: 2,
+        backgroundColor: '#ffffff'
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ 
+        unit: 'mm', 
+        format: pageSize.toLowerCase() as 'a4' | 'a5' 
+      });
+      
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const imgWidth = pageWidth - (margin * 2 / 3.78); // Convert px to mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', margin / 3.78, margin / 3.78, imgWidth, imgHeight);
+      pdf.save('document-preview.pdf');
+      
+      toast.success('PDF exported successfully!', { id: 'pdf-export' });
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      toast.error('Failed to export PDF', { id: 'pdf-export' });
+    }
+  }, [pageSize, margin]);
+
+  const handleExportDOCX = useCallback(async () => {
+    try {
+      toast.loading('Generating DOCX...', { id: 'docx-export' });
+      
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: perPagePreviews.map(page => 
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: page.title,
+                  bold: true,
+                  size: 28,
+                }),
+                new TextRun({
+                  text: '\n\n' + page.content,
+                  size: fontSize * 2, // DOCX uses half-points
+                }),
+                new TextRun({
+                  text: '\n\n',
+                  break: 2,
+                }),
+              ],
+            })
+          ),
+        }],
+      });
+      
+      const blob = await Packer.toBlob(doc);
+      saveAs(blob, 'document-preview.docx');
+      
+      toast.success('DOCX exported successfully!', { id: 'docx-export' });
+    } catch (error) {
+      console.error('DOCX export failed:', error);
+      toast.error('Failed to export DOCX', { id: 'docx-export' });
+    }
+  }, [perPagePreviews, fontSize]);
+
+  const handleExportTXT = useCallback(() => {
+    const textContent = perPagePreviews
+      .map(page => `${page.title}\n\n${page.content}\n\n`)
+      .join('\n---\n\n');
+    
+    const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+    saveAs(blob, 'document-preview.txt');
+    toast.success('TXT exported successfully!');
+  }, [perPagePreviews]);
+
+  const handleExportHTML = useCallback(() => {
+    const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document Preview</title>
+  <style>
+    body {
+      font-family: ${fontFamily};
+      font-size: ${fontSize}px;
+      line-height: ${lineHeight};
+      text-align: ${textAlign};
+      margin: ${margin}px;
+      max-width: ${pageSize === 'A4' ? '210mm' : '148mm'};
+      padding: 20px;
+    }
+    .page {
+      margin-bottom: 40px;
+      page-break-after: always;
+    }
+    .page-title {
+      font-size: 1.5em;
+      font-weight: bold;
+      margin-bottom: 1em;
+    }
+  </style>
+</head>
+<body>
+  ${perPagePreviews.map(page => `
+    <div class="page">
+      <h2 class="page-title">${page.title}</h2>
+      <pre style="white-space: pre-wrap; font-family: inherit;">${page.content}</pre>
+    </div>
+  `).join('\n')}
+</body>
+</html>`;
+    
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    saveAs(blob, 'document-preview.html');
+    toast.success('HTML exported successfully!');
+  }, [perPagePreviews, fontFamily, fontSize, lineHeight, textAlign, margin, pageSize]);
+
   const renderPageMode = () => {
     if (!effectiveResults.length) {
       return (
@@ -233,6 +391,11 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
           <Card
             key={`${page.id}-${idx}`}
             className="group bg-background/60 backdrop-blur-sm shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
+            style={{
+              width: pageSize === 'A4' ? '794px' : '559px',
+              maxWidth: '100%',
+              margin: '0 auto',
+            }}
           >
             <CardHeader className="pb-4">
               <div className="flex items-start justify-between gap-4">
@@ -259,8 +422,17 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="rounded-lg border border-dashed border-border/40 bg-muted/30 p-4">
-                <pre className="text-sm leading-relaxed whitespace-pre-wrap font-mono text-foreground/90 tracking-wider">
+              <div 
+                className="rounded-lg border border-dashed border-border/40 bg-white p-4"
+                style={{
+                  fontFamily: fontFamily === 'serif' ? 'Georgia, serif' : fontFamily === 'monospace' ? 'Consolas, monospace' : 'system-ui, sans-serif',
+                  fontSize: `${fontSize}px`,
+                  lineHeight: lineHeight,
+                  textAlign: textAlign,
+                  padding: `${margin}px`,
+                }}
+              >
+                <pre className="whitespace-pre-wrap text-black" style={{ fontFamily: 'inherit' }}>
                   {page.content}
                 </pre>
               </div>
@@ -294,6 +466,19 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Edit Layout Button */}
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setIsEditorOpen(true)}
+                disabled={!effectiveResults.length}
+                className="shadow-sm h-8"
+                variant="outline"
+              >
+                <Settings2 className="w-4 h-4 mr-1" />
+                Edit Layout
+              </Button>
+              
               {/* Simple Refresh Button */}
               <Button
                 type="button"
@@ -362,10 +547,166 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
         </Card>
       )}
 
-      {/* Main Content Area - Simple Pages View */}
-      <Card className="bg-background/50 backdrop-blur-sm overflow-hidden">
-        {renderPageMode()}
-      </Card>
+      {/* Main Content Area with relative positioning for drawer */}
+      <div className="relative">
+        <Card className="bg-background/50 backdrop-blur-sm overflow-hidden" ref={previewContainerRef}>
+          {renderPageMode()}
+        </Card>
+        
+        {/* Document Editor Drawer */}
+        <Drawer open={isEditorOpen} onOpenChange={setIsEditorOpen} side="right" container>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Document Editor</DrawerTitle>
+              <DrawerDescription>Customize typography and layout settings</DrawerDescription>
+              <DrawerClose onClose={() => setIsEditorOpen(false)} />
+            </DrawerHeader>
+            
+            <DrawerBody>
+              {/* Typography Controls */}
+              <div className="space-y-4 mb-6">
+                <h3 className="text-sm font-semibold text-foreground/80 border-b pb-2">Typography</h3>
+                
+                {/* Font Family */}
+                <div className="space-y-2">
+                  <Label htmlFor="fontFamily">Font Family</Label>
+                  <Select 
+                    id="fontFamily"
+                    value={fontFamily} 
+                    onChange={(e) => setFontFamily(e.target.value)}
+                  >
+                    <option value="sans-serif">Sans Serif</option>
+                    <option value="serif">Serif</option>
+                    <option value="monospace">Monospace</option>
+                  </Select>
+                </div>
+                
+                {/* Font Size */}
+                <div className="space-y-2">
+                  <Label htmlFor="fontSize">Font Size: {fontSize}px</Label>
+                  <div className="flex items-center gap-3">
+                    <Slider
+                      id="fontSize"
+                      min={8}
+                      max={32}
+                      step={1}
+                      value={[fontSize]}
+                      onValueChange={([val]) => setFontSize(val)}
+                      className="flex-1"
+                    />
+                    <Input
+                      type="number"
+                      min={8}
+                      max={32}
+                      value={fontSize}
+                      onChange={(e) => setFontSize(Number(e.target.value) || 14)}
+                      className="w-16"
+                    />
+                  </div>
+                </div>
+                
+                {/* Line Height */}
+                <div className="space-y-2">
+                  <Label htmlFor="lineHeight">Line Height: {lineHeight.toFixed(1)}</Label>
+                  <Slider
+                    id="lineHeight"
+                    min={1}
+                    max={2.5}
+                    step={0.1}
+                    value={[lineHeight]}
+                    onValueChange={([val]) => setLineHeight(val)}
+                  />
+                </div>
+                
+                {/* Text Alignment */}
+                <div className="space-y-2">
+                  <Label>Text Alignment</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant={textAlign === 'left' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTextAlign('left')}
+                    >
+                      Left
+                    </Button>
+                    <Button
+                      variant={textAlign === 'center' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTextAlign('center')}
+                    >
+                      Center
+                    </Button>
+                    <Button
+                      variant={textAlign === 'right' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTextAlign('right')}
+                    >
+                      Right
+                    </Button>
+                    <Button
+                      variant={textAlign === 'justify' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTextAlign('justify')}
+                    >
+                      Justify
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Layout Options */}
+              <div className="space-y-4 mb-6">
+                <h3 className="text-sm font-semibold text-foreground/80 border-b pb-2">Layout</h3>
+                
+                {/* Page Size */}
+                <div className="space-y-2">
+                  <Label htmlFor="pageSize">Page Size</Label>
+                  <Select 
+                    id="pageSize"
+                    value={pageSize} 
+                    onChange={(e) => setPageSize(e.target.value as 'A4' | 'A5')}
+                  >
+                    <option value="A4">A4 (210 × 297 mm)</option>
+                    <option value="A5">A5 (148 × 210 mm)</option>
+                  </Select>
+                </div>
+                
+                {/* Margin */}
+                <div className="space-y-2">
+                  <Label htmlFor="margin">Page Margin: {margin}px</Label>
+                  <Slider
+                    id="margin"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={[margin]}
+                    onValueChange={([val]) => setMargin(val)}
+                  />
+                </div>
+              </div>
+              
+              {/* Export Options */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="text-sm font-semibold text-foreground/80">Export Options</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button onClick={handleExportPDF} size="sm" variant="outline">
+                    Export PDF
+                  </Button>
+                  <Button onClick={handleExportDOCX} size="sm" variant="outline">
+                    Export DOCX
+                  </Button>
+                  <Button onClick={handleExportTXT} size="sm" variant="outline">
+                    Export TXT
+                  </Button>
+                  <Button onClick={handleExportHTML} size="sm" variant="outline">
+                    Export HTML
+                  </Button>
+                </div>
+              </div>
+            </DrawerBody>
+          </DrawerContent>
+        </Drawer>
+      </div>
     </div>
   );
 };
