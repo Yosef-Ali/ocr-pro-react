@@ -570,7 +570,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
         </Card>
 
         {/* Document Editor Drawer */}
-        <Drawer open={isEditorOpen} onOpenChange={setIsEditorOpen} side="right" container variant="card">
+        <Drawer open={isEditorOpen} onOpenChange={setIsEditorOpen} side="right" container variant="card" fullHeight={false}>
           <DrawerContent>
             <DrawerHeader>
               <DrawerTitle>Document Editor</DrawerTitle>
@@ -580,7 +580,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
 
             <DrawerBody>
               {/* Typography Controls */}
-              <div className="space-y-4 mb-6">
+              <div className="space-y-4 mb-6 rounded-lg border border-border/60 bg-muted/40 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground border-b border-border/40 pb-3">
                   <Type className="h-4 w-4" />
                   Typography
@@ -683,7 +683,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
               </div>
 
               {/* Layout Options */}
-              <div className="space-y-4 mb-6">
+              <div className="space-y-4 mb-6 rounded-lg border border-border/60 bg-muted/40 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground border-b border-border/40 pb-3">
                   <FileText className="h-4 w-4" />
                   Layout
@@ -718,7 +718,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
               </div>
 
               {/* Export Options */}
-              <div className="space-y-4 pt-4 border-t border-border/40">
+              <div className="space-y-4 rounded-lg border border-border/60 bg-muted/40 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                   <FileDown className="h-4 w-4" />
                   Export Options

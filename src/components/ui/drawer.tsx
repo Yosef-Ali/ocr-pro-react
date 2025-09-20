@@ -10,6 +10,8 @@ interface DrawerProps {
   container?: boolean;
   // visual style variant: default = translucent panel; card = solid card style like upload card
   variant?: 'default' | 'card';
+  // whether the drawer should stretch full height (default true). If false, card fits content with max height.
+  fullHeight?: boolean;
 }
 
 export const Drawer: React.FC<DrawerProps> = ({
@@ -18,7 +20,8 @@ export const Drawer: React.FC<DrawerProps> = ({
   children,
   side = 'right',
   container = false,
-  variant = 'default'
+  variant = 'default',
+  fullHeight = true
 }) => {
   React.useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -36,10 +39,11 @@ export const Drawer: React.FC<DrawerProps> = ({
   const positionClasses = container ? 'absolute' : 'fixed';
   const sideClasses = side === 'left' ? 'left-0' : 'right-0';
 
-  const basePanelClasses = `${positionClasses} ${sideClasses} top-0 h-full w-full max-w-sm transform transition-all duration-300 ease-out`;
+  const heightClasses = fullHeight ? 'h-full' : 'h-auto max-h-[92vh]';
+  const basePanelClasses = `${positionClasses} ${sideClasses} top-0 ${heightClasses} w-full max-w-sm transform transition-all duration-300 ease-out`;
   const visibilityClasses = open ? 'translate-x-0' : side === 'left' ? '-translate-x-full' : 'translate-x-full';
   const variantClasses = variant === 'card'
-    ? 'bg-card text-card-foreground border border-border rounded-xl shadow-lg m-4 md:m-6 p-0 overflow-hidden'
+    ? `bg-card text-card-foreground border border-border rounded-xl shadow-lg m-4 md:m-6 p-0 ${fullHeight ? 'overflow-hidden' : 'overflow-visible'}`
     : 'bg-card/95 backdrop-blur-sm border-l border-border/40 shadow-xl';
 
   // For card variant use lighter backdrop similar subtle elevation
@@ -69,7 +73,7 @@ export const DrawerContent: React.FC<DrawerContentProps> = ({
   className = '',
   ...props
 }) => (
-  <div className={`h-full flex flex-col ${className}`} {...props}>
+  <div className={`flex flex-col h-full data-[fit=true]:h-auto ${className}`} {...props}>
     {children}
   </div>
 );
@@ -145,7 +149,7 @@ export const DrawerBody: React.FC<DrawerBodyProps> = ({
   className = '',
   ...props
 }) => (
-  <div className={`flex-1 overflow-y-auto px-6 py-4 ${className}`} {...props}>
+  <div className={`px-6 py-4 ${className}`} {...props}>
     {children}
   </div>
 );
