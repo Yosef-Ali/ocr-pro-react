@@ -17,10 +17,7 @@ import {
   Globe
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
-import { Document, Packer, Paragraph, TextRun } from 'docx';
-import { saveAs } from 'file-saver';
+// Heavy libs (html2canvas, jspdf, docx, file-saver) are lazy-loaded in handlers to reduce initial bundle size
 
 import { useOCRStore } from '@/store/ocrStore';
 import { ProjectSummary, OCRResult } from '@/types';
@@ -31,7 +28,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
+import { CustomSlider } from '@/components/ui/slider';
 import {
   Drawer,
   DrawerContent,
@@ -265,13 +262,14 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
 
     try {
       toast.loading('Generating PDF...', { id: 'pdf-export' });
-
+      const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(previewContainerRef.current, {
         scale: 2,
         backgroundColor: '#ffffff'
       });
 
       const imgData = canvas.toDataURL('image/png');
+      const { jsPDF } = await import('jspdf');
       const pdf = new jsPDF({
         unit: 'mm',
         format: pageSize.toLowerCase() as 'a4' | 'a5'
@@ -294,7 +292,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
   const handleExportDOCX = useCallback(async () => {
     try {
       toast.loading('Generating DOCX...', { id: 'docx-export' });
-
+      const { Document, Packer, Paragraph, TextRun } = await import('docx');
       const doc = new Document({
         sections: [{
           properties: {},
@@ -321,6 +319,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
       });
 
       const blob = await Packer.toBlob(doc);
+      const { saveAs } = await import('file-saver');
       saveAs(blob, 'document-preview.docx');
 
       toast.success('DOCX exported successfully!', { id: 'docx-export' });
@@ -330,17 +329,18 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
     }
   }, [perPagePreviews, fontSize]);
 
-  const handleExportTXT = useCallback(() => {
+  const handleExportTXT = useCallback(async () => {
     const textContent = perPagePreviews
       .map(page => `${page.title}\n\n${page.content}\n\n`)
       .join('\n---\n\n');
 
     const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+    const { saveAs } = await import('file-saver');
     saveAs(blob, 'document-preview.txt');
     toast.success('TXT exported successfully!');
   }, [perPagePreviews]);
 
-  const handleExportHTML = useCallback(() => {
+  const handleExportHTML = useCallback(async () => {
     const htmlContent = `
 <!DOCTYPE html>
 <html lang="en">
@@ -380,6 +380,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
 </html>`;
 
     const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    const { saveAs } = await import('file-saver');
     saveAs(blob, 'document-preview.html');
     toast.success('HTML exported successfully!');
   }, [perPagePreviews, fontFamily, fontSize, lineHeight, textAlign, margin, pageSize]);
@@ -400,7 +401,7 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
     }
 
     return (
-      <div className={`space-y-${compactMode ? '4' : '6'} p-${compactMode ? '4' : '6'}`}>
+      <div className={`${compactMode ? 'space-y-4 p-4' : 'space-y-6 p-6'}`}>
         {perPagePreviews.map((page, idx) => (
           <Card
             key={`${page.id}-${idx}`}
@@ -605,10 +606,10 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
 
                 {/* Font Size */}
                 <div className="space-y-2">
-                  <Label htmlFor="fontSize" className="text-sm font-medium">Font Size: {fontSize}px</Label>
+                  <Label id="fontSize-label" className="text-sm font-medium">Font Size: {fontSize}px</Label>
                   <div className="flex items-center gap-3">
-                    <Slider
-                      id="fontSize"
+                    <CustomSlider
+                      aria-labelledby="fontSize-label"
                       min={8}
                       max={32}
                       step={1}
@@ -629,9 +630,9 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
 
                 {/* Line Height */}
                 <div className="space-y-2">
-                  <Label htmlFor="lineHeight" className="text-sm font-medium">Line Height: {lineHeight.toFixed(1)}</Label>
-                  <Slider
-                    id="lineHeight"
+                  <Label id="lineHeight-label" className="text-sm font-medium">Line Height: {lineHeight.toFixed(1)}</Label>
+                  <CustomSlider
+                    aria-labelledby="lineHeight-label"
                     min={1}
                     max={2.5}
                     step={0.1}
@@ -710,9 +711,9 @@ const BookPreviewInner: React.FC<BookPreviewProps> = ({ result }) => {
 
                 {/* Margin */}
                 <div className="space-y-2">
-                  <Label htmlFor="margin" className="text-sm font-medium">Page Margin: {margin}px</Label>
-                  <Slider
-                    id="margin"
+                  <Label id="margin-label" className="text-sm font-medium">Page Margin: {margin}px</Label>
+                  <CustomSlider
+                    aria-labelledby="margin-label"
                     min={0}
                     max={100}
                     step={5}
